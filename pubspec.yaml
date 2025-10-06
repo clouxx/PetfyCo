@@ -26,6 +26,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
     flutter_native_splash: ^2.4.1
+    flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
@@ -34,3 +35,10 @@ flutter:
     - assets/logo/petfyco_logo_full_dark.png
     - assets/logo/petfyco_icon.png
     - assets/logo/petfyco_splash.png
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: assets/logo/petfyco_icon.png
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: assets/logo/petfyco_icon.png
