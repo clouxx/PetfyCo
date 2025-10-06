@@ -1,0 +1,15 @@
+﻿# Flutter/Dart
+.dart_tool/
+.packages
+.pub-cache/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.melos_tool/
+.pub/
+*.lock
+
+# VSCode / IDE
+.vscode/
+.idea/
+*.iml
