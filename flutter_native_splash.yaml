@@ -1,0 +1,9 @@
+flutter_native_splash:
+  color: "#FFFFFF"
+  image: assets/logo/petfyco_splash.png
+  branding: assets/logo/petfyco_logo_full.png
+  android_12:
+    color: "#FFFFFF"
+    image: assets/logo/petfyco_splash.png
+    icon_background_color: "#FFFFFF"
+  web: false
