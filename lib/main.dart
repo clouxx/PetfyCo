@@ -1,15 +1,22 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+// IMPORTA EL TEMA
+import 'theme/app_theme.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // TODO: reemplaza por tus URLs/Keys
   await Supabase.initialize(
-    url: const String.fromEnvironment('SUPABASE_URL', defaultValue: 'https://YOUR-PROJECT.supabase.co'),
-    anonKey: const String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: 'YOUR-ANON-KEY'),
+    url: const String.fromEnvironment(
+      'SUPABASE_URL',
+      defaultValue: 'https://YOUR-PROJECT.supabase.co',
+    ),
+    anonKey: const String.fromEnvironment(
+      'SUPABASE_ANON_KEY',
+      defaultValue: 'YOUR-ANON-KEY',
+    ),
   );
   runApp(const ProviderScope(child: App()));
 }
@@ -32,7 +39,8 @@ class App extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'PetfyCo',
       routerConfig: _router,
-      theme: ThemeData(useMaterial3: true, colorSchemeSeed: const Color(0xFF4FC3F7)),
+      // APLICA EL TEMA PETFYCO
+      theme: buildPetfyTheme(),
     );
   }
 }
@@ -59,6 +67,7 @@ class _LoginPageState extends State<LoginPage> {
   final emailCtrl = TextEditingController();
   final passCtrl = TextEditingController();
   bool loading = false;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -66,28 +75,45 @@ class _LoginPageState extends State<LoginPage> {
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(children: [
-          TextField(controller: emailCtrl, decoration: const InputDecoration(labelText: 'Correo electrónico')),
+          TextField(
+            controller: emailCtrl,
+            decoration: const InputDecoration(labelText: 'Correo electrónico'),
+          ),
           const SizedBox(height: 12),
-          TextField(controller: passCtrl, decoration: const InputDecoration(labelText: 'Contraseña'), obscureText: true),
+          TextField(
+            controller: passCtrl,
+            decoration: const InputDecoration(labelText: 'Contraseña'),
+            obscureText: true,
+          ),
           const SizedBox(height: 12),
           FilledButton(
-            onPressed: loading ? null : () async {
-              setState(() => loading = true);
-              try {
-                await Supabase.instance.client.auth.signInWithPassword(email: emailCtrl.text.trim(), password: passCtrl.text);
-                if (context.mounted) context.go('/home');
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-                }
-              } finally {
-                if (mounted) setState(() => loading = false);
-              }
-            },
+            onPressed: loading
+                ? null
+                : () async {
+                    setState(() => loading = true);
+                    try {
+                      await Supabase.instance.client.auth.signInWithPassword(
+                        email: emailCtrl.text.trim(),
+                        password: passCtrl.text,
+                      );
+                      if (context.mounted) context.go('/home');
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error: $e')),
+                        );
+                      }
+                    } finally {
+                      if (mounted) setState(() => loading = false);
+                    }
+                  },
             child: Text(loading ? 'Entrando...' : 'Login'),
           ),
           const SizedBox(height: 8),
-          TextButton(onPressed: () => context.go('/register'), child: const Text('¿No tienes cuenta? Regístrate'))
+          TextButton(
+            onPressed: () => context.go('/register'),
+            child: const Text('¿No tienes cuenta? Regístrate'),
+          )
         ]),
       ),
     );
@@ -106,6 +132,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final nameCtrl = TextEditingController();
   bool loading = false;
   String? _error;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -119,28 +146,51 @@ class _RegisterPageState extends State<RegisterPage> {
           const SizedBox(height: 12),
           TextField(controller: passCtrl, decoration: const InputDecoration(labelText: 'Contraseña'), obscureText: true),
           const SizedBox(height: 6),
-          Align(alignment: Alignment.centerLeft, child: Text(_error ?? '', style: const TextStyle(color: Colors.red))),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(_error ?? '', style: const TextStyle(color: Colors.red)),
+          ),
           const SizedBox(height: 12),
           FilledButton(
-            onPressed: loading ? null : () async {
-              final p = passCtrl.text;
-              bool ok = RegExp(r'[A-Z]').hasMatch(p) && RegExp(r'[a-z]').hasMatch(p) && RegExp(r'\d').hasMatch(p) && RegExp(r'[!@#\$%\^&\*]').hasMatch(p) && p.length>=8;
-              if (!ok) { setState(()=>_error='La contraseña debe tener mayúscula, minúscula, número, especial y 8+ caracteres.'); return; }
-              setState(() => loading = true);
-              try {
-                final supa = Supabase.instance.client;
-                final res = await supa.auth.signUp(email: emailCtrl.text.trim(), password: passCtrl.text);
-                final uid = res.user?.id;
-                if (uid != null) {
-                  await supa.from('profiles').insert({'id': uid, 'display_name': nameCtrl.text});
-                }
-                if (context.mounted) context.go('/home');
-              } catch (e) {
-                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-              } finally {
-                if (mounted) setState(() => loading = false);
-              }
-            },
+            onPressed: loading
+                ? null
+                : () async {
+                    final p = passCtrl.text;
+                    final ok = RegExp(r'[A-Z]').hasMatch(p) &&
+                        RegExp(r'[a-z]').hasMatch(p) &&
+                        RegExp(r'\d').hasMatch(p) &&
+                        RegExp(r'[!@#\$%\^&\*]').hasMatch(p) &&
+                        p.length >= 8;
+                    if (!ok) {
+                      setState(() => _error =
+                          'La contraseña debe tener mayúscula, minúscula, número, especial y 8+ caracteres.');
+                      return;
+                    }
+                    setState(() => loading = true);
+                    try {
+                      final supa = Supabase.instance.client;
+                      final res = await supa.auth.signUp(
+                        email: emailCtrl.text.trim(),
+                        password: passCtrl.text,
+                      );
+                      final uid = res.user?.id;
+                      if (uid != null) {
+                        await supa.from('profiles').insert({
+                          'id': uid,
+                          'display_name': nameCtrl.text,
+                        });
+                      }
+                      if (context.mounted) context.go('/home');
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error: $e')),
+                        );
+                      }
+                    } finally {
+                      if (mounted) setState(() => loading = false);
+                    }
+                  },
             child: Text(loading ? 'Creando...' : 'Registrarse'),
           ),
         ]),
@@ -161,7 +211,10 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       appBar: AppBar(title: const Text('PetfyCo')),
       body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: Supabase.instance.client.from('pets').select('id, nombre, especie, municipio, estado').limit(20),
+        future: Supabase.instance.client
+            .from('pets')
+            .select('id, nombre, especie, municipio, estado')
+            .limit(20),
         builder: (context, snap) {
           if (!snap.hasData) return const Center(child: CircularProgressIndicator());
           final data = snap.data!;
@@ -183,9 +236,17 @@ class _HomePageState extends State<HomePage> {
         onPressed: () async {
           final supa = Supabase.instance.client;
           final user = supa.auth.currentUser;
-          if (user == null) { if (context.mounted) context.go('/login'); return; }
-          await supa.from('pets').insert({'owner_id': user.id, 'especie':'gato','nombre':'Michi de prueba','estado':'publicado'});
-          if (mounted) setState((){});
+          if (user == null) {
+            if (context.mounted) context.go('/login');
+            return;
+          }
+          await supa.from('pets').insert({
+            'owner_id': user.id,
+            'especie': 'gato',
+            'nombre': 'Michi de prueba',
+            'estado': 'publicado',
+          });
+          if (mounted) setState(() {});
         },
         label: const Text('Subir mascota demo'),
       ),
