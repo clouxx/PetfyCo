@@ -11,9 +11,10 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.35.5' # o usa channel: 'stable'
+          flutter-version: '3.35.5'
+          channel: 'stable'
           cache: true
 
       # Si también compilas APK:
