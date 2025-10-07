@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'theme/app_theme.dart';
 import 'widgets/petfy_widgets.dart';
+import 'petfy_home.dart'; // ajusta la ruta real: 'pages/petfy_home.dart' si está en subcarpeta
+
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,7 +22,7 @@ final _router = GoRouter(
     GoRoute(path: '/splash', builder: (_, __) => const SplashPage()),
     GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
     GoRoute(path: '/register', builder: (_, __) => const RegisterPage()),
-    GoRoute(path: '/home', builder: (_, __) => const HomePage()),
+    GoRoute(path: '/home', builder: (_, __) => const PetfyHome()),
   ],
 );
 
