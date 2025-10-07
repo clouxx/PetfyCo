@@ -13,7 +13,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.5'   # o tu versión
+          flutter-version: '3.35.5'   # o tu versión
 
       - name: Get packages
         run: flutter pub get
