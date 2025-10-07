@@ -65,7 +65,7 @@ ThemeData buildPetfyTheme() {
         borderSide: BorderSide.none,
       ),
     ),
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       color: AppColors.white,
       elevation: 1.5,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
