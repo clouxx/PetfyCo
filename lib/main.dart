@@ -4,7 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'theme/app_theme.dart';
 import 'widgets/petfy_widgets.dart';
-import 'petfy_home.dart'; // ajusta la ruta real: 'pages/petfy_home.dart' si está en subcarpeta
+import 'ui/home/petfy_home.dart';
+
 
 
 Future<void> main() async {
