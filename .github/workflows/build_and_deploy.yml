@@ -25,6 +25,8 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - run: flutter --version
+
       - name: Flutter pub get
         run: flutter pub get
 
