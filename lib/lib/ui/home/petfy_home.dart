@@ -12,7 +12,7 @@ class PetfyHome extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          // Navegar a subir mascota
+          // TODO: Navegar a subir mascota
         },
         icon: const Icon(Icons.add),
         label: const Text('Subir mascota'),
@@ -21,14 +21,10 @@ class PetfyHome extends StatelessWidget {
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-        children: [
+        children: const [
           _HeaderBanner(),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: List.generate(6, (i) => _PetCard(index: i)),
-          ),
+          SizedBox(height: 12),
+          _PetsGrid(), // separo la grilla para que sea responsiva fácil
         ],
       ),
     );
@@ -36,6 +32,8 @@ class PetfyHome extends StatelessWidget {
 }
 
 class _HeaderBanner extends StatelessWidget {
+  const _HeaderBanner();
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -65,6 +63,20 @@ class _HeaderBanner extends StatelessWidget {
   }
 }
 
+class _PetsGrid extends StatelessWidget {
+  const _PetsGrid();
+
+  @override
+  Widget build(BuildContext context) {
+    // En web, Wrap va bien; si quieres responsive real, usa LayoutBuilder.
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: List.generate(6, (i) => _PetCard(index: i)),
+    );
+  }
+}
+
 class _PetCard extends StatelessWidget {
   final int index;
   const _PetCard({required this.index});
@@ -76,7 +88,7 @@ class _PetCard extends StatelessWidget {
       child: Card(
         child: InkWell(
           borderRadius: BorderRadius.circular(18),
-          onTap: () {/* detalle */},
+          onTap: () {/* TODO: ir a detalle */},
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
@@ -93,10 +105,12 @@ class _PetCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text('Michi de prueba',
-                    style: Theme.of(context).textTheme.titleMedium!.copyWith(
-                      fontWeight: FontWeight.w700,
-                    )),
+                Text(
+                  'Michi de prueba',
+                  style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
@@ -109,7 +123,7 @@ class _PetCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Chip(label: const Text('Gato')),
+                    const Chip(label: Text('Gato')),
                     const SizedBox(width: 6),
                     Chip(
                       label: const Text('Adopción'),
