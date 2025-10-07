@@ -1,18 +1,21 @@
+// lib/theme/app_theme.dart
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
-  static const Color blue = Color(0xFF4FC3F7);
+  static const Color blue   = Color(0xFF4FC3F7);
   static const Color orange = Color(0xFFFF9800);
-  static const Color pink = Color(0xFFEC407A);
-  static const Color green = Color(0xFF4CAF50);
-  static const Color navy = Color(0xFF0D1C2E);
-  static const Color white = Colors.white;
+  static const Color pink   = Color(0xFFEC407A);
+  static const Color green  = Color(0xFF4CAF50);
+  static const Color navy   = Color(0xFF0D1C2E);
+  static const Color white  = Colors.white;
+  static const Color bg     = Color(0xFFF8FBFF);
 }
 
 ThemeData buildPetfyTheme() {
   final base = ThemeData.light(useMaterial3: true);
 
-  final scheme = ColorScheme.fromSeed(
+  final colorScheme = ColorScheme.fromSeed(
     seedColor: AppColors.blue,
     primary: AppColors.blue,
     secondary: AppColors.orange,
@@ -21,27 +24,49 @@ ThemeData buildPetfyTheme() {
     onSurface: AppColors.navy,
     onPrimary: AppColors.navy,
     onSecondary: AppColors.white,
+    brightness: Brightness.light,
   );
 
   return base.copyWith(
-    colorScheme: scheme,
-    scaffoldBackgroundColor: AppColors.white,
+    colorScheme: colorScheme,
+    scaffoldBackgroundColor: AppColors.bg,
+    textTheme: GoogleFonts.poppinsTextTheme(
+      base.textTheme.apply(
+        bodyColor: AppColors.navy,
+        displayColor: AppColors.navy,
+      ),
+    ),
     appBarTheme: const AppBarTheme(
       backgroundColor: AppColors.white,
       foregroundColor: AppColors.navy,
       centerTitle: true,
       elevation: 0,
     ),
-    textTheme: base.textTheme.apply(
-      bodyColor: AppColors.navy,
-      displayColor: AppColors.navy,
-    ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.orange,
+        backgroundColor: AppColors.blue,
         foregroundColor: AppColors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      ),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: AppColors.blue,
+        foregroundColor: AppColors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      ),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: AppColors.blue.withOpacity(.08),
+      hintStyle: const TextStyle(color: Colors.black54),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide.none,
       ),
     ),
     chipTheme: base.chipTheme.copyWith(
@@ -49,21 +74,12 @@ ThemeData buildPetfyTheme() {
       labelStyle: const TextStyle(color: AppColors.navy),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
-    inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      fillColor: AppColors.blue.withOpacity(.06),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide.none,
-      ),
-    ),
-    // <-- AQUÍ EL CAMBIO
     cardTheme: CardThemeData(
       color: AppColors.white,
       elevation: 1.5,
-      margin: const EdgeInsets.all(10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      surfaceTintColor: Colors.transparent,
+      margin: const EdgeInsets.all(12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     ),
+    dividerTheme: const DividerThemeData(color: Color(0xFFE7EEF7)),
   );
 }
