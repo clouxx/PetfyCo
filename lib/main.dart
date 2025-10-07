@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
-// IMPORTA EL TEMA
 import 'theme/app_theme.dart';
+import 'pages/splash_page.dart';
+import 'pages/login_page.dart';
+import 'pages/register_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,9 +39,8 @@ class App extends StatelessWidget {
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       title: 'PetfyCo',
-      routerConfig: _router,
-      // APLICA EL TEMA PETFYCO
       theme: buildPetfyTheme(),
+      routerConfig: _router,
     );
   }
 }
