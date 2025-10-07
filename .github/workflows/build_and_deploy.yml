@@ -13,8 +13,8 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.5'   # o usa channel: stable
-          channel: 'stable'
+          flutter-version: '3.35.5'   
+          # o usa channel: 'stable'
           cache: true
 
       # Si también compilas APK:
