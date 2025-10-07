@@ -12,17 +12,19 @@ class AppColors {
 ThemeData buildPetfyTheme() {
   final base = ThemeData.light(useMaterial3: true);
 
+  final scheme = ColorScheme.fromSeed(
+    seedColor: AppColors.blue,
+    primary: AppColors.blue,
+    secondary: AppColors.orange,
+    tertiary: AppColors.pink,
+    surface: AppColors.white,
+    onSurface: AppColors.navy,
+    onPrimary: AppColors.navy,
+    onSecondary: AppColors.white,
+  );
+
   return base.copyWith(
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: AppColors.blue,
-      primary: AppColors.blue,
-      secondary: AppColors.orange,
-      tertiary: AppColors.pink,
-      surface: AppColors.white,
-      onSurface: AppColors.navy,
-      onPrimary: AppColors.navy,
-      onSecondary: AppColors.white,
-    ),
+    colorScheme: scheme,
     scaffoldBackgroundColor: AppColors.white,
     appBarTheme: const AppBarTheme(
       backgroundColor: AppColors.white,
@@ -55,12 +57,13 @@ ThemeData buildPetfyTheme() {
         borderSide: BorderSide.none,
       ),
     ),
-    cardTheme: CardTheme(
+    // <-- AQUÍ EL CAMBIO
+    cardTheme: CardThemeData(
       color: AppColors.white,
       elevation: 1.5,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       margin: const EdgeInsets.all(10),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      surfaceTintColor: Colors.transparent,
     ),
   );
 }
-
