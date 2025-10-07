@@ -40,9 +40,9 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - assets/logo/petfyco_icon.png
     - assets/logo/petfyco_logo_full.png
     - assets/logo/petfyco_logo_full_dark.png
-    - assets/logo/petfyco_icon.png
     - assets/logo/petfyco_splash.png
 
 # --- Splash (Android/iOS/Web) ---
