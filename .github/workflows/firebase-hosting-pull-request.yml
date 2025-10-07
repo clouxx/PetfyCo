@@ -5,6 +5,12 @@ name: Preview Channel on PR (Flutter Web)
 
 on:
   pull_request:
+    branches: [ main ]
+  
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write   # <- NECESARIO para crear el check run del preview  
 
 env:
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -47,6 +53,7 @@ jobs:
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PETFYCO_B5766 }}
+          channelId: pr-${{ github.event.number }}
           projectId: petfyco-b5766
           expires: 7d
         env:
