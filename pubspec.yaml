@@ -1,7 +1,7 @@
-
 name: petfyco
 description: PetfyCo app (rescate y adopción) - Flutter starter
 publish_to: "none"
+
 environment:
   sdk: ">=3.4.0 <4.0.0"
 
@@ -12,22 +12,55 @@ dependencies:
   flutter_riverpod: ^2.5.1
   go_router: ^14.2.0
   dio: ^5.5.0
-  image_picker: ^1.1.1
   firebase_core: ^3.4.0
   firebase_messaging: ^15.1.2
   flutter_local_notifications: ^17.2.3
   google_maps_flutter: ^2.9.0
   geolocator: ^10.1.1
   url_launcher: ^6.3.0
+  google_fonts: ^6.2.1
+  flutter_svg: ^2.0.9
   cupertino_icons: ^1.0.8
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_lints: ^4.0.0
   flutter_native_splash: ^2.4.6
   flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
   assets:
-    - assets/logo/
+    - assets/logo/petfyco_logo_full.png
+    - assets/logo/petfyco_logo_full_dark.png
+    - assets/logo/petfyco_icon.png
+    - assets/logo/petfyco_splash.png
+
+# --- Splash en raíz (no debajo de 'flutter') ---
+flutter_native_splash:
+  color: "#FFFFFF"
+  image: assets/logo/petfyco_splash.png
+  color_dark: "#0D1C2E"
+  image_dark: assets/logo/petfyco_logo_full_dark.png
+  android_12:
+    color: "#FFFFFF"
+    image: assets/logo/petfyco_splash.png
+    color_dark: "#0D1C2E"
+    image_dark: assets/logo/petfyco_logo_full_dark.png
+  web: true
+  android: true
+  ios: true
+
+# --- Iconos en raíz (no debajo de 'flutter') ---
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/logo/petfyco_icon.png
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: assets/logo/petfyco_icon.png
+  web:
+    generate: true
+    image_path: assets/logo/petfyco_icon.png
+    background_color: "#FFFFFF"
+    theme_color: "#4FC3F7"

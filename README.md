@@ -1,3 +1,4 @@
+![Firebase Deploy](https://github.com/clouxx/PetfyCo/actions/workflows/firebase-hosting-merge.yml/badge.svg)
 
 # PetfyCo – Flutter Starter
 
