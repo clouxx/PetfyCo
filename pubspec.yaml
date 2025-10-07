@@ -44,6 +44,8 @@ flutter:
     - assets/logo/petfyco_logo_full.png
     - assets/logo/petfyco_logo_full_dark.png
     - assets/logo/petfyco_splash.png
+    - assets/illu/header_cat.png
+    - assets/illu/header_dog.png
 
 # --- Splash (Android/iOS/Web) ---
 flutter_native_splash:
