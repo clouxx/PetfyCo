@@ -1,6 +1,4 @@
-// lib/pages/login_page.dart
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -10,135 +8,210 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final _email = TextEditingController();
-  final _password = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
   bool _obscure = true;
 
   @override
-  void dispose() {
-    _email.dispose();
-    _password.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width >= 720;
+    const petfyBlue   = Color(0xFF2C62A3);
+    const petfyNavy   = Color(0xFF15223B);
+    const petfyOrange = Color(0xFFF28C2E);
+    const bg          = Color(0xFFFAFCFF);
 
     return Scaffold(
+      backgroundColor: bg,
       body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
-          child: SingleChildScrollView(
-            padding: EdgeInsets.symmetric(
-              horizontal: isWide ? 0 : 20,
-              vertical: 32,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Logo PetfyCo
-                Image.asset('assets/logo/petfyco_logo_full.png', height: 120),
-                const SizedBox(height: 16),
+        child: SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // --- LOGO ---
+                  // Usa SOLO uno de los dos: el que tengas en pubspec
+                  // Image.asset('assets/images/PetfyCo2.png', height: 160),
+                  Image.asset('assets/logo/petfyco_logo_full.png', height: 160),
 
-                // Título + rayita naranja
-                Text('Login', style: Theme.of(context).textTheme.headlineSmall),
-                const SizedBox(height: 8),
-                Container(
-                  width: 200, height: 6,
-                  decoration: BoxDecoration(
-                    color: AppColors.orange,
-                    borderRadius: BorderRadius.circular(4),
+                  const SizedBox(height: 16),
+
+                  // --- TÍTULO + subrayado naranja ---
+                  Text(
+                    'Login',
+                    style: const TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w800,
+                      color: petfyBlue,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 20),
+                  const SizedBox(height: 6),
+                  Container(
+                    width: 140,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: petfyOrange,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
 
-                // Formulario
-                Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                  const SizedBox(height: 28),
+
+                  // --- Email ---
+                  _Field(
+                    label: 'Correo Electrónico',
+                    hint: 'ejemplo@correo.com',
+                    icon: Icons.mail_outlined,
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+
+                  const SizedBox(height: 18),
+
+                  // --- Password ---
+                  _Field(
+                    label: 'Contraseña',
+                    hint: 'Tu contraseña',
+                    icon: Icons.lock_outline,
+                    obscure: _obscure,
+                    onSuffixTap: () => setState(() => _obscure = !_obscure),
+                    suffixIcon: _obscure
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // --- ¿Olvidaste contraseña? ---
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () {
+                        // TODO: navegación recuperar contraseña
+                      },
+                      child: const Text(
+                        '¿Has Olvidado Tu Contraseña?',
+                        style: TextStyle(
+                          color: petfyBlue,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 4),
+
+                  // --- Botón Login ---
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: petfyBlue,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 0,
+                      ),
+                      onPressed: () {
+                        // TODO: login
+                      },
+                      child: const Text(
+                        'Login',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 18),
+
+                  // --- Registrarse ---
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      Text('Correo Electrónico',
-                          style: Theme.of(context).textTheme.titleMedium),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _email,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(
-                          hintText: 'Ingresa tu correo',
-                          prefixIcon: Icon(Icons.mail_outline),
-                        ),
-                        validator: (v) =>
-                            (v == null || v.isEmpty) ? 'Campo requerido' : null,
-                      ),
-                      const SizedBox(height: 16),
-
-                      Text('Contraseña',
-                          style: Theme.of(context).textTheme.titleMedium),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _password,
-                        obscureText: _obscure,
-                        decoration: InputDecoration(
-                          hintText: 'Ingresa tu contraseña',
-                          prefixIcon: const Icon(Icons.lock_outline),
-                          suffixIcon: IconButton(
-                            onPressed: () => setState(() => _obscure = !_obscure),
-                            icon: Icon(_obscure
-                                ? Icons.visibility_off
-                                : Icons.visibility),
-                          ),
-                        ),
-                        validator: (v) =>
-                            (v == null || v.isEmpty) ? 'Campo requerido' : null,
-                      ),
-
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () {}, // TODO: recuperar contraseña
-                          child: const Text('¿Has Olvidado Tu Contraseña?'),
-                        ),
-                      ),
-
-                      ElevatedButton(
-                        onPressed: () {
-                          if (_formKey.currentState!.validate()) {
-                            // TODO: login real (Supabase/Firebase)
-                          }
+                      const Text('¿No tienes cuenta? '),
+                      GestureDetector(
+                        onTap: () {
+                          // TODO: ir a registro
                         },
-                        child: const Text('Login'),
-                      ),
-
-                      const SizedBox(height: 16),
-                      Center(
-                        child: Wrap(
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            const Text('¿No Tienes Cuenta? '),
-                            InkWell(
-                              onTap: () {}, // TODO: ir a registro
-                              child: const Text(
-                                'Regístrate',
-                                style: TextStyle(
-                                  color: AppColors.blue,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ],
+                        child: const Text(
+                          'Regístrate',
+                          style: TextStyle(
+                            color: petfyBlue,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                ),
-              ],
+
+                  const SizedBox(height: 24),
+                ],
+              ),
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _Field extends StatelessWidget {
+  final String label;
+  final String hint;
+  final IconData icon;
+  final bool obscure;
+  final VoidCallback? onSuffixTap;
+  final IconData? suffixIcon;
+  final TextInputType? keyboardType;
+
+  const _Field({
+    required this.label,
+    required this.hint,
+    required this.icon,
+    this.obscure = false,
+    this.onSuffixTap,
+    this.suffixIcon,
+    this.keyboardType,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const fill = Colors.white;
+    const borderColor = Color(0xFFE6ECF6);
+
+    OutlineInputBorder _b(Color c) => OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: c, width: 1),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF3B485F),
+            )),
+        const SizedBox(height: 8),
+        TextField(
+          keyboardType: keyboardType,
+          obscureText: obscure,
+          decoration: InputDecoration(
+            hintText: hint,
+            prefixIcon: Icon(icon),
+            suffixIcon: (suffixIcon != null)
+                ? IconButton(icon: Icon(suffixIcon), onPressed: onSuffixTap)
+                : null,
+            isDense: true,
+            filled: true,
+            fillColor: fill,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+            border: _b(borderColor),
+            enabledBorder: _b(borderColor),
+            focusedBorder: _b(const Color(0xFFBFD3F0)),
+          ),
+        ),
+      ],
     );
   }
 }
