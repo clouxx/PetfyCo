@@ -73,3 +73,7 @@ ThemeData buildPetfyTheme() {
     ),
   );
 }
+
+class AppTheme {
+  static ThemeData get light => buildPetfyTheme();
+}
