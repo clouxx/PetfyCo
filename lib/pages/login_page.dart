@@ -1,122 +1,122 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:petfyco/theme/app_theme.dart';
-import 'package:petfyco/widgets/petfy_widgets.dart';
+import '../widgets/petfy_widgets.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
+
   @override
   State<LoginPage> createState() => _LoginPageState();
 }
 
 class _LoginPageState extends State<LoginPage> {
   final emailCtrl = TextEditingController();
-  final passCtrl = TextEditingController();
-  bool loading = false;
-  bool _obscure = true;
+  final passCtrl  = TextEditingController();
+  bool showPass = false;
+  bool isLoading = false;
+
+  @override
+  void dispose() {
+    emailCtrl.dispose();
+    passCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _onLogin() async {
+    if (isLoading) return;
+    setState(() => isLoading = true);
+
+    // TODO: autenticar
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+
+    if (!mounted) return;
+    context.go('/home');
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: PetfyAuthBackground(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 28, 20, 20),
+          children: [
+            const SizedBox(height: 6),
+            // LOGO MÁS GRANDE 👇
+            Center(
+              child: Image.asset(
+                'assets/logo/petfyco_logo_full.png',
+                height: 120, // <-- aquí agrandas
+                fit: BoxFit.contain,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '¡Bienvenido a PetfyCo!',
+              style: Theme.of(context).textTheme.headlineMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Rescate y adopción de mascotas en Colombia',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+
+            PetfyCard(
               child: Column(
                 children: [
-                  const PetfyAuthHeader(
-                    title: '¡Bienvenido a PetfyCo!',
-                    subtitle: 'Rescate y adopción de mascotas en Colombia',
+                  PetfyTextField(
+                    controller: emailCtrl,
+                    hint: 'Correo electrónico',
+                    keyboard: TextInputType.emailAddress,
+                    prefixIcon: Icons.mail_outline,
                   ),
-                  const SizedBox(height: 14),
-                  PetfyCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        PetfyTextField(
-                          controller: emailCtrl,
-                          hint: 'Correo electrónico',
-                          keyboard: TextInputType.emailAddress,
-                        ),
-                        const SizedBox(height: 12),
-                        PetfyTextField(
-                          controller: passCtrl,
-                          hint: 'Contraseña',
-                          obscure: _obscure,
-                          suffix: IconButton(
-                            onPressed: () => setState(() => _obscure = !_obscure),
-                            icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: _onForgotPassword,
-                            child: const Text('¿Olvidaste la contraseña?'),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        PetfyButton(
-                          text: 'Ingresar',
-                          loading: loading,
-                          onPressed: _login,
-                        ),
-                        const SizedBox(height: 8),
-                        TextButton(
-                          onPressed: () => context.go('/register'),
-                          child: const Text('¿No tienes cuenta? Regístrate'),
-                        ),
-                      ],
+                  const SizedBox(height: 12),
+                  PetfyTextField(
+                    controller: passCtrl,
+                    hint: 'Contraseña',
+                    obscure: !showPass,
+                    prefixIcon: Icons.lock_outline,
+                    suffix: IconButton(
+                      onPressed: () => setState(() => showPass = !showPass),
+                      icon: Icon(showPass ? Icons.visibility_off : Icons.visibility),
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Al continuar aceptas nuestras políticas.',
-                    style: Theme.of(context).textTheme.bodySmall!.copyWith(color: AppColors.navy.withValues(alpha: .7)),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () {
+                        // si tienes ruta de olvidaste, ponla aquí
+                        // context.go('/forgot');
+                      },
+                      child: const Text('¿Olvidaste la contraseña?'),
+                    ),
+                  ),
+                  PetfyButton(
+                    text: 'Ingresar',
+                    isLoading: isLoading,
+                    onPressed: _onLogin,
                   ),
                 ],
               ),
             ),
-          ),
+
+            const SizedBox(height: 16),
+            Center(
+              child: TextButton(
+                onPressed: () => context.go('/register'),
+                child: const Text('¿No tienes cuenta? Regístrate'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Al continuar aceptas nuestras políticas.',
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       ),
     );
-  }
-
-  Future<void> _login() async {
-    setState(() => loading = true);
-    try {
-      await Supabase.instance.client.auth.signInWithPassword(
-        email: emailCtrl.text.trim(),
-        password: passCtrl.text,
-      );
-      if (!mounted) return;
-      context.go('/home');
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-    } finally {
-      if (mounted) setState(() => loading = false);
-    }
-  }
-
-  Future<void> _onForgotPassword() async {
-    final email = emailCtrl.text.trim();
-    if (email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Escribe tu correo primero.')));
-      return;
-    }
-    try {
-      await Supabase.instance.client.auth.resetPasswordForEmail(email);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Te enviamos un correo para reestablecer.')));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-    }
   }
 }
