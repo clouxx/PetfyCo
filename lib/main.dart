@@ -3,12 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// Páginas
+import 'theme/app_theme.dart';
 import 'pages/splash_page.dart';
 import 'pages/login_page.dart';
 import 'pages/register_page.dart';
-import 'ui/home/petfy_home.dart';          // Asegúrate que la carpeta se llame ui/ (no iu/)
-import 'theme/app_theme.dart';             // Debe existir lib/theme/app_theme.dart
+import 'ui/home/petfy_home.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,8 +36,7 @@ class App extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'PetfyCo',
       routerConfig: _router,
-      // Usa directamente la función del tema (si no tienes clase AppTheme)
-      theme: buildPetfyTheme(),
+      theme: AppTheme.light,
     );
   }
 }
