@@ -1,49 +1,66 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
+import 'package:petfyco/theme/app_theme.dart';
 
-class PetfyHeader extends StatelessWidget {
+class PetfyAuthBackground extends StatelessWidget {
+  final Widget child;
+  const PetfyAuthBackground({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.blue.withValues(alpha: .10),
+            AppColors.orange.withValues(alpha: .08),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
+class PetfyAuthHeader extends StatelessWidget {
   final String title;
-  final String asset; // imagen de cabecera
-  const PetfyHeader({super.key, required this.title, required this.asset});
+  final String subtitle;
+  const PetfyAuthHeader({super.key, required this.title, required this.subtitle});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         const SizedBox(height: 12),
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Container(
-              height: 96,
-              width: double.infinity,
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: AppColors.blue.withOpacity(.12),
-                borderRadius: BorderRadius.circular(24),
+        Image.asset('assets/logo/petfyco_logo_full.png', height: 68),
+        const SizedBox(height: 12),
+        Text(
+          title,
+          style: Theme.of(context).textTheme.headlineSmall!.copyWith(
+                fontWeight: FontWeight.w800,
+                color: AppColors.navy,
               ),
-            ),
-            Positioned(
-              top: -10,
-              left: 16,
-              child: Image.asset(asset, height: 110),
-            ),
-            Positioned.fill(
-              child: Center(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.navy,
-                  ),
-                ),
-              ),
-            ),
-          ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 6),
+        Text(
+          subtitle,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
       ],
+    );
+  }
+}
+
+class PetfyCard extends StatelessWidget {
+  final Widget child;
+  const PetfyCard({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(padding: const EdgeInsets.all(16), child: child),
     );
   }
 }
@@ -51,14 +68,16 @@ class PetfyHeader extends StatelessWidget {
 class PetfyTextField extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
-  final bool obscure;
   final TextInputType? keyboard;
+  final bool obscure;
+  final Widget? suffix;
   const PetfyTextField({
     super.key,
     required this.controller,
     required this.hint,
-    this.obscure = false,
     this.keyboard,
+    this.obscure = false,
+    this.suffix,
   });
 
   @override
@@ -68,39 +87,24 @@ class PetfyTextField extends StatelessWidget {
       obscureText: obscure,
       keyboardType: keyboard,
       decoration: InputDecoration(
-        hintText: hint,
+        labelText: hint,
+        suffixIcon: suffix,
       ),
     );
   }
 }
 
-class PetfyPrimaryButton extends StatelessWidget {
-  final String label;
-  final VoidCallback? onTap;
-  const PetfyPrimaryButton({super.key, required this.label, this.onTap});
+class PetfyButton extends StatelessWidget {
+  final String text;
+  final VoidCallback onPressed;
+  final bool loading;
+  const PetfyButton({super.key, required this.text, required this.onPressed, this.loading = false});
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(onPressed: onTap, child: Text(label)),
-    );
-  }
-}
-
-class PetfyGhostButton extends StatelessWidget {
-  final String label;
-  final VoidCallback? onTap;
-  const PetfyGhostButton({super.key, required this.label, this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton(
-        onPressed: onTap,
-        child: Text(label, style: const TextStyle(color: AppColors.navy)),
-      ),
+    return ElevatedButton(
+      onPressed: loading ? null : onPressed,
+      child: Text(loading ? 'Procesando...' : text),
     );
   }
 }
