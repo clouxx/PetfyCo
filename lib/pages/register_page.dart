@@ -27,7 +27,7 @@ class _RegisterPageState extends State<RegisterPage> {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  const PetfyAuthHeader(
+                  PetfyAuthHeader(
                     title: 'Crear cuenta',
                     subtitle: 'Únete a PetfyCo para ayudar y adoptar',
                   ),
