@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../ui/widgets.dart';
+import '../widgets/petfy_widgets.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
