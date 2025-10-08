@@ -11,6 +11,10 @@ class AppColors {
   static const Color surfaceSoft = Color(0xFFF6FAFD);
 }
 
+class AppTheme {
+  static ThemeData get light => buildPetfyTheme();
+}
+
 ThemeData buildPetfyTheme() {
   final base = ThemeData.light(useMaterial3: true);
   return base.copyWith(
@@ -74,6 +78,4 @@ ThemeData buildPetfyTheme() {
   );
 }
 
-class AppTheme {
-  static ThemeData get light => buildPetfyTheme();
-}
+
