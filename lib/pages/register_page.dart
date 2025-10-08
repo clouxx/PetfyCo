@@ -31,6 +31,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     PetfyAuthHeader(
                       title: 'Crea tu cuenta',
                       caption: 'Únete a la comunidad PetfyCo 🇨🇴',
+                      onBack: () => context.pop(),
                     ),
                     PetfyCard(
                       child: Column(
