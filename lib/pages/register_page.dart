@@ -28,7 +28,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 constraints: const BoxConstraints(maxWidth: 520),
                 child: Column(
                   children: [
-                    const PetfyAuthHeader(
+                    PetfyAuthHeader(
                       title: 'Crea tu cuenta',
                       caption: 'Únete a la comunidad PetfyCo 🇨🇴',
                     ),
