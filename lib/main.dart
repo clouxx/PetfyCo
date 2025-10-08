@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'theme/app_theme.dart';
 import 'widgets/petfy_widgets.dart';
+import 'pages/login_page.dart';
 // 👇 importa tu pantalla*
 import 'ui/home/petfy_home.dart';
 
@@ -21,7 +22,7 @@ final _router = GoRouter(
   initialLocation: '/splash',
   routes: [
     GoRoute(path: '/splash', builder: (_, __) => const SplashPage()),
-    GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
+    GoRoute(path: '/pages', builder: (_, __) => const LoginPage()),
     GoRoute(path: '/register', builder: (_, __) => const RegisterPage()),
     GoRoute(path: '/home', builder: (_, __) => const PetfyHome()),
   ],
