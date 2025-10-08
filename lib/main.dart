@@ -73,7 +73,7 @@ class _LoginPageState extends State<LoginPage> {
           children: [
             const PetfyHeader(
               title: 'Login',
-              asset: 'assets/illu/header_cat.png',
+              asset: 'assets/logo/petfyco_logo_full.png',
             ),
             const SizedBox(height: 8),
             PetfyTextField(controller: emailCtrl, hint: 'Correo electrónico', keyboard: TextInputType.emailAddress),
@@ -135,7 +135,7 @@ class _RegisterPageState extends State<RegisterPage> {
           children: [
             const PetfyHeader(
               title: 'Regístrate',
-              asset: 'assets/illu/header_dog.png',
+              asset: 'assets/logo/petfyco_logo_full.png',
             ),
             PetfyTextField(controller: nameCtrl, hint: 'Nombre'),
             const SizedBox(height: 12),
