@@ -1,67 +1,51 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  static const Color blue = Color(0xFF4FC3F7);
-  static const Color orange = Color(0xFFFF9800);
-  static const Color pink = Color(0xFFEC407A);
-  static const Color green = Color(0xFF4CAF50);
-  static const Color navy = Color(0xFF0D1C2E);
-  static const Color white = Colors.white;
+  static const navy = Color(0xFF0E2A47);
+  static const blue = Color(0xFF56C4F2);
+  static const orange = Color(0xFFFF8A34);
+  static const pink = Color(0xFFE46AA3);
+  static const white = Colors.white;
+  static const grey = Color(0xFFF3F6F9);
 }
 
 class AppTheme {
-  /// Tema claro PetfyCo
-  static ThemeData get light {
-    final base = ThemeData.light(useMaterial3: true);
+  static ThemeData get light => _buildPetfyTheme();
 
+  static ThemeData _buildPetfyTheme() {
+    final base = ThemeData.light(useMaterial3: true);
     return base.copyWith(
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: AppColors.blue,
+      colorScheme: base.colorScheme.copyWith(
         primary: AppColors.blue,
         secondary: AppColors.orange,
-        tertiary: AppColors.pink,
         surface: AppColors.white,
-        onSurface: AppColors.navy,
-        onPrimary: AppColors.navy,
-        onSecondary: AppColors.white,
       ),
       scaffoldBackgroundColor: AppColors.white,
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.white,
         foregroundColor: AppColors.navy,
-        centerTitle: true,
         elevation: 0,
-      ),
-      textTheme: base.textTheme.apply(
-        bodyColor: AppColors.navy,
-        displayColor: AppColors.navy,
-      ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.orange,
-          foregroundColor: AppColors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-        ),
-      ),
-      chipTheme: base.chipTheme.copyWith(
-        labelStyle: const TextStyle(color: AppColors.navy),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.blue.withValues(alpha: .06),
+        fillColor: AppColors.grey,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
-      cardTheme: CardTheme(
-        color: AppColors.white,
-        elevation: 1.5,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        margin: const EdgeInsets.all(10),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          minimumSize: const Size.fromHeight(48),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+      ),
+      textTheme: base.textTheme.copyWith(
+        headlineMedium: const TextStyle(
+          color: AppColors.navy,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
