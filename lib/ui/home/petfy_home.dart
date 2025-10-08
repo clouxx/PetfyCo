@@ -1,6 +1,5 @@
-
 import 'package:flutter/material.dart';
-import '../../theme/app_theme.dart';
+import 'package:petfyco/theme/app_theme.dart';
 
 class PetfyHome extends StatelessWidget {
   const PetfyHome({super.key});
@@ -12,9 +11,7 @@ class PetfyHome extends StatelessWidget {
         title: Image.asset('assets/logo/petfyco_logo_full.png', height: 40),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          // TODO: Navegar a subir mascota
-        },
+        onPressed: () {},
         icon: const Icon(Icons.add),
         label: const Text('Subir mascota'),
         backgroundColor: AppColors.orange,
@@ -22,10 +19,14 @@ class PetfyHome extends StatelessWidget {
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-        children: const [
-          _HeaderBanner(),
-          SizedBox(height: 12),
-          _PetsGrid(), // separo la grilla para que sea responsiva fácil
+        children: [
+          const _HeaderBanner(),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: List.generate(6, (i) => const _PetCard()),
+          ),
         ],
       ),
     );
@@ -40,8 +41,8 @@ class _HeaderBanner extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: [
-          AppColors.blue.withOpacity(.18),
-          AppColors.orange.withOpacity(.14)
+          AppColors.blue.withValues(alpha: .18),
+          AppColors.orange.withValues(alpha: .14),
         ]),
         borderRadius: BorderRadius.circular(18),
       ),
@@ -64,23 +65,8 @@ class _HeaderBanner extends StatelessWidget {
   }
 }
 
-class _PetsGrid extends StatelessWidget {
-  const _PetsGrid();
-
-  @override
-  Widget build(BuildContext context) {
-    // En web, Wrap va bien; si quieres responsive real, usa LayoutBuilder.
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      children: List.generate(6, (i) => _PetCard(index: i)),
-    );
-  }
-}
-
 class _PetCard extends StatelessWidget {
-  final int index;
-  const _PetCard({required this.index});
+  const _PetCard();
 
   @override
   Widget build(BuildContext context) {
@@ -89,7 +75,7 @@ class _PetCard extends StatelessWidget {
       child: Card(
         child: InkWell(
           borderRadius: BorderRadius.circular(18),
-          onTap: () {/* TODO: ir a detalle */},
+          onTap: () {},
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
@@ -100,7 +86,7 @@ class _PetCard extends StatelessWidget {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(14),
                     child: Container(
-                      color: AppColors.blue.withOpacity(.15),
+                      color: AppColors.blue.withValues(alpha: .15),
                       child: const Icon(Icons.pets, size: 48, color: AppColors.navy),
                     ),
                   ),
@@ -108,28 +94,22 @@ class _PetCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   'Michi de prueba',
-                  style: Theme.of(context).textTheme.titleMedium!.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                  style: Theme.of(context).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
                     const Icon(Icons.place, size: 16, color: AppColors.pink),
                     const SizedBox(width: 4),
-                    Text('Bogotá • publicado',
-                        style: Theme.of(context).textTheme.bodySmall),
+                    Text('Bogotá • publicado', style: Theme.of(context).textTheme.bodySmall),
                   ],
                 ),
                 const SizedBox(height: 8),
-                Row(
+                const Row(
                   children: [
-                    const Chip(label: Text('Gato')),
-                    const SizedBox(width: 6),
-                    Chip(
-                      label: const Text('Adopción'),
-                      backgroundColor: AppColors.orange.withOpacity(.15),
-                    ),
+                    Chip(label: Text('Gato')),
+                    SizedBox(width: 6),
+                    Chip(label: Text('Adopción')),
                   ],
                 ),
               ],
