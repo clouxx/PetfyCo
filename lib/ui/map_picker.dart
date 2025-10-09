@@ -33,22 +33,21 @@ class _MapPickerState extends State<MapPicker> {
               initialZoom: 13,
               onTap: (tapPos, point) => setState(() => _picked = point),
             ),
-            children: [
+            children: const [
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.petfyco.app',
+                userAgentPackageName: 'com.example.petfyco',
               ),
-              if (_picked != null)
-                MarkerLayer(markers: [
-                  Marker(
-                    point: _picked!,
-                    width: 40,
-                    height: 40,
-                    child: const Icon(Icons.location_on, size: 40),
-                  ),
-                ]),
             ],
           ),
+          if (_picked != null)
+            IgnorePointer(
+              ignoring: true,
+              child: Align(
+                alignment: Alignment.center,
+                child: const Icon(Icons.location_on, size: 44),
+              ),
+            ),
           Positioned(
             left: 16, right: 16, bottom: 16,
             child: ElevatedButton.icon(
