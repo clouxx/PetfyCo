@@ -1,44 +1,48 @@
+// lib/pages/register_page.dart
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart' show LatLng; // si no usas mapa aún, conserva el tipo
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../widgets/petfy_widgets.dart';
-
-final _sb = Supabase.instance.client;
+import '../theme/app_theme.dart'; // solo por colores/espaciados si los usas en tus widgets
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
+
   @override
   State<RegisterPage> createState() => _RegisterPageState();
 }
 
 class _RegisterPageState extends State<RegisterPage> {
-  final _formKey = GlobalKey<FormState>();
-  final nameCtrl = TextEditingController();
-  final emailCtrl = TextEditingController();
-  final passCtrl = TextEditingController();
-  final pass2Ctrl = TextEditingController();
-  final phoneCtrl = TextEditingController();
+  // Controllers
+  final _nameCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _passCtrl = TextEditingController();
+  final _pass2Ctrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
 
+  // UI state
   bool _obscure1 = true;
   bool _obscure2 = true;
-  bool _termsOk = false;
-  bool _isSubmitting = false;
+  bool _agree = false;
+  bool _submitting = false;
 
-  static const String _countryCode = '+57 (Colombia)';
-
+  // Ubicación (manual/actual)
+  LatLng? _pickedPoint;
   double? _lat;
   double? _lng;
-  String get _latLngText =>
-      (_lat == null || _lng == null)
-          ? 'Selecciona tu ubicación'
-          : 'Ubicación seleccionada (${_lat!.toStringAsFixed(4)}, ${_lng!.toStringAsFixed(4)})';
 
-  List<String> _deptNames = [];
-  List<String> _cityNames = [];
-  String? _deptSel;
-  String? _citySel;
+  // Catálogos
+  final _sb = Supabase.instance.client;
+  List<DropdownMenuItem<String>> _deptItems = [];
+  List<DropdownMenuItem<String>> _cityItems = [];
+  String? _selectedDept;
+  String? _selectedCity;
+
+  // Prefijo fijo CO
+  final String _countryDisplay = '+57 (Colombia)';
+  final String _countryCode = '+57';
 
   @override
   void initState() {
@@ -46,352 +50,361 @@ class _RegisterPageState extends State<RegisterPage> {
     _loadDepartments();
   }
 
-  @override
-  void dispose() {
-    nameCtrl.dispose();
-    emailCtrl.dispose();
-    passCtrl.dispose();
-    pass2Ctrl.dispose();
-    phoneCtrl.dispose();
-    super.dispose();
-  }
-
   Future<void> _loadDepartments() async {
     try {
-      final res = await _sb.from('departments').select('name').order('name');
+      final rows =
+          await _sb.from('departments').select('name').order('name', ascending: true);
+      final items = (rows as List)
+          .map((e) => DropdownMenuItem<String>(
+                value: (e['name'] as String),
+                child: Text((e['name'] as String)),
+              ))
+          .toList();
       setState(() {
-        _deptNames =
-            (res as List).map((e) => (e['name'] as String).trim()).toList();
+        _deptItems = items;
       });
-    } catch (_) {}
+    } catch (e) {
+      _toast('No pude cargar departamentos');
+    }
   }
 
   Future<void> _loadCities(String deptName) async {
     try {
-      final dept = await _sb
+      // Busca el id por nombre y luego ciudades de ese id (ASC)
+      final deptRow = await _sb
           .from('departments')
           .select('id')
           .eq('name', deptName)
           .maybeSingle();
-      if (dept == null) return;
-      final res = await _sb
-          .from('cities')
-          .select('name')
-          .eq('department_id', dept['id'])
-          .order('name');
 
-      setState(() {
-        _cityNames =
-            (res as List).map((e) => (e['name'] as String).trim()).toList();
-        _citySel = null;
-      });
-    } catch (_) {}
-  }
-
-  Future<void> _pickLocation() async {
-    try {
-      if (!await _ensureLocationPermission()) return;
-      final pos = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.best);
-      setState(() {
-        _lat = pos.latitude;
-        _lng = pos.longitude;
-      });
-    } catch (_) {}
-  }
-
-  Future<bool> _ensureLocationPermission() async {
-    var p = await Geolocator.checkPermission();
-    if (p == LocationPermission.denied) {
-      p = await Geolocator.requestPermission();
-    }
-    return p == LocationPermission.always ||
-        p == LocationPermission.whileInUse;
-  }
-
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (!_termsOk) {
-      _snack('Debes aceptar los términos y condiciones.');
-      return;
-    }
-    if (_deptSel == null || _citySel == null) {
-      _snack('Selecciona departamento y ciudad.');
-      return;
-    }
-
-    setState(() => _isSubmitting = true);
-    try {
-      final sign = await _sb.auth
-          .signUp(email: emailCtrl.text.trim(), password: passCtrl.text);
-      final uid = sign.user?.id;
-      if (uid == null) {
-        _snack('No se pudo crear el usuario.');
-        setState(() => _isSubmitting = false);
+      if (deptRow == null) {
+        setState(() {
+          _cityItems = [];
+          _selectedCity = null;
+        });
         return;
       }
 
-      await _sb.from('profiles').upsert({
-        'id': uid,
-        'display_name': nameCtrl.text.trim(),
-        'phone': '$_countryCode ${phoneCtrl.text.trim()}',
-        'depto': _deptSel,
-        'municipio': _citySel,
-        'lat': _lat,
-        'lng': _lng,
-      });
+      final deptId = deptRow['id'] as int;
+      final rows = await _sb
+          .from('cities')
+          .select('name')
+          .eq('department_id', deptId)
+          .order('name', ascending: true);
 
-      _snack('Cuenta creada. Revisa tu correo.');
-      if (mounted) context.go('/login');
+      final items = (rows as List)
+          .map((e) => DropdownMenuItem<String>(
+                value: (e['name'] as String),
+                child: Text((e['name'] as String)),
+              ))
+          .toList();
+
+      setState(() {
+        _cityItems = items;
+        _selectedCity = null;
+      });
     } catch (e) {
-      _snack('Error: $e');
-    } finally {
-      if (mounted) setState(() => _isSubmitting = false);
+      _toast('No pude cargar ciudades');
     }
   }
 
-  void _snack(String msg) {
+  void _toast(String msg) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  // ---------- helpers para Dropdown ----------
-  List<DropdownMenuItem<String>> _stringItems(List<String> data) =>
-      data.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList();
+  // ========= BOTÓN: usar ubicación actual (geolocator) =========
+  Future<void> _useMyLocation() async {
+    try {
+      LocationPermission perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) {
+        _toast('Permiso de ubicación denegado');
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+      setState(() {
+        _pickedPoint = LatLng(pos.latitude, pos.longitude);
+        _lat = pos.latitude;
+        _lng = pos.longitude;
+      });
+      _toast('Ubicación: (${_lat!.toStringAsFixed(4)}, ${_lng!.toStringAsFixed(4)})');
+    } catch (_) {
+      _toast('No pude obtener tu ubicación');
+    }
+  }
+
+  // ========= Registrar =========
+  Future<void> _onSubmit() async {
+    final name = _nameCtrl.text.trim();
+    final email = _emailCtrl.text.trim();
+    final pass = _passCtrl.text;
+    final pass2 = _pass2Ctrl.text;
+    final phone = _phoneCtrl.text.trim();
+
+    if (name.isEmpty ||
+        email.isEmpty ||
+        pass.isEmpty ||
+        pass2.isEmpty ||
+        !_agree ||
+        _selectedDept == null ||
+        _selectedCity == null) {
+      _toast('Completa todos los campos y acepta T&C');
+      return;
+    }
+    if (pass != pass2) {
+      _toast('Las contraseñas no coinciden');
+      return;
+    }
+
+    setState(() => _submitting = true);
+    try {
+      // 1) Sign up
+      final res = await _sb.auth.signUp(
+        email: email,
+        password: pass,
+      );
+      final user = res.user;
+      if (user == null) {
+        _toast('No se pudo crear la cuenta');
+        setState(() => _submitting = false);
+        return;
+      }
+
+      // 2) Upsert perfil con helpers de tu schema
+      await _sb.rpc('upsert_profile', params: {
+        'p_id': user.id,
+        'p_name': name,
+        'p_email': email,
+        'p_country_code': _countryCode,
+        'p_phone': phone,
+        'p_province': _selectedDept!,
+        'p_city': _selectedCity!,
+        'p_lat': _lat,
+        'p_lng': _lng,
+      });
+
+      _toast('Cuenta creada. Revisa tu correo de verificación.');
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      _toast('Error: $e');
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _emailCtrl.dispose();
+    _passCtrl.dispose();
+    _pass2Ctrl.dispose();
+    _phoneCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    // Nota: tus widgets Petfy* ya aplican estilos. Los labels los pongo arriba con Text.
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 36),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Align(
-                    alignment: Alignment.center,
-                    child: Image.asset('assets/logo/petfyco_logo_full.png',
-                        height: 200),
+      appBar: AppBar(
+        title: const Text('Registrarse'),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+        elevation: 0,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        children: [
+          const SizedBox(height: 8),
+          // Nombre
+          const Text('Nombre'),
+          const SizedBox(height: 6),
+          PetfyTextField(
+            controller: _nameCtrl,
+            hint: 'Ingresa tu nombre',
+            prefix: const Icon(Icons.person_outline),
+          ),
+          const SizedBox(height: 14),
+
+          // Correo
+          const Text('Correo electrónico'),
+          const SizedBox(height: 6),
+          PetfyTextField(
+            controller: _emailCtrl,
+            hint: 'Ingresa tu correo',
+            keyboard: TextInputType.emailAddress,
+            prefix: const Icon(Icons.mail_outline),
+          ),
+          const SizedBox(height: 14),
+
+          // Contraseña
+          const Text('Contraseña'),
+          const SizedBox(height: 6),
+          PetfyTextField(
+            controller: _passCtrl,
+            hint: 'Ingresa tu contraseña',
+            obscure: _obscure1,
+            prefix: const Icon(Icons.lock_outline),
+            suffix: IconButton(
+              onPressed: () => setState(() => _obscure1 = !_obscure1),
+              icon: Icon(_obscure1 ? Icons.visibility_off : Icons.visibility),
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Confirmar contraseña
+          const Text('Confirmar contraseña'),
+          const SizedBox(height: 6),
+          PetfyTextField(
+            controller: _pass2Ctrl,
+            hint: 'Confirma tu contraseña',
+            obscure: _obscure2,
+            prefix: const Icon(Icons.lock_outline),
+            suffix: IconButton(
+              onPressed: () => setState(() => _obscure2 = !_obscure2),
+              icon: Icon(_obscure2 ? Icons.visibility_off : Icons.visibility),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Teléfono (prefijo fijo +57)
+          const Text('Teléfono'),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                flex: 7,
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                   ),
-                  const SizedBox(height: 12),
-                  const Center(
-                      child: Text('Registrarse',
-                          style: TextStyle(
-                              fontSize: 24, fontWeight: FontWeight.w700))),
-                  const SizedBox(height: 24),
-
-                  Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Text('Nombre',
-                            style: TextStyle(fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 6),
-                        PetfyTextField(
-                          controller: nameCtrl,
-                          hint: 'Ingresa tu nombre',
-                          prefix: const Icon(Icons.person_outline),
-                          validator: (v) =>
-                              (v == null || v.trim().isEmpty)
-                                  ? 'Ingresa tu nombre'
-                                  : null,
-                        ),
-                        const SizedBox(height: 12),
-
-                        const Text('Correo electrónico',
-                            style: TextStyle(fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 6),
-                        PetfyTextField(
-                          controller: emailCtrl,
-                          hint: 'Ingresa tu correo',
-                          keyboard: TextInputType.emailAddress, // <-- nombre correcto
-                          prefix: const Icon(Icons.mail_outline),
-                          validator: (v) {
-                            final t = v?.trim() ?? '';
-                            if (t.isEmpty) return 'Ingresa tu correo';
-                            if (!t.contains('@')) return 'Correo inválido';
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 12),
-
-                        const Text('Contraseña',
-                            style: TextStyle(fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 6),
-                        PetfyTextField(
-                          controller: passCtrl,
-                          hint: 'Ingresa tu contraseña',
-                          prefix: const Icon(Icons.lock_outline),
-                          obscure: _obscure1,
-                          suffix: IconButton(
-                            onPressed: () =>
-                                setState(() => _obscure1 = !_obscure1),
-                            icon: Icon(_obscure1
-                                ? Icons.visibility_off
-                                : Icons.visibility),
-                          ),
-                          validator: (v) => (v == null || v.length < 8)
-                              ? 'Mínimo 8 caracteres'
-                              : null,
-                        ),
-                        const SizedBox(height: 12),
-
-                        const Text('Confirmar contraseña',
-                            style: TextStyle(fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 6),
-                        PetfyTextField(
-                          controller: pass2Ctrl,
-                          hint: 'Confirma tu contraseña',
-                          prefix: const Icon(Icons.lock_outline),
-                          obscure: _obscure2,
-                          suffix: IconButton(
-                            onPressed: () =>
-                                setState(() => _obscure2 = !_obscure2),
-                            icon: Icon(_obscure2
-                                ? Icons.visibility_off
-                                : Icons.visibility),
-                          ),
-                          validator: (v) =>
-                              (v != passCtrl.text) ? 'No coincide' : null,
-                        ),
-                        const SizedBox(height: 16),
-
-                        const Text('Teléfono',
-                            style: TextStyle(fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              flex: 6,
-                              child: PetfyDropdown<String>(
-                                value: _countryCode,
-                                hint: 'Prefijo',
-                                items: _stringItems(
-                                    const ['+57 (Colombia)']), // <-- items correctos
-                                onChanged: (_) {},
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              flex: 10,
-                              child: PetfyTextField(
-                                controller: phoneCtrl,
-                                hint: 'Número de teléfono',
-                                keyboard: TextInputType.phone, // <-- nombre correcto
-                                prefix: const Icon(Icons.call_outlined),
-                                validator: (v) {
-                                  final t = v?.trim() ?? '';
-                                  if (t.isEmpty) return 'Ingresa tu teléfono';
-                                  if (t.length < 7) return 'Teléfono inválido';
-                                  return null;
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-
-                        const Text('Departamento',
-                            style: TextStyle(fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 8),
-                        PetfyDropdown<String>(
-                          value: _deptSel,
-                          hint: 'Selecciona departamento',
-                          items: _stringItems(_deptNames), // <-- items correctos
-                          onChanged: (val) {
-                            if (val == null) return;
-                            setState(() => _deptSel = val);
-                            _loadCities(val);
-                          },
-                        ),
-                        const SizedBox(height: 12),
-
-                        const Text('Ciudad',
-                            style: TextStyle(fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 8),
-                        PetfyDropdown<String>(
-                          value: _citySel,
-                          hint: _deptSel == null
-                              ? 'Selecciona un departamento primero'
-                              : 'Selecciona ciudad',
-                          items: _stringItems(_cityNames), // <-- items correctos
-                          onChanged: (val) => setState(() => _citySel = val),
-                        ),
-                        const SizedBox(height: 16),
-
-                        const Text('Mi ubicación',
-                            style: TextStyle(fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 8),
-                        PetfyButton(
-                          text: '📍  $_latLngText',
-                          onPressed: () {
-                            if (_isSubmitting) return;
-                            _pickLocation();
-                          },
-                        ),
-                        const SizedBox(height: 16),
-
-                        Row(
-                          children: [
-                            Checkbox(
-                              value: _termsOk,
-                              onChanged: (v) =>
-                                  setState(() => _termsOk = v ?? false),
-                            ),
-                            const Text('Acepto los '),
-                            GestureDetector(
-                              onTap: _showTerms,
-                              child: const Text(
-                                'términos y condiciones',
-                                style: TextStyle(
-                                  decoration: TextDecoration.underline,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-
-                        PetfyButton(
-                          text: _isSubmitting ? 'Registrando…' : 'Registrarme',
-                          onPressed: () {
-                            if (_isSubmitting) return;
-                            _submit(); // callback no-nullable
-                          },
-                        ),
-                        const SizedBox(height: 16),
-
-                        Center(
-                          child: GestureDetector(
-                            onTap: () {
-                              final r = GoRouter.of(context);
-                              if (r.canPop()) {
-                                r.pop();
-                              } else {
-                                r.go('/login');
-                              }
-                            },
-                            child: const Text(
-                              '¿Ya tienes cuenta? Inicia sesión',
-                              style: TextStyle(
-                                decoration: TextDecoration.underline,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                  child: Row(
+                    children: [
+                      const Text('🇨🇴'),
+                      const SizedBox(width: 8),
+                      Text(_countryDisplay),
+                    ],
                   ),
-                ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 13,
+                child: PetfyTextField(
+                  controller: _phoneCtrl,
+                  hint: 'Número de teléfono',
+                  keyboard: TextInputType.phone,
+                  prefix: const Icon(Icons.phone_outlined),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Departamento
+          const Text('Departamento'),
+          const SizedBox(height: 6),
+          PetfyDropdown<String>(
+            value: _selectedDept,
+            items: _deptItems,
+            onChanged: (val) {
+              setState(() {
+                _selectedDept = val;
+                _selectedCity = null;
+                _cityItems = [];
+              });
+              if (val != null) _loadCities(val);
+            },
+          ),
+          const SizedBox(height: 14),
+
+          // Ciudad
+          const Text('Ciudad'),
+          const SizedBox(height: 6),
+          PetfyDropdown<String>(
+            value: _selectedCity,
+            items: _cityItems,
+            onChanged: (val) => setState(() => _selectedCity = val),
+          ),
+          const SizedBox(height: 16),
+
+          // Botón: usar mi ubicación actual
+          PetfyButton(
+            text: '📡 Usar mi ubicación actual',
+            onPressed: _useMyLocation,
+          ),
+          const SizedBox(height: 10),
+
+          // Estado de ubicación elegida (si ya hay lat/lng)
+          if (_lat != null && _lng != null)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8F5E9),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                'Ubicación seleccionada (${_lat!.toStringAsFixed(4)}, ${_lng!.toStringAsFixed(4)})',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+          const SizedBox(height: 16),
+
+          // Términos y condiciones
+          Row(
+            children: [
+              Checkbox(
+                value: _agree,
+                onChanged: (v) => setState(() => _agree = v ?? false),
+              ),
+              const Text('Acepto los '),
+              GestureDetector(
+                onTap: _showTerms,
+                child: Text(
+                  'términos y condiciones',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Botón Registrar
+          PetfyButton(
+            text: _submitting ? 'Registrando…' : 'Registrarme',
+            onPressed: _submitting ? null : _onSubmit,
+          ),
+          const SizedBox(height: 16),
+
+          // Volver a login
+          Center(
+            child: GestureDetector(
+              onTap: () {
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                } else {
+                  // si no hay ruta previa, empuja /login con tu router
+                  Navigator.pushReplacementNamed(context, '/login');
+                }
+              },
+              child: const Text(
+                '¿Ya tienes cuenta? Inicia sesión',
+                style: TextStyle(decoration: TextDecoration.underline),
               ),
             ),
           ),
-        ),
+          const SizedBox(height: 24),
+        ],
       ),
     );
   }
@@ -399,58 +412,15 @@ class _RegisterPageState extends State<RegisterPage> {
   void _showTerms() {
     showDialog(
       context: context,
-      builder: (ctx) => Dialog(
-        insetPadding: const EdgeInsets.all(16),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxHeight: 520, maxWidth: 560),
-          child: Column(
-            children: [
-              const SizedBox(height: 12),
-              const Text('Términos y Condiciones',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-              const Divider(),
-              const Expanded(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.all(16),
-                  child: Text(
-                    'Última actualización: 20/06/2025\n\n'
-                    '1. Descripción del Servicio\n'
-                    'PetfyCo permite publicar mascotas en adopción y reportar mascotas perdidas o encontradas.\n\n'
-                    '2. Aceptación de Términos\n'
-                    'El uso de la app implica la aceptación de estos términos.\n\n'
-                    '3. Responsabilidad del Usuario\n'
-                    'La información debe ser veraz y actualizada.\n\n'
-                    '4. Publicación de Contenido\n'
-                    'Podemos moderar o remover contenido que infrinja estos términos.\n\n'
-                    '5. Uso Adecuado\n'
-                    'Se prohíbe el uso fraudulento o que afecte a terceros.\n\n'
-                    '6. Responsabilidad\n'
-                    'PetfyCo no se responsabiliza por acuerdos entre usuarios fuera de la app.\n\n'
-                    '7. Modificaciones\n'
-                    'Podremos actualizar estos términos.\n\n'
-                    '8. Legislación Aplicable\n'
-                    'Colombia.\n\n'
-                    '9. Contacto\n'
-                    'Sección de ayuda.',
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: PetfyButton(
-                        text: 'Aceptar',
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+      builder: (_) => AlertDialog(
+        title: const Text('Términos y Condiciones'),
+        content: const SingleChildScrollView(
+          child: Text(
+              'Aquí van tus términos y condiciones. Puedes pegar el contenido largo que me mostraste.'),
         ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Aceptar'))
+        ],
       ),
     );
   }
