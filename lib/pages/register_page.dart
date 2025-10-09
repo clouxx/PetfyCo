@@ -173,7 +173,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   Align(
                     alignment: Alignment.center,
                     child: Image.asset('assets/logo/petfyco_logo_full.png',
-                        height: 96),
+                        height: 200),
                   ),
                   const SizedBox(height: 12),
                   const Center(
