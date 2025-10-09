@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:petfyco/widgets/petfy_widgets.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -10,44 +10,24 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final _formKey = GlobalKey<FormState>();
-  final _emailCtrl = TextEditingController();
-  final _passCtrl = TextEditingController();
+  final emailCtrl = TextEditingController();
+  final passCtrl = TextEditingController();
   bool _obscure = true;
-  bool _busy = false;
+  bool _sending = false;
 
   @override
   void dispose() {
-    _emailCtrl.dispose();
-    _passCtrl.dispose();
+    emailCtrl.dispose();
+    passCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _onSubmit() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _busy = true);
-    try {
-      final supa = Supabase.instance.client;
-      await supa.auth.signInWithPassword(
-        email: _emailCtrl.text.trim(),
-        password: _passCtrl.text,
-      );
-      if (!mounted) return;
-      context.go('/home'); // ✅ nunca pop en la raíz
-    } on AuthException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message)),
-      );
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error inesperado al iniciar sesión')),
-      );
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+  Future<void> _doLogin() async {
+    if (_sending) return;
+    setState(() => _sending = true);
+    // TODO: integra tu lógica de login (Supabase)
+    await Future.delayed(const Duration(milliseconds: 800));
+    setState(() => _sending = false);
   }
 
   @override
@@ -55,107 +35,98 @@ class _LoginPageState extends State<LoginPage> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 560),
+      backgroundColor: theme.colorScheme.surface,
+      body: SafeArea(
+        child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Logo
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Image.asset(
-                    'assets/logo/petfyco_logo_full.png',
-                    height: 92,
-                  ),
-                ),
-                Text('Iniciar sesión',
-                    style: theme.textTheme.headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 20),
-
-                Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      TextFormField(
-                        controller: _emailCtrl,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.mail_outline),
-                          labelText: 'Correo electrónico',
-                          hintText: 'Ingresa tu correo',
-                        ),
-                        validator: (v) {
-                          final val = v?.trim() ?? '';
-                          if (val.isEmpty) return 'Ingresa tu correo';
-                          if (!val.contains('@')) {
-                            return 'Correo no válido';
-                          }
-                          return null;
-                        },
+            padding: const EdgeInsets.all(16),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: Column(
+                children: [
+                  // Logo
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.asset(
+                      'assets/logo/petfyco_logo_full.png',
+                      width: 300,
+                      height: 300,
+                      fit: BoxFit.contain,
+                      errorBuilder: (c, _, __) => const SizedBox(
+                        width: 120,
+                        height: 120,
+                        child: Icon(Icons.pets, size: 64),
                       ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _passCtrl,
-                        obscureText: _obscure,
-                        decoration: InputDecoration(
-                          prefixIcon: const Icon(Icons.lock_outline),
-                          labelText: 'Contraseña',
-                          hintText: 'Ingresa tu contraseña',
-                          suffixIcon: IconButton(
-                            onPressed: () =>
-                                setState(() => _obscure = !_obscure),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text('Iniciar sesión',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      )),
+                  const SizedBox(height: 8),
+                  Text('Rescate y adopción de mascotas en Colombia',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurface.withOpacity(.7),
+                      )),
+                  const SizedBox(height: 24),
+
+                  // Card form
+                  PetfyCard(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        PetfyTextField(
+                          controller: emailCtrl,
+                          label: 'Correo electrónico',
+                          hint: 'Ingresa tu correo',
+                          keyboardType: TextInputType.emailAddress,
+                          prefix: const Icon(Icons.mail_outline),
+                        ),
+                        const SizedBox(height: 12),
+                        PetfyTextField(
+                          controller: passCtrl,
+                          label: 'Contraseña',
+                          hint: 'Ingresa tu contraseña',
+                          obscureText: _obscure,
+                          prefix: const Icon(Icons.lock_outline),
+                          suffix: IconButton(
                             icon: Icon(
                                 _obscure ? Icons.visibility : Icons.visibility_off),
+                            onPressed: () => setState(() => _obscure = !_obscure),
                           ),
                         ),
-                        validator: (v) =>
-                            (v == null || v.length < 8)
-                                ? 'Mínimo 8 caracteres'
-                                : null,
-                      ),
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () {
-                            // si más adelante tienes /forgot
-                            // context.go('/forgot');
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text('Función próximamente')),
-                            );
-                          },
-                          child: const Text('¿Olvidaste la contraseña?'),
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () {
+                              // TODO: ruta de recuperación si la tienes
+                            },
+                            child: const Text('¿Olvidaste la contraseña?'),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: FilledButton(
-                          onPressed: _busy ? null : _onSubmit,
-                          child: _busy
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Text('Ingresar'),
+                        const SizedBox(height: 8),
+                        PetfyButton(
+                          text: _sending ? 'Ingresando…' : 'Ingresar',
+                          onPressed: _sending ? null : _doLogin,
                         ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text('¿No tienes cuenta? '),
+                      PetfyLink(
+                        text: 'Regístrate',
+                        onTap: () => context.go('/register'),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () => context.go('/register'), // ✅
-                  child: const Text('¿No tienes cuenta? Regístrate'),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
