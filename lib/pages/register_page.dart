@@ -1,4 +1,8 @@
+// lib/pages/register_page.dart
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../theme/app_theme.dart';
 import '../widgets/petfy_widgets.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -9,168 +13,368 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
-  final formKey = GlobalKey<FormState>();
+  final supabase = Supabase.instance.client;
 
+  // ---- Form ----
+  final _formKey = GlobalKey<FormState>();
   final nameCtrl = TextEditingController();
   final emailCtrl = TextEditingController();
   final passCtrl = TextEditingController();
-  final confirmCtrl = TextEditingController();
+  final pass2Ctrl = TextEditingController();
 
-  String? countryCode;   // p.e. +57
-  String? depto;         // departamento
-  String? city;          // municipio
+  // ---- País (prefijo) fijo por ahora (Colombia +57) ----
+  String _countryCode = '+57';
 
-  bool showPass = false;
-  bool showConfirm = false;
-  bool accepted = false;
-  bool saving = false;
+  // ---- Departamentos/Ciudades desde BD ----
+  List<Map<String, dynamic>> _departments = [];
+  List<Map<String, dynamic>> _cities = [];
+
+  int? _selectedDeptId;
+  int? _selectedCityId;
+
+  bool _isLoadingDeps = false;
+  bool _isLoadingCities = false;
+  bool _isSubmitting = false;
+
+  // ---- Ubicación simple (si ya la tienes con mapa, mantén tu lógica) ----
+  double? _lat;
+  double? _lng;
+
+  bool _acceptedTerms = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDepartments();
+  }
+
+  // =============== DATA =================
+
+  Future<void> _loadDepartments() async {
+    setState(() => _isLoadingDeps = true);
+    try {
+      final res = await supabase.from('departments').select('id, name').order('name');
+      _departments = List<Map<String, dynamic>>.from(res as List);
+      // Si ya hay un seleccionado, refresca ciudades
+      if (_selectedDeptId != null) {
+        await _loadCities(_selectedDeptId!);
+      }
+    } catch (e) {
+      debugPrint('Error loading departments: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudieron cargar los departamentos')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoadingDeps = false);
+    }
+  }
+
+  Future<void> _loadCities(int departmentId) async {
+    setState(() {
+      _isLoadingCities = true;
+      _cities = [];
+      _selectedCityId = null;
+    });
+    try {
+      final res = await supabase
+          .from('cities')
+          .select('id, name')
+          .eq('department_id', departmentId)
+          .order('name');
+      _cities = List<Map<String, dynamic>>.from(res as List);
+    } catch (e) {
+      debugPrint('Error loading cities: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudieron cargar las ciudades')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoadingCities = false);
+    }
+  }
+
+  String? _deptNameById(int? id) {
+    if (id == null) return null;
+    final m = _departments.firstWhere((d) => d['id'] == id, orElse: () => {});
+    return (m.isNotEmpty) ? (m['name'] as String?) : null;
+    }
+
+  String? _cityNameById(int? id) {
+    if (id == null) return null;
+    final m = _cities.firstWhere((c) => c['id'] == id, orElse: () => {});
+    return (m.isNotEmpty) ? (m['name'] as String?) : null;
+  }
+
+  // =============== SUBMIT =================
+
+  Future<void> _onSubmit() async {
+    final valid = _formKey.currentState?.validate() ?? false;
+    if (!valid) return;
+
+    if (_selectedDeptId == null || _selectedCityId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecciona departamento y ciudad')),
+      );
+      return;
+    }
+    if (!_acceptedTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Debes aceptar los términos y condiciones')),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+    try {
+      // 1) crear user en auth
+      final authRes = await supabase.auth.signUp(
+        email: emailCtrl.text.trim(),
+        password: passCtrl.text,
+      );
+      final userId = authRes.user?.id;
+      if (userId == null) {
+        throw Exception('No se pudo crear el usuario.');
+      }
+
+      // 2) upsert perfil (usa tu función SQL si la tienes; aquí simple insert/update)
+      await supabase.from('profiles').upsert({
+        'id': userId,
+        'display_name': nameCtrl.text.trim(),
+        'phone': null, // si agregas teléfono, ajusta aquí
+        'depto': _deptNameById(_selectedDeptId),
+        'municipio': _cityNameById(_selectedCityId),
+        'lat': _lat,
+        'lng': _lng,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('¡Cuenta creada! Revisa tu correo.')),
+        );
+        Navigator.of(context).pop(); // volver a login
+      }
+    } catch (e) {
+      debugPrint('Register error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al registrarse: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  // =============== UI =================
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final spacing = const SizedBox(height: 16);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Registrarse')),
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        elevation: 0,
+        centerTitle: true,
+        title: const Text('Registrarse'),
+      ),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 560),
             child: Form(
-              key: formKey,
+              key: _formKey,
               child: Column(
                 children: [
-                  Image.asset('assets/logo/petfyco_logo_full.png', height: 110),
+                  // Logo
+                  const SizedBox(height: 8),
+                  Image.asset(
+                    'assets/logo/petfyco_logo_full.png',
+                    height: 96,
+                  ),
                   const SizedBox(height: 12),
-                  Text('Crear cuenta', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 14),
 
+                  // Card contenedora
                   PetfyCard(
-                    color: const Color(0xFFF6F2FF).withOpacity(.45), // <- ahora permitido
                     child: Column(
                       children: [
                         // Nombre
                         PetfyTextField(
                           controller: nameCtrl,
-                          hint: 'Nombre',
+                          label: 'Nombre',
                           prefix: const Icon(Icons.person_outline),
-                          validator: (v) => (v == null || v.trim().isEmpty) ? 'Ingresa tu nombre' : null,
+                          validator: (v) =>
+                              (v == null || v.trim().isEmpty) ? 'Ingresa tu nombre' : null,
                         ),
-                        _gap,
-                        // Email
+                        spacing,
+
+                        // Correo
                         PetfyTextField(
                           controller: emailCtrl,
-                          hint: 'Correo electrónico',
-                          keyboard: TextInputType.emailAddress, // <- ahora permitido
+                          label: 'Correo electrónico',
                           prefix: const Icon(Icons.mail_outline),
+                          keyboardType: TextInputType.emailAddress,
                           validator: (v) {
-                            final ok = RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v ?? '');
+                            final email = v?.trim() ?? '';
+                            final ok = RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email);
                             return ok ? null : 'Correo inválido';
                           },
                         ),
-                        _gap,
-                        // Contraseña
-                        PetfyTextField(
-                          controller: passCtrl,
-                          hint: 'Contraseña',
-                          obscure: !showPass,
-                          prefix: const Icon(Icons.lock_outline),
-                          suffix: IconButton( // <- ahora permitido
-                            icon: Icon(showPass ? Icons.visibility_off : Icons.visibility),
-                            onPressed: () => setState(() => showPass = !showPass),
-                          ),
-                          validator: (v) => (v != null && v.length >= 8) ? null : 'Mínimo 8 caracteres',
-                        ),
-                        _gap,
-                        // Confirmar
-                        PetfyTextField(
-                          controller: confirmCtrl,
-                          hint: 'Confirmar contraseña',
-                          obscure: !showConfirm,
-                          prefix: const Icon(Icons.lock_outline),
-                          suffix: IconButton(
-                            icon: Icon(showConfirm ? Icons.visibility_off : Icons.visibility),
-                            onPressed: () => setState(() => showConfirm = !showConfirm),
-                          ),
-                          validator: (v) => v == passCtrl.text ? null : 'No coincide',
-                        ),
-                        _gap,
+                        spacing,
 
-                        // Fila País / Departamento
+                        // Contraseña
+                        StatefulBuilder(
+                          builder: (context, setSB) {
+                            bool obscure = true;
+                            return PetfyTextField(
+                              controller: passCtrl,
+                              label: 'Contraseña',
+                              prefix: const Icon(Icons.lock_outline),
+                              obscureText: obscure,
+                              minLength: 8,
+                              validator: (v) =>
+                                  (v != null && v.length >= 8) ? null : 'Mínimo 8 caracteres',
+                              suffix: IconButton(
+                                onPressed: () {
+                                  obscure = !obscure;
+                                  setSB(() {});
+                                },
+                                icon: Icon(obscure ? Icons.visibility_off : Icons.visibility),
+                              ),
+                            );
+                          },
+                        ),
+                        spacing,
+
+                        // Confirmar contraseña
+                        StatefulBuilder(
+                          builder: (context, setSB) {
+                            bool obscure = true;
+                            return PetfyTextField(
+                              controller: pass2Ctrl,
+                              label: 'Confirmar contraseña',
+                              prefix: const Icon(Icons.lock_outline),
+                              obscureText: obscure,
+                              validator: (v) =>
+                                  v == passCtrl.text ? null : 'No coincide',
+                              suffix: IconButton(
+                                onPressed: () {
+                                  obscure = !obscure;
+                                  setSB(() {});
+                                },
+                                icon: Icon(obscure ? Icons.visibility_off : Icons.visibility),
+                              ),
+                            );
+                          },
+                        ),
+                        spacing,
+
+                        // País (prefijo)
                         Row(
                           children: [
                             Expanded(
-                              flex: 4,
+                              flex: 3,
                               child: PetfyDropdown<String>(
-                                value: countryCode,
-                                hint: 'País', // <- ahora permitido
-                                items: const [
-                                  DropdownMenuItem(value: '+57', child: Text('+57')),
-                                  DropdownMenuItem(value: '+593', child: Text('+593')),
-                                ],
-                                onChanged: (v) => setState(() => countryCode = v),
+                                value: _countryCode,
+                                items: const ['+57', '+593', '+58', '+51'],
+                                onChanged: (v) {
+                                  if (v == null) return;
+                                  setState(() => _countryCode = v);
+                                },
                               ),
                             ),
                             const SizedBox(width: 12),
-                            Expanded(
-                              flex: 8,
-                              child: PetfyDropdown<String>(
-                                value: depto,
-                                hint: 'Departamento', // <- antes “Provincia”
-                                items: const [
-                                  DropdownMenuItem(value: 'Antioquia', child: Text('Antioquia')),
-                                  DropdownMenuItem(value: 'Cundinamarca', child: Text('Cundinamarca')),
-                                  DropdownMenuItem(value: 'Valle del Cauca', child: Text('Valle del Cauca')),
-                                ],
-                                onChanged: (v) => setState(() {
-                                  depto = v;
-                                  city = null; // resetea ciudad
-                                }),
-                              ),
+                            // Teléfono - si lo quieres visible, añade un TextEditingController para phone
+                            const Expanded(
+                              flex: 7,
+                              child: SizedBox.shrink(),
                             ),
                           ],
                         ),
-                        _gap,
+                        spacing,
 
-                        // Ciudad (Municipio)
-                        PetfyDropdown<String>(
-                          value: city,
-                          hint: 'Ciudad', // <- ahora permitido
-                          items: _citiesFor(depto)
-                              .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                              .toList(),
-                          onChanged: (v) => setState(() => city = v),
-                        ),
-                        _gap,
+                        // Departamento
+                        _isLoadingDeps
+                            ? const Align(
+                                alignment: Alignment.centerLeft,
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 8),
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              )
+                            : PetfyDropdown<int>(
+                                value: _selectedDeptId,
+                                items: _departments.map<int>((m) => m['id'] as int).toList(),
+                                itemBuilder: (val) =>
+                                    _departments.firstWhere((d) => d['id'] == val)['name']
+                                        as String,
+                                onChanged: (val) {
+                                  setState(() {
+                                    _selectedDeptId = val;
+                                  });
+                                  if (val != null) _loadCities(val);
+                                },
+                              ),
+                        spacing,
 
-                        // Ubicación - botón simple (puedes reemplazar por mapa)
+                        // Ciudad
+                        _isLoadingCities
+                            ? const Align(
+                                alignment: Alignment.centerLeft,
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 8),
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              )
+                            : PetfyDropdown<int>(
+                                value: _selectedCityId,
+                                items: _cities.map<int>((m) => m['id'] as int).toList(),
+                                itemBuilder: (val) =>
+                                    _cities.firstWhere((c) => c['id'] == val)['name'] as String,
+                                onChanged: (val) => setState(() => _selectedCityId = val),
+                              ),
+                        spacing,
+
+                        // Ubicación (placeholder botón)
                         PetfyButton(
-                          leading: const Icon(Icons.map_outlined),
-                          text: 'Ubicación seleccionada (lat,lng)',
-                          onPressed: () {
-                            // TODO: abrir mapa y asignar lat/lng en tu estado
+                          text: _lat != null && _lng != null
+                              ? 'Ubicación seleccionada ($_lat, $_lng)'
+                              : 'Seleccionar ubicación en el mapa',
+                          onPressed: () async {
+                            // TODO: abre tu mapa. Por ahora guardamos un mock:
+                            setState(() {
+                              _lat = 6.2518;
+                              _lng = -75.5636;
+                            });
                           },
                         ),
-                        const SizedBox(height: 10),
+                        spacing,
 
-                        // Acepto términos
+                        // Términos
                         Row(
                           children: [
                             Checkbox(
-                              value: accepted,
-                              onChanged: (v) => setState(() => accepted = v ?? false),
+                              value: _acceptedTerms,
+                              onChanged: (v) => setState(() => _acceptedTerms = v ?? false),
                             ),
                             Flexible(
                               child: Wrap(
-                                crossAxisAlignment: WrapCrossAlignment.center,
                                 children: [
                                   const Text('Acepto los '),
                                   GestureDetector(
-                                    onTap: () => _showTerms(context),
+                                    onTap: _showTerms,
                                     child: Text(
                                       'términos y condiciones',
-                                      style: TextStyle(
-                                        color: theme.colorScheme.primary,
-                                        fontWeight: FontWeight.w700,
+                                      style: theme.textTheme.bodyMedium?.copyWith(
+                                        color: AppTheme.primary,
+                                        decoration: TextDecoration.underline,
                                       ),
                                     ),
                                   ),
@@ -179,38 +383,22 @@ class _RegisterPageState extends State<RegisterPage> {
                             ),
                           ],
                         ),
+                        spacing,
 
-                        _gap,
+                        // Submit
                         PetfyButton(
                           text: 'Registrarme',
-                          loading: saving,
-                          onPressed: () async {
-                            if (!accepted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Debes aceptar los términos')),
-                              );
-                              return;
-                            }
-                            if (formKey.currentState!.validate()) {
-                              setState(() => saving = true);
-                              try {
-                                // TODO: llamada a Supabase + upsert profile
-                              } finally {
-                                if (mounted) setState(() => saving = false);
-                              }
-                            }
-                          },
+                          onPressed: _isSubmitting ? null : _onSubmit,
+                          loading: _isSubmitting,
                         ),
                       ],
                     ),
                   ),
 
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 20),
                   PetfyLink(
                     text: '¿Ya tienes cuenta? Inicia sesión',
-                    onTap: () {
-                      // TODO: navegar a login
-                    },
+                    onTap: () => Navigator.of(context).pop(),
                   ),
                 ],
               ),
@@ -221,82 +409,62 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  List<String> _citiesFor(String? depto) {
-    switch (depto) {
-      case 'Antioquia':
-        return const ['Medellín', 'Envigado', 'Bello'];
-      case 'Cundinamarca':
-        return const ['Bogotá', 'Chía', 'Zipaquirá'];
-      case 'Valle del Cauca':
-        return const ['Cali', 'Palmira', 'Yumbo'];
-      default:
-        return const [];
-    }
-  }
-
-  void _showTerms(BuildContext context) {
+  void _showTerms() {
     showDialog(
       context: context,
-      builder: (ctx) => Dialog(
-        insetPadding: const EdgeInsets.all(18),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 560),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text('Términos y Condiciones', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-                    ),
-                    IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
-                  ],
-                ),
-                const Divider(),
-                Flexible(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: const [
-                        Text(
-                          'Bienvenido a PetfyCo. Al utilizar nuestra aplicación aceptas los siguientes términos...',
-                        ),
-                        SizedBox(height: 12),
-                        Text('1. Descripción del servicio\n• Publicar mascotas disponibles para adopción...\n'),
-                        SizedBox(height: 12),
-                        Text('2. Aceptación de términos\n…'),
-                        SizedBox(height: 12),
-                        Text('3. Registro y responsabilidad del usuario\n…'),
-                        SizedBox(height: 12),
-                        Text('4. Publicación de contenido\n…'),
-                        SizedBox(height: 12),
-                        Text('5. Uso adecuado / prohibiciones\n…'),
-                        SizedBox(height: 12),
-                        Text('6. Responsabilidad\n…'),
-                        SizedBox(height: 12),
-                        Text('7. Modificaciones — 8. Cancelación — 9. Legislación — 10. Contacto\n…'),
-                      ],
-                    ),
+      builder: (_) {
+        return AlertDialog(
+          title: const Text('Términos y Condiciones'),
+          content: SizedBox(
+            width: 480,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    'Última actualización: 20/06/2025\n\n'
+                    '1. Descripción del Servicio\n'
+                    '… (coloca aquí tu texto completo de T&C) …\n\n'
+                    '2. Aceptación de Términos\n'
+                    '…\n\n'
+                    '3. Registro y Responsabilidad del Usuario\n'
+                    '…\n\n'
+                    '4. Publicación de Contenido\n'
+                    '…\n\n'
+                    '5. Uso Adecuado\n'
+                    '…\n\n'
+                    '6. Responsabilidad\n'
+                    '…\n\n'
+                    '7. Modificaciones\n'
+                    '…\n\n'
+                    '8. Cancelación de Cuenta\n'
+                    '…\n\n'
+                    '9. Legislación Aplicable\n'
+                    '…\n\n'
+                    '10. Contacto\n'
+                    '…',
                   ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  height: 44,
-                  child: FilledButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: const Text('Aceptar'),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Aceptar'),
+            ),
+          ],
+        );
+      },
     );
   }
-}
 
-const _gap = SizedBox(height: 12);
+  @override
+  void dispose() {
+    nameCtrl.dispose();
+    emailCtrl.dispose();
+    passCtrl.dispose();
+    pass2Ctrl.dispose();
+    super.dispose();
+  }
+}
