@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../widgets/petfy_widgets.dart'; // PetfyTextField, PetfyDropdown, PetfyButton
+import '../widgets/petfy_widgets.dart';
 
 final _sb = Supabase.instance.client;
 
@@ -14,7 +14,6 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
-  // form
   final _formKey = GlobalKey<FormState>();
   final nameCtrl = TextEditingController();
   final emailCtrl = TextEditingController();
@@ -22,22 +21,20 @@ class _RegisterPageState extends State<RegisterPage> {
   final pass2Ctrl = TextEditingController();
   final phoneCtrl = TextEditingController();
 
-  // ui
   bool _obscure1 = true;
   bool _obscure2 = true;
   bool _termsOk = false;
   bool _isSubmitting = false;
 
-  // teléfono
   static const String _countryCode = '+57 (Colombia)';
 
-  // geo
   double? _lat;
   double? _lng;
   String get _latLngText =>
-      (_lat == null || _lng == null) ? 'Selecciona tu ubicación' : 'Ubicación seleccionada (${_lat!.toStringAsFixed(4)}, ${_lng!.toStringAsFixed(4)})';
+      (_lat == null || _lng == null)
+          ? 'Selecciona tu ubicación'
+          : 'Ubicación seleccionada (${_lat!.toStringAsFixed(4)}, ${_lng!.toStringAsFixed(4)})';
 
-  // datos de BD (como String para que encaje con tu PetfyDropdown)
   List<String> _deptNames = [];
   List<String> _cityNames = [];
   String? _deptSel;
@@ -59,20 +56,23 @@ class _RegisterPageState extends State<RegisterPage> {
     super.dispose();
   }
 
-  // ================== DATA ==================
   Future<void> _loadDepartments() async {
     try {
       final res = await _sb.from('departments').select('name').order('name');
       setState(() {
-        _deptNames = (res as List).map((e) => (e['name'] as String).trim()).toList();
+        _deptNames =
+            (res as List).map((e) => (e['name'] as String).trim()).toList();
       });
-    } catch (_) {/* opcional: snackbar */}
+    } catch (_) {}
   }
 
   Future<void> _loadCities(String deptName) async {
     try {
-      // buscamos id del depto por nombre
-      final dept = await _sb.from('departments').select('id').eq('name', deptName).maybeSingle();
+      final dept = await _sb
+          .from('departments')
+          .select('id')
+          .eq('name', deptName)
+          .maybeSingle();
       if (dept == null) return;
       final res = await _sb
           .from('cities')
@@ -81,22 +81,23 @@ class _RegisterPageState extends State<RegisterPage> {
           .order('name');
 
       setState(() {
-        _cityNames = (res as List).map((e) => (e['name'] as String).trim()).toList();
+        _cityNames =
+            (res as List).map((e) => (e['name'] as String).trim()).toList();
         _citySel = null;
       });
-    } catch (_) {/* ignore */}
+    } catch (_) {}
   }
 
-  // ================== GEO ==================
   Future<void> _pickLocation() async {
     try {
       if (!await _ensureLocationPermission()) return;
-      final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.best);
+      final pos = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.best);
       setState(() {
         _lat = pos.latitude;
         _lng = pos.longitude;
       });
-    } catch (_) {/* ignore */}
+    } catch (_) {}
   }
 
   Future<bool> _ensureLocationPermission() async {
@@ -104,10 +105,10 @@ class _RegisterPageState extends State<RegisterPage> {
     if (p == LocationPermission.denied) {
       p = await Geolocator.requestPermission();
     }
-    return p == LocationPermission.always || p == LocationPermission.whileInUse;
+    return p == LocationPermission.always ||
+        p == LocationPermission.whileInUse;
   }
 
-  // ================== SUBMIT ==================
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (!_termsOk) {
@@ -121,8 +122,8 @@ class _RegisterPageState extends State<RegisterPage> {
 
     setState(() => _isSubmitting = true);
     try {
-      // 1) signup
-      final sign = await _sb.auth.signUp(email: emailCtrl.text.trim(), password: passCtrl.text);
+      final sign = await _sb.auth
+          .signUp(email: emailCtrl.text.trim(), password: passCtrl.text);
       final uid = sign.user?.id;
       if (uid == null) {
         _snack('No se pudo crear el usuario.');
@@ -130,7 +131,6 @@ class _RegisterPageState extends State<RegisterPage> {
         return;
       }
 
-      // 2) upsert perfil
       await _sb.from('profiles').upsert({
         'id': uid,
         'display_name': nameCtrl.text.trim(),
@@ -154,7 +154,10 @@ class _RegisterPageState extends State<RegisterPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  // ================== UI ==================
+  // ---------- helpers para Dropdown ----------
+  List<DropdownMenuItem<String>> _stringItems(List<String> data) =>
+      data.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -167,13 +170,16 @@ class _RegisterPageState extends State<RegisterPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // logo
                   Align(
                     alignment: Alignment.center,
-                    child: Image.asset('assets/logo/petfyco_logo_full.png', height: 96),
+                    child: Image.asset('assets/logo/petfyco_logo_full.png',
+                        height: 96),
                   ),
                   const SizedBox(height: 12),
-                  const Center(child: Text('Registrarse', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700))),
+                  const Center(
+                      child: Text('Registrarse',
+                          style: TextStyle(
+                              fontSize: 24, fontWeight: FontWeight.w700))),
                   const SizedBox(height: 24),
 
                   Form(
@@ -181,22 +187,27 @@ class _RegisterPageState extends State<RegisterPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Text('Nombre', style: TextStyle(fontWeight: FontWeight.w600)),
+                        const Text('Nombre',
+                            style: TextStyle(fontWeight: FontWeight.w600)),
                         const SizedBox(height: 6),
                         PetfyTextField(
                           controller: nameCtrl,
                           hint: 'Ingresa tu nombre',
                           prefix: const Icon(Icons.person_outline),
-                          validator: (v) => (v == null || v.trim().isEmpty) ? 'Ingresa tu nombre' : null,
+                          validator: (v) =>
+                              (v == null || v.trim().isEmpty)
+                                  ? 'Ingresa tu nombre'
+                                  : null,
                         ),
                         const SizedBox(height: 12),
 
-                        const Text('Correo electrónico', style: TextStyle(fontWeight: FontWeight.w600)),
+                        const Text('Correo electrónico',
+                            style: TextStyle(fontWeight: FontWeight.w600)),
                         const SizedBox(height: 6),
                         PetfyTextField(
                           controller: emailCtrl,
                           hint: 'Ingresa tu correo',
-                          keyboardType: TextInputType.emailAddress,
+                          keyboard: TextInputType.emailAddress, // <-- nombre correcto
                           prefix: const Icon(Icons.mail_outline),
                           validator: (v) {
                             final t = v?.trim() ?? '';
@@ -207,7 +218,8 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                         const SizedBox(height: 12),
 
-                        const Text('Contraseña', style: TextStyle(fontWeight: FontWeight.w600)),
+                        const Text('Contraseña',
+                            style: TextStyle(fontWeight: FontWeight.w600)),
                         const SizedBox(height: 6),
                         PetfyTextField(
                           controller: passCtrl,
@@ -215,14 +227,20 @@ class _RegisterPageState extends State<RegisterPage> {
                           prefix: const Icon(Icons.lock_outline),
                           obscure: _obscure1,
                           suffix: IconButton(
-                            onPressed: () => setState(() => _obscure1 = !_obscure1),
-                            icon: Icon(_obscure1 ? Icons.visibility_off : Icons.visibility),
+                            onPressed: () =>
+                                setState(() => _obscure1 = !_obscure1),
+                            icon: Icon(_obscure1
+                                ? Icons.visibility_off
+                                : Icons.visibility),
                           ),
-                          validator: (v) => (v == null || v.length < 8) ? 'Mínimo 8 caracteres' : null,
+                          validator: (v) => (v == null || v.length < 8)
+                              ? 'Mínimo 8 caracteres'
+                              : null,
                         ),
                         const SizedBox(height: 12),
 
-                        const Text('Confirmar contraseña', style: TextStyle(fontWeight: FontWeight.w600)),
+                        const Text('Confirmar contraseña',
+                            style: TextStyle(fontWeight: FontWeight.w600)),
                         const SizedBox(height: 6),
                         PetfyTextField(
                           controller: pass2Ctrl,
@@ -230,14 +248,19 @@ class _RegisterPageState extends State<RegisterPage> {
                           prefix: const Icon(Icons.lock_outline),
                           obscure: _obscure2,
                           suffix: IconButton(
-                            onPressed: () => setState(() => _obscure2 = !_obscure2),
-                            icon: Icon(_obscure2 ? Icons.visibility_off : Icons.visibility),
+                            onPressed: () =>
+                                setState(() => _obscure2 = !_obscure2),
+                            icon: Icon(_obscure2
+                                ? Icons.visibility_off
+                                : Icons.visibility),
                           ),
-                          validator: (v) => (v != passCtrl.text) ? 'No coincide' : null,
+                          validator: (v) =>
+                              (v != passCtrl.text) ? 'No coincide' : null,
                         ),
                         const SizedBox(height: 16),
 
-                        const Text('Teléfono', style: TextStyle(fontWeight: FontWeight.w600)),
+                        const Text('Teléfono',
+                            style: TextStyle(fontWeight: FontWeight.w600)),
                         const SizedBox(height: 8),
                         Row(
                           children: [
@@ -245,8 +268,9 @@ class _RegisterPageState extends State<RegisterPage> {
                               flex: 6,
                               child: PetfyDropdown<String>(
                                 value: _countryCode,
-                                items: const ['+57 (Colombia)'],
                                 hint: 'Prefijo',
+                                items: _stringItems(
+                                    const ['+57 (Colombia)']), // <-- items correctos
                                 onChanged: (_) {},
                               ),
                             ),
@@ -256,7 +280,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               child: PetfyTextField(
                                 controller: phoneCtrl,
                                 hint: 'Número de teléfono',
-                                keyboardType: TextInputType.phone,
+                                keyboard: TextInputType.phone, // <-- nombre correcto
                                 prefix: const Icon(Icons.call_outlined),
                                 validator: (v) {
                                   final t = v?.trim() ?? '';
@@ -270,12 +294,13 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                         const SizedBox(height: 16),
 
-                        const Text('Departamento', style: TextStyle(fontWeight: FontWeight.w600)),
+                        const Text('Departamento',
+                            style: TextStyle(fontWeight: FontWeight.w600)),
                         const SizedBox(height: 8),
                         PetfyDropdown<String>(
                           value: _deptSel,
-                          items: _deptNames,
                           hint: 'Selecciona departamento',
+                          items: _stringItems(_deptNames), // <-- items correctos
                           onChanged: (val) {
                             if (val == null) return;
                             setState(() => _deptSel = val);
@@ -284,17 +309,21 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                         const SizedBox(height: 12),
 
-                        const Text('Ciudad', style: TextStyle(fontWeight: FontWeight.w600)),
+                        const Text('Ciudad',
+                            style: TextStyle(fontWeight: FontWeight.w600)),
                         const SizedBox(height: 8),
                         PetfyDropdown<String>(
                           value: _citySel,
-                          items: _cityNames,
-                          hint: _deptSel == null ? 'Selecciona un departamento primero' : 'Selecciona ciudad',
+                          hint: _deptSel == null
+                              ? 'Selecciona un departamento primero'
+                              : 'Selecciona ciudad',
+                          items: _stringItems(_cityNames), // <-- items correctos
                           onChanged: (val) => setState(() => _citySel = val),
                         ),
                         const SizedBox(height: 16),
 
-                        const Text('Mi ubicación', style: TextStyle(fontWeight: FontWeight.w600)),
+                        const Text('Mi ubicación',
+                            style: TextStyle(fontWeight: FontWeight.w600)),
                         const SizedBox(height: 8),
                         PetfyButton(
                           text: '📍  $_latLngText',
@@ -309,14 +338,18 @@ class _RegisterPageState extends State<RegisterPage> {
                           children: [
                             Checkbox(
                               value: _termsOk,
-                              onChanged: (v) => setState(() => _termsOk = v ?? false),
+                              onChanged: (v) =>
+                                  setState(() => _termsOk = v ?? false),
                             ),
                             const Text('Acepto los '),
                             GestureDetector(
                               onTap: _showTerms,
                               child: const Text(
                                 'términos y condiciones',
-                                style: TextStyle(decoration: TextDecoration.underline, fontWeight: FontWeight.w600),
+                                style: TextStyle(
+                                  decoration: TextDecoration.underline,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                           ],
@@ -327,7 +360,7 @@ class _RegisterPageState extends State<RegisterPage> {
                           text: _isSubmitting ? 'Registrando…' : 'Registrarme',
                           onPressed: () {
                             if (_isSubmitting) return;
-                            _submit();
+                            _submit(); // callback no-nullable
                           },
                         ),
                         const SizedBox(height: 16),
@@ -344,7 +377,10 @@ class _RegisterPageState extends State<RegisterPage> {
                             },
                             child: const Text(
                               '¿Ya tienes cuenta? Inicia sesión',
-                              style: TextStyle(decoration: TextDecoration.underline, fontWeight: FontWeight.w600),
+                              style: TextStyle(
+                                decoration: TextDecoration.underline,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ),
@@ -370,7 +406,8 @@ class _RegisterPageState extends State<RegisterPage> {
           child: Column(
             children: [
               const SizedBox(height: 12),
-              const Text('Términos y Condiciones', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const Text('Términos y Condiciones',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
               const Divider(),
               const Expanded(
                 child: SingleChildScrollView(
