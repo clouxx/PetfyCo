@@ -55,7 +55,7 @@ class PetfyTextField extends StatelessWidget {
         prefixIcon: resolvedPrefix,
         suffixIcon: suffix,
         filled: true,
-        fillColor: Theme.of(context).colorScheme.surface.withOpacity(.6),
+        fillColor: Theme.of(context).colorScheme.surface.withValues(alpha: .6),
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
