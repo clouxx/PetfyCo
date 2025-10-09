@@ -28,10 +28,7 @@ class _RegisterPageState extends State<RegisterPage> {
   Future<void> _onRegister() async {
     if (isLoading) return;
     setState(() => isLoading = true);
-
-    // TODO: registrar en tu backend
     await Future<void>.delayed(const Duration(milliseconds: 700));
-
     if (!mounted) return;
     context.go('/home');
   }
@@ -47,7 +44,7 @@ class _RegisterPageState extends State<RegisterPage> {
             Center(
               child: Image.asset(
                 'assets/logo/petfyco_logo_full.png',
-                height: 100,
+                height: 120,
               ),
             ),
             const SizedBox(height: 12),
@@ -63,21 +60,21 @@ class _RegisterPageState extends State<RegisterPage> {
                   PetfyTextField(
                     controller: nameCtrl,
                     hint: 'Nombre',
-                    prefixIcon: Icons.person_outline,
+                    prefix: const Icon(Icons.person_outline),
                   ),
                   const SizedBox(height: 12),
                   PetfyTextField(
                     controller: emailCtrl,
                     hint: 'Correo electrónico',
                     keyboard: TextInputType.emailAddress,
-                    prefixIcon: Icons.mail_outline,
+                    prefix: const Icon(Icons.mail_outline),
                   ),
                   const SizedBox(height: 12),
                   PetfyTextField(
                     controller: passCtrl,
                     hint: 'Contraseña',
                     obscure: !showPass,
-                    prefixIcon: Icons.lock_outline,
+                    prefix: const Icon(Icons.lock_outline),
                     suffix: IconButton(
                       onPressed: () => setState(() => showPass = !showPass),
                       icon: Icon(showPass ? Icons.visibility_off : Icons.visibility),
@@ -86,7 +83,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   const SizedBox(height: 16),
                   PetfyButton(
                     text: 'Registrarme',
-                    isLoading: isLoading,
+                    loading: isLoading, // <-- usa 'loading'
                     onPressed: _onRegister,
                   ),
                   const SizedBox(height: 12),
