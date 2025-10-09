@@ -41,21 +41,17 @@ class _LoginPageState extends State<LoginPage> {
             Center(
               child: Image.asset(
                 'assets/logo/petfyco_logo_full.png',
-                height: 140, // <-- logo más grande
+                height: 170, // logo más grande
                 fit: BoxFit.contain,
               ),
             ),
             const SizedBox(height: 16),
-            Text(
-              '¡Bienvenido a PetfyCo!',
-              style: Theme.of(context).textTheme.headlineMedium,
-              textAlign: TextAlign.center,
-            ),
+            Text('¡Bienvenido a PetfyCo!',
+                style: Theme.of(context).textTheme.headlineMedium,
+                textAlign: TextAlign.center),
             const SizedBox(height: 6),
-            const Text(
-              'Rescate y adopción de mascotas en Colombia',
-              textAlign: TextAlign.center,
-            ),
+            const Text('Rescate y adopción de mascotas en Colombia',
+                textAlign: TextAlign.center),
             const SizedBox(height: 16),
 
             PetfyCard(
@@ -65,7 +61,6 @@ class _LoginPageState extends State<LoginPage> {
                     controller: emailCtrl,
                     hint: 'Correo electrónico',
                     keyboard: TextInputType.emailAddress,
-                    // tu widget acepta 'prefix' (no 'prefixIcon')
                     prefix: const Icon(Icons.mail_outline),
                   ),
                   const SizedBox(height: 12),
@@ -76,22 +71,22 @@ class _LoginPageState extends State<LoginPage> {
                     prefix: const Icon(Icons.lock_outline),
                     suffix: IconButton(
                       onPressed: () => setState(() => showPass = !showPass),
-                      icon: Icon(showPass ? Icons.visibility_off : Icons.visibility),
+                      icon: Icon(showPass
+                          ? Icons.visibility_off
+                          : Icons.visibility),
                     ),
                   ),
                   const SizedBox(height: 12),
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
-                      onPressed: () {
-                        // context.go('/forgot'); // cuando la tengas
-                      },
+                      onPressed: () {},
                       child: const Text('¿Olvidaste la contraseña?'),
                     ),
                   ),
                   PetfyButton(
                     text: 'Ingresar',
-                    loading: isLoading, // <-- tu botón usa 'loading'
+                    loading: isLoading,
                     onPressed: _onLogin,
                   ),
                 ],
@@ -106,10 +101,8 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Al continuar aceptas nuestras políticas.',
-              textAlign: TextAlign.center,
-            ),
+            const Text('Al continuar aceptas nuestras políticas.',
+                textAlign: TextAlign.center),
           ],
         ),
       ),
