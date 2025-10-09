@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../widgets/petfy_widgets.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -14,225 +11,41 @@ class RegisterPage extends StatefulWidget {
 class _RegisterPageState extends State<RegisterPage> {
   final formKey = GlobalKey<FormState>();
 
-  // Controllers
   final nameCtrl = TextEditingController();
   final emailCtrl = TextEditingController();
   final passCtrl = TextEditingController();
-  final pass2Ctrl = TextEditingController();
-  final phoneCtrl = TextEditingController();
+  final confirmCtrl = TextEditingController();
 
-  // UI state
-  bool obscure1 = true;
-  bool obscure2 = true;
-  bool loading = false;
-  bool showMap = false;
-  bool acceptedTerms = false;
+  String? countryCode;   // p.e. +57
+  String? depto;         // departamento
+  String? city;          // municipio
 
-  // Ubicación
-  double? lat;
-  double? lng;
-
-  // Pais / Departamento / Ciudad
-  String countryCode = '+57';
-  String? depto;
-  String? city;
-
-  final deptos = const <String>[
-    'Antioquia',
-    'Cundinamarca',
-    'Valle del Cauca',
-    'Santander',
-    'Atlántico',
-  ];
-
-  List<String> get cities {
-    switch (depto) {
-      case 'Antioquia':
-        return ['Medellín', 'Envigado', 'Bello'];
-      case 'Cundinamarca':
-        return ['Bogotá', 'Soacha', 'Chía'];
-      case 'Valle del Cauca':
-        return ['Cali', 'Palmira', 'Yumbo'];
-      case 'Santander':
-        return ['Bucaramanga', 'Floridablanca', 'Giron'];
-      case 'Atlántico':
-        return ['Barranquilla', 'Soledad', 'Malambo'];
-      default:
-        return [];
-    }
-  }
-
-  @override
-  void dispose() {
-    nameCtrl.dispose();
-    emailCtrl.dispose();
-    passCtrl.dispose();
-    pass2Ctrl.dispose();
-    phoneCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _pickFakeLocation() async {
-    // Placeholder de selección: asignamos coords de Medellín.
-    setState(() {
-      lat = 6.2518;
-      lng = -75.5636;
-      showMap = true;
-    });
-  }
-
-  Future<void> _submit() async {
-    if (!acceptedTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Debes aceptar los términos y condiciones')),
-      );
-      return;
-    }
-    if (!(formKey.currentState?.validate() ?? false)) return;
-
-    setState(() => loading = true);
-    try {
-      final auth = Supabase.instance.client.auth;
-
-      final resp = await auth.signUp(
-        email: emailCtrl.text.trim(),
-        password: passCtrl.text.trim(),
-      );
-
-      final user = resp.user;
-      if (user == null) {
-        throw Exception('No se pudo crear el usuario');
-      }
-
-      // Llamamos la RPC upsert_profile que ya creaste en la BD
-      await Supabase.instance.client.rpc('upsert_profile', params: {
-        'p_id': user.id,
-        'p_name': nameCtrl.text.trim(),
-        'p_email': emailCtrl.text.trim(),
-        'p_country_code': countryCode,
-        'p_phone': phoneCtrl.text.trim(),
-        'p_province': depto,
-        'p_city': city,
-        'p_lat': lat,
-        'p_lng': lng,
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('¡Cuenta creada! Revisa tu correo para confirmar.')),
-        );
-        context.go('/login');
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => loading = false);
-    }
-  }
-
-  void _showTerms() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Términos y Condiciones'),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
-                  'Última actualización: 20/06/2025\n\n'
-                  'Bienvenido(a) a PetfyCo. Al utilizar nuestra aplicación, '
-                  'aceptas los siguientes Términos y Condiciones de uso.\n',
-                ),
-                SizedBox(height: 8),
-                _TermItem(
-                  title: '1. Descripción del Servicio',
-                  body:
-                      'Publicar mascotas disponibles para adopción y reportar mascotas perdidas o encontradas.',
-                ),
-                _TermItem(
-                  title: '2. Aceptación de Términos',
-                  body:
-                      'El uso de la app implica aceptar estos términos. Si no estás de acuerdo, por favor no la uses.',
-                ),
-                _TermItem(
-                  title: '3. Registro del Usuario',
-                  body:
-                      'Podemos solicitar información veraz y actualizada. Mantén tus credenciales seguras.',
-                ),
-                _TermItem(
-                  title: '4. Publicación de Contenido',
-                  body:
-                      'El contenido debe ser real, preciso y actualizado. Podemos retirar contenido inapropiado.',
-                ),
-                _TermItem(
-                  title: '5. Uso Adecuado',
-                  body:
-                      'Prohibido el uso ilegal, suplantación de identidad o interferir con el funcionamiento de la app.',
-                ),
-                _TermItem(
-                  title: '6. Responsabilidad',
-                  body:
-                      'No somos responsables por publicaciones de usuarios ni acuerdos fuera de la app.',
-                ),
-                _TermItem(
-                  title: '7. Modificaciones',
-                  body:
-                      'Podemos actualizar estos Términos. Te notificaremos cambios importantes por correo.',
-                ),
-                _TermItem(
-                  title: '8. Cancelación de Cuenta',
-                  body:
-                      'Podemos cancelar o suspender cuentas por uso indebido o violación de políticas.',
-                ),
-                _TermItem(
-                  title: '9. Legislación Aplicable',
-                  body: 'Estos Términos se rigen por las leyes del país en el que operes la app.',
-                ),
-                _TermItem(
-                  title: '10. Contacto',
-                  body: 'Si tienes dudas, contáctanos desde la sección de soporte dentro de la app.',
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Aceptar'))
-        ],
-      ),
-    );
-  }
+  bool showPass = false;
+  bool showConfirm = false;
+  bool accepted = false;
+  bool saving = false;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
     return Scaffold(
+      appBar: AppBar(title: const Text('Registrarse')),
       body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-            child: Column(
-              children: [
-                const SizedBox(height: 4),
-                Text('Registrarse',
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    )),
-                const SizedBox(height: 12),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: Form(
+              key: formKey,
+              child: Column(
+                children: [
+                  Image.asset('assets/logo/petfyco_logo_full.png', height: 110),
+                  const SizedBox(height: 12),
+                  Text('Crear cuenta', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 14),
 
-                // Card principal
-                PetfyCard(
-                  child: Form(
-                    key: formKey,
+                  PetfyCard(
+                    color: const Color(0xFFF6F2FF).withOpacity(.45), // <- ahora permitido
                     child: Column(
                       children: [
                         // Nombre
@@ -240,209 +53,242 @@ class _RegisterPageState extends State<RegisterPage> {
                           controller: nameCtrl,
                           hint: 'Nombre',
                           prefix: const Icon(Icons.person_outline),
-                          validator: (v) =>
-                              (v == null || v.trim().isEmpty) ? 'Ingresa tu nombre' : null,
+                          validator: (v) => (v == null || v.trim().isEmpty) ? 'Ingresa tu nombre' : null,
                         ),
-                        const SizedBox(height: 14),
-
+                        _gap,
                         // Email
                         PetfyTextField(
                           controller: emailCtrl,
                           hint: 'Correo electrónico',
-                          keyboardType: TextInputType.emailAddress,
+                          keyboard: TextInputType.emailAddress, // <- ahora permitido
                           prefix: const Icon(Icons.mail_outline),
                           validator: (v) {
-                            final t = (v ?? '').trim();
-                            if (t.isEmpty) return 'Ingresa tu correo';
-                            if (!t.contains('@') || !t.contains('.')) {
-                              return 'Correo inválido';
-                            }
-                            return null;
+                            final ok = RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v ?? '');
+                            return ok ? null : 'Correo inválido';
                           },
                         ),
-                        const SizedBox(height: 14),
-
-                        // Teléfono (código de país + número)
-                        Row(
-                          children: [
-                            Flexible(
-                              flex: 3,
-                              child: PetfyDropdown<String>(
-                                value: countryCode,
-                                items: const [
-                                  DropdownMenuItem(value: '+57', child: Text('+57')),
-                                  DropdownMenuItem(value: '+593', child: Text('+593')),
-                                  DropdownMenuItem(value: '+51', child: Text('+51')),
-                                ],
-                                onChanged: (v) => setState(() => countryCode = v ?? '+57'),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Flexible(
-                              flex: 7,
-                              child: PetfyTextField(
-                                controller: phoneCtrl,
-                                hint: 'Número de teléfono',
-                                keyboardType: TextInputType.phone,
-                                prefix: const Icon(Icons.phone_outlined),
-                                validator: (v) =>
-                                    (v == null || v.trim().isEmpty) ? 'Ingresa tu teléfono' : null,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-
-                        // Departamento
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text('Departamento',
-                              style: theme.textTheme.labelLarge?.copyWith(
-                                color: theme.colorScheme.onSurface.withOpacity(.8),
-                              )),
-                        ),
-                        const SizedBox(height: 6),
-                        PetfyDropdown<String>(
-                          value: depto,
-                          items: deptos
-                              .map((d) => DropdownMenuItem(value: d, child: Text(d)))
-                              .toList(),
-                          onChanged: (v) => setState(() {
-                            depto = v;
-                            city = null;
-                          }),
-                        ),
-                        const SizedBox(height: 14),
-
-                        // Ciudad
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text('Ciudad',
-                              style: theme.textTheme.labelLarge?.copyWith(
-                                color: theme.colorScheme.onSurface.withOpacity(.8),
-                              )),
-                        ),
-                        const SizedBox(height: 6),
-                        PetfyDropdown<String>(
-                          value: city,
-                          items: cities
-                              .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                              .toList(),
-                          onChanged: (v) => setState(() => city = v),
-                        ),
-                        const SizedBox(height: 14),
-
+                        _gap,
                         // Contraseña
                         PetfyTextField(
                           controller: passCtrl,
                           hint: 'Contraseña',
+                          obscure: !showPass,
                           prefix: const Icon(Icons.lock_outline),
-                          obscure: obscure1,
-                          onToggleObscure: () => setState(() => obscure1 = !obscure1),
-                          validator: (v) {
-                            final t = (v ?? '').trim();
-                            if (t.length < 8) return 'Mínimo 8 caracteres';
-                            return null;
+                          suffix: IconButton( // <- ahora permitido
+                            icon: Icon(showPass ? Icons.visibility_off : Icons.visibility),
+                            onPressed: () => setState(() => showPass = !showPass),
+                          ),
+                          validator: (v) => (v != null && v.length >= 8) ? null : 'Mínimo 8 caracteres',
+                        ),
+                        _gap,
+                        // Confirmar
+                        PetfyTextField(
+                          controller: confirmCtrl,
+                          hint: 'Confirmar contraseña',
+                          obscure: !showConfirm,
+                          prefix: const Icon(Icons.lock_outline),
+                          suffix: IconButton(
+                            icon: Icon(showConfirm ? Icons.visibility_off : Icons.visibility),
+                            onPressed: () => setState(() => showConfirm = !showConfirm),
+                          ),
+                          validator: (v) => v == passCtrl.text ? null : 'No coincide',
+                        ),
+                        _gap,
+
+                        // Fila País / Departamento
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 4,
+                              child: PetfyDropdown<String>(
+                                value: countryCode,
+                                hint: 'País', // <- ahora permitido
+                                items: const [
+                                  DropdownMenuItem(value: '+57', child: Text('+57')),
+                                  DropdownMenuItem(value: '+593', child: Text('+593')),
+                                ],
+                                onChanged: (v) => setState(() => countryCode = v),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 8,
+                              child: PetfyDropdown<String>(
+                                value: depto,
+                                hint: 'Departamento', // <- antes “Provincia”
+                                items: const [
+                                  DropdownMenuItem(value: 'Antioquia', child: Text('Antioquia')),
+                                  DropdownMenuItem(value: 'Cundinamarca', child: Text('Cundinamarca')),
+                                  DropdownMenuItem(value: 'Valle del Cauca', child: Text('Valle del Cauca')),
+                                ],
+                                onChanged: (v) => setState(() {
+                                  depto = v;
+                                  city = null; // resetea ciudad
+                                }),
+                              ),
+                            ),
+                          ],
+                        ),
+                        _gap,
+
+                        // Ciudad (Municipio)
+                        PetfyDropdown<String>(
+                          value: city,
+                          hint: 'Ciudad', // <- ahora permitido
+                          items: _citiesFor(depto)
+                              .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                              .toList(),
+                          onChanged: (v) => setState(() => city = v),
+                        ),
+                        _gap,
+
+                        // Ubicación - botón simple (puedes reemplazar por mapa)
+                        PetfyButton(
+                          leading: const Icon(Icons.map_outlined),
+                          text: 'Ubicación seleccionada (lat,lng)',
+                          onPressed: () {
+                            // TODO: abrir mapa y asignar lat/lng en tu estado
                           },
                         ),
-                        const SizedBox(height: 14),
-
-                        // Confirmar contraseña
-                        PetfyTextField(
-                          controller: pass2Ctrl,
-                          hint: 'Confirmar contraseña',
-                          prefix: const Icon(Icons.lock_outline),
-                          obscure: obscure2,
-                          onToggleObscure: () => setState(() => obscure2 = !obscure2),
-                          validator: (v) =>
-                              (v ?? '') == passCtrl.text ? null : 'No coincide',
-                        ),
-                        const SizedBox(height: 18),
-
-                        // Ubicación
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Mi ubicación',
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.w700)),
-                              const SizedBox(height: 6),
-                              Text(
-                                'Selecciona tu ubicación para poder mostrarte mascotas cercanas.',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurface.withOpacity(.7),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                         const SizedBox(height: 10),
 
-                        PetfyButton(
-                          text: lat == null
-                              ? 'Seleccionar en mapa'
-                              : 'Ubicación seleccionada (${lat!.toStringAsFixed(4)}, ${lng!.toStringAsFixed(4)})',
-                          leading: const Icon(Icons.map_outlined),
-                          onPressed: _pickFakeLocation, // placeholder
-                        ),
-                        const SizedBox(height: 10),
-
-                        if (showMap)
-                          Container(
-                            height: 200,
-                            width: double.infinity,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(14),
-                              color: theme.colorScheme.surface.withOpacity(.6),
-                              border: Border.all(
-                                  color: theme.colorScheme.primary.withOpacity(.15)),
-                            ),
-                            child: const Text('Mapa (placeholder)'),
-                          ),
-
-                        const SizedBox(height: 16),
-
-                        // Términos
+                        // Acepto términos
                         Row(
                           children: [
                             Checkbox(
-                              value: acceptedTerms,
-                              onChanged: (v) => setState(() => acceptedTerms = v ?? false),
+                              value: accepted,
+                              onChanged: (v) => setState(() => accepted = v ?? false),
                             ),
-                            Expanded(
+                            Flexible(
                               child: Wrap(
                                 crossAxisAlignment: WrapCrossAlignment.center,
                                 children: [
                                   const Text('Acepto los '),
-                                  PetfyLink(
-                                    text: 'términos y condiciones',
-                                    onTap: _showTerms,
+                                  GestureDetector(
+                                    onTap: () => _showTerms(context),
+                                    child: Text(
+                                      'términos y condiciones',
+                                      style: TextStyle(
+                                        color: theme.colorScheme.primary,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 6),
 
-                        // Botón
+                        _gap,
                         PetfyButton(
                           text: 'Registrarme',
-                          loading: loading,
-                          onPressed: _submit,
+                          loading: saving,
+                          onPressed: () async {
+                            if (!accepted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Debes aceptar los términos')),
+                              );
+                              return;
+                            }
+                            if (formKey.currentState!.validate()) {
+                              setState(() => saving = true);
+                              try {
+                                // TODO: llamada a Supabase + upsert profile
+                              } finally {
+                                if (mounted) setState(() => saving = false);
+                              }
+                            }
+                          },
                         ),
                       ],
                     ),
                   ),
-                ),
 
+                  const SizedBox(height: 14),
+                  PetfyLink(
+                    text: '¿Ya tienes cuenta? Inicia sesión',
+                    onTap: () {
+                      // TODO: navegar a login
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<String> _citiesFor(String? depto) {
+    switch (depto) {
+      case 'Antioquia':
+        return const ['Medellín', 'Envigado', 'Bello'];
+      case 'Cundinamarca':
+        return const ['Bogotá', 'Chía', 'Zipaquirá'];
+      case 'Valle del Cauca':
+        return const ['Cali', 'Palmira', 'Yumbo'];
+      default:
+        return const [];
+    }
+  }
+
+  void _showTerms(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        insetPadding: const EdgeInsets.all(18),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text('Términos y Condiciones', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                    ),
+                    IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
+                  ],
+                ),
+                const Divider(),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: const [
+                        Text(
+                          'Bienvenido a PetfyCo. Al utilizar nuestra aplicación aceptas los siguientes términos...',
+                        ),
+                        SizedBox(height: 12),
+                        Text('1. Descripción del servicio\n• Publicar mascotas disponibles para adopción...\n'),
+                        SizedBox(height: 12),
+                        Text('2. Aceptación de términos\n…'),
+                        SizedBox(height: 12),
+                        Text('3. Registro y responsabilidad del usuario\n…'),
+                        SizedBox(height: 12),
+                        Text('4. Publicación de contenido\n…'),
+                        SizedBox(height: 12),
+                        Text('5. Uso adecuado / prohibiciones\n…'),
+                        SizedBox(height: 12),
+                        Text('6. Responsabilidad\n…'),
+                        SizedBox(height: 12),
+                        Text('7. Modificaciones — 8. Cancelación — 9. Legislación — 10. Contacto\n…'),
+                      ],
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 12),
-                PetfyLink(
-                  text: '¿Ya tienes cuenta? Inicia sesión',
-                  onTap: () => context.go('/login'),
+                SizedBox(
+                  width: double.infinity,
+                  height: 44,
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Aceptar'),
+                  ),
                 ),
               ],
             ),
@@ -453,26 +299,4 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 }
 
-class _TermItem extends StatelessWidget {
-  final String title;
-  final String body;
-  const _TermItem({required this.title, required this.body});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title,
-              style: theme.textTheme.titleSmall
-                  ?.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 4),
-          Text(body),
-        ],
-      ),
-    );
-  }
-}
+const _gap = SizedBox(height: 12);
