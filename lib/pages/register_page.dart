@@ -1,12 +1,9 @@
-// lib/pages/register_page.dart
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../widgets/petfy_widgets.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
-
   @override
   State<RegisterPage> createState() => _RegisterPageState();
 }
@@ -22,7 +19,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final pass2Ctrl = TextEditingController();
   final phoneCtrl = TextEditingController();
 
-  // ---- Prefijo país (solo Colombia por ahora) ----
+  // ---- Prefijo país (solo Colombia) ----
   String _countryCode = '+57';
 
   // ---- Departamentos/Ciudades (BD) ----
@@ -46,14 +43,13 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   // ================== DATA ==================
-
   Future<void> _loadDepartments() async {
     setState(() => _isLoadingDeps = true);
     try {
       final res =
           await supabase.from('departments').select('id, name').order('name');
       _departments = List<Map<String, dynamic>>.from(res as List);
-    } catch (e) {
+    } catch (_) {
       _snack('No se pudieron cargar los departamentos');
     } finally {
       if (mounted) setState(() => _isLoadingDeps = false);
@@ -73,7 +69,7 @@ class _RegisterPageState extends State<RegisterPage> {
           .eq('department_id', departmentId)
           .order('name');
       _cities = List<Map<String, dynamic>>.from(res as List);
-    } catch (e) {
+    } catch (_) {
       _snack('No se pudieron cargar las ciudades');
     } finally {
       if (mounted) setState(() => _isLoadingCities = false);
@@ -94,7 +90,6 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   // ================== SUBMIT ==================
-
   Future<void> _onSubmit() async {
     final valid = _formKey.currentState?.validate() ?? false;
     if (!valid) return;
@@ -116,15 +111,15 @@ class _RegisterPageState extends State<RegisterPage> {
         password: passCtrl.text,
       );
       final userId = authRes.user?.id;
-      if (userId == null) {
-        throw Exception('No se pudo crear el usuario');
-      }
+      if (userId == null) throw Exception('No se pudo crear el usuario');
 
-      // 2) Guardar perfil básico
+      // 2) Guardar perfil
       await supabase.from('profiles').upsert({
         'id': userId,
         'display_name': nameCtrl.text.trim(),
-        'phone': phoneCtrl.text.trim().isEmpty ? null : '$_countryCode ${phoneCtrl.text.trim()}',
+        'phone': phoneCtrl.text.trim().isEmpty
+            ? null
+            : '$_countryCode ${phoneCtrl.text.trim()}',
         'depto': _deptNameById(_selectedDeptId),
         'municipio': _cityNameById(_selectedCityId),
         'lat': _lat,
@@ -147,17 +142,13 @@ class _RegisterPageState extends State<RegisterPage> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
   // ================== UI ==================
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final spacing = const SizedBox(height: 16);
+    const spacing = SizedBox(height: 16);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Registrarse'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('Registrarse'), centerTitle: true),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
@@ -167,11 +158,9 @@ class _RegisterPageState extends State<RegisterPage> {
               key: _formKey,
               child: Column(
                 children: [
-                  // Logo
                   Image.asset('assets/logo/petfyco_logo_full.png', height: 92),
                   const SizedBox(height: 12),
-                  Text('Crear cuenta',
-                      style: theme.textTheme.headlineSmall),
+                  Text('Crear cuenta', style: theme.textTheme.headlineSmall),
                   const SizedBox(height: 12),
 
                   PetfyCard(
@@ -179,9 +168,11 @@ class _RegisterPageState extends State<RegisterPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Nombre
+                        Text('Nombre', style: theme.textTheme.labelLarge),
+                        const SizedBox(height: 8),
                         PetfyTextField(
                           controller: nameCtrl,
-                          hint: 'Nombre',
+                          hint: 'Ingresa tu nombre',
                           prefix: const Icon(Icons.person_outline),
                           validator: (v) =>
                               (v == null || v.trim().isEmpty)
@@ -191,23 +182,29 @@ class _RegisterPageState extends State<RegisterPage> {
                         spacing,
 
                         // Correo
+                        Text('Correo electrónico',
+                            style: theme.textTheme.labelLarge),
+                        const SizedBox(height: 8),
                         PetfyTextField(
                           controller: emailCtrl,
-                          hint: 'Correo electrónico',
+                          hint: 'Ingresa tu correo',
                           prefix: const Icon(Icons.mail_outline),
                           keyboard: TextInputType.emailAddress,
                           validator: (v) {
                             final email = (v ?? '').trim();
-                            final ok = RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email);
+                            final ok = RegExp(r'^[^@]+@[^@]+\.[^@]+')
+                                .hasMatch(email);
                             return ok ? null : 'Correo inválido';
                           },
                         ),
                         spacing,
 
                         // Contraseña
+                        Text('Contraseña', style: theme.textTheme.labelLarge),
+                        const SizedBox(height: 8),
                         _ObscureField(
                           controller: passCtrl,
-                          hint: 'Contraseña',
+                          hint: 'Ingresa tu contraseña',
                           validator: (v) =>
                               (v != null && v.length >= 8)
                                   ? null
@@ -216,20 +213,23 @@ class _RegisterPageState extends State<RegisterPage> {
                         spacing,
 
                         // Confirmar contraseña
+                        Text('Confirmar contraseña',
+                            style: theme.textTheme.labelLarge),
+                        const SizedBox(height: 8),
                         _ObscureField(
                           controller: pass2Ctrl,
-                          hint: 'Confirmar contraseña',
+                          hint: 'Confirma tu contraseña',
                           validator: (v) =>
                               v == passCtrl.text ? null : 'No coincide',
                         ),
                         spacing,
 
-                        // Prefijo + Teléfono
+                        // Teléfono
                         Text('Teléfono', style: theme.textTheme.labelLarge),
                         const SizedBox(height: 8),
                         Row(
                           children: [
-                            // Prefijo solo Colombia
+                            // Prefijo fijo 🇨🇴 +57
                             Expanded(
                               flex: 4,
                               child: PetfyDropdown<String>(
@@ -237,13 +237,11 @@ class _RegisterPageState extends State<RegisterPage> {
                                 items: const [
                                   DropdownMenuItem(
                                     value: '+57',
-                                    child: Text('🇨🇴  +57 (Colombia)'),
+                                    child:
+                                        Text('🇨🇴  +57 (Colombia)'),
                                   ),
                                 ],
-                                onChanged: (v) {
-                                  if (v == null) return;
-                                  setState(() => _countryCode = v);
-                                },
+                                onChanged: (v) {},
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -307,7 +305,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               ),
                         spacing,
 
-                        // Ubicación (placeholder)
+                        // Ubicación
                         Text('Mi ubicación', style: theme.textTheme.labelLarge),
                         const SizedBox(height: 8),
                         PetfyButton(
@@ -315,10 +313,9 @@ class _RegisterPageState extends State<RegisterPage> {
                               ? '📍  Ubicación seleccionada ($_lat, $_lng)'
                               : '📍  Seleccionar ubicación en el mapa',
                           onPressed: () {
-                            // TODO: Integrar mapa real (google_maps_flutter o flutter_map)
-                            // Por ahora, guardamos un ejemplo para que puedas seguir:
+                            // TODO: integrar mapa real
                             setState(() {
-                              _lat = 6.2518;
+                              _lat = 6.2518;   // Medellín
                               _lng = -75.5636;
                             });
                           },
@@ -358,15 +355,13 @@ class _RegisterPageState extends State<RegisterPage> {
                         PetfyButton(
                           text: 'Registrarme',
                           loading: _isSubmitting,
-                          onPressed:
-                              _isSubmitting ? null : () => _onSubmit(),
+                          onPressed: _onSubmit,
                         ),
                       ],
                     ),
                   ),
 
                   const SizedBox(height: 18),
-                  // Link a login
                   PetfyLink(
                     text: '¿Ya tienes cuenta? Inicia sesión',
                     onTap: () => Navigator.of(context).pop(),
@@ -383,35 +378,33 @@ class _RegisterPageState extends State<RegisterPage> {
   void _showTerms() {
     showDialog(
       context: context,
-      builder: (_) {
-        return AlertDialog(
-          title: const Text('Términos y Condiciones'),
-          content: SizedBox(
-            width: 520,
-            child: SingleChildScrollView(
-              child: Text(
-                'Última actualización: 20/06/2025\n\n'
-                '1. Descripción del Servicio …\n'
-                '2. Aceptación de Términos …\n'
-                '3. Registro y Responsabilidad del Usuario …\n'
-                '4. Publicación de Contenido …\n'
-                '5. Uso Adecuado …\n'
-                '6. Responsabilidad …\n'
-                '7. Modificaciones …\n'
-                '8. Cancelación de Cuenta …\n'
-                '9. Legislación Aplicable …\n'
-                '10. Contacto …\n',
-              ),
+      builder: (_) => AlertDialog(
+        title: const Text('Términos y Condiciones'),
+        content: const SizedBox(
+          width: 520,
+          child: SingleChildScrollView(
+            child: Text(
+              'Última actualización: 20/06/2025\n\n'
+              '1. Descripción del Servicio …\n'
+              '2. Aceptación de Términos …\n'
+              '3. Registro y Responsabilidad del Usuario …\n'
+              '4. Publicación de Contenido …\n'
+              '5. Uso Adecuado …\n'
+              '6. Responsabilidad …\n'
+              '7. Modificaciones …\n'
+              '8. Cancelación de Cuenta …\n'
+              '9. Legislación Aplicable …\n'
+              '10. Contacto …\n',
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Aceptar'),
-            ),
-          ],
-        );
-      },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Aceptar'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -450,7 +443,7 @@ class _ObscureFieldState extends State<_ObscureField> {
       controller: widget.controller,
       hint: widget.hint,
       prefix: const Icon(Icons.lock_outline),
-      obscureText: _obscure,
+      obscure: _obscure,        // <-- así lo espera PetfyTextField
       validator: widget.validator,
       suffix: IconButton(
         onPressed: () => setState(() => _obscure = !_obscure),
