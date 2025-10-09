@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import '../widgets/petfy_widgets.dart';
 
 class LoginPage extends StatefulWidget {
@@ -11,101 +10,90 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final emailCtrl = TextEditingController();
-  final passCtrl  = TextEditingController();
+  final passCtrl = TextEditingController();
   bool showPass = false;
   bool isLoading = false;
 
   @override
-  void dispose() {
-    emailCtrl.dispose();
-    passCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _onLogin() async {
-    if (isLoading) return;
-    setState(() => isLoading = true);
-    await Future<void>.delayed(const Duration(milliseconds: 600));
-    if (!mounted) return;
-    context.go('/home');
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 28, 20, 20),
-          children: [
-            const SizedBox(height: 6),
-            Center(
-              child: Image.asset(
-                'assets/logo/petfyco_logo_full.png',
-                height: 300, // logo más grande
-                fit: BoxFit.contain,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text('¡Bienvenido!',
-                style: Theme.of(context).textTheme.headlineMedium,
-                textAlign: TextAlign.center),
-            const SizedBox(height: 6),
-            const Text('Rescate y adopción de mascotas en Colombia',
-                textAlign: TextAlign.center),
-            const SizedBox(height: 16),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: Column(
+              children: [
+                // Logo
+                Image.asset('assets/logo/petfyco_logo_full.png', height: 120),
+                const SizedBox(height: 16),
+                Text('¡Bienvenido a PetfyCo!',
+                    style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 6),
+                Text('Rescate y adopción de mascotas en Colombia', style: theme.textTheme.bodyMedium),
 
-            PetfyCard(
-              child: Column(
-                children: [
-                  PetfyTextField(
-                    controller: emailCtrl,
-                    hint: 'Correo electrónico',
-                    keyboard: TextInputType.emailAddress,
-                    prefix: const Icon(Icons.mail_outline),
-                  ),
-                  const SizedBox(height: 12),
-                  PetfyTextField(
-                    controller: passCtrl,
-                    hint: 'Contraseña',
-                    obscure: !showPass,
-                    prefix: const Icon(Icons.lock_outline),
-                    suffix: IconButton(
-                      onPressed: () => setState(() => showPass = !showPass),
-                      icon: Icon(showPass
-                          ? Icons.visibility_off
-                          : Icons.visibility),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () {},
-                      child: const Text('¿Olvidaste la contraseña?'),
-                    ),
-                  ),
-                  PetfyButton(
-                    text: 'Ingresar',
-                    loading: isLoading,
-                    onPressed: _onLogin,
-                  ),
-                ],
-              ),
-            ),
+                const SizedBox(height: 18),
 
-            const SizedBox(height: 16),
-            Center(
-              child: TextButton(
-                onPressed: () => context.go('/register'),
-                child: const Text('¿No tienes cuenta? Regístrate'),
-              ),
+                PetfyCard(
+                  // si quieres color de fondo sutil:
+                  color: const Color(0xFFF6F2FF).withOpacity(.45),
+                  child: Column(
+                    children: [
+                      PetfyTextField(
+                        controller: emailCtrl,
+                        hint: 'Correo electrónico',
+                        keyboard: TextInputType.emailAddress,      // <- ahora soportado
+                        prefix: const Icon(Icons.mail_outline),
+                      ),
+                      _kGap,
+                      PetfyTextField(
+                        controller: passCtrl,
+                        hint: 'Contraseña',
+                        obscure: !showPass,
+                        prefix: const Icon(Icons.lock_outline),
+                        suffix: IconButton(                          // <- ahora soportado
+                          icon: Icon(showPass ? Icons.visibility_off : Icons.visibility),
+                          onPressed: () => setState(() => showPass = !showPass),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: PetfyLink(
+                          text: '¿Olvidaste la contraseña?',
+                          onTap: () {
+                            // TODO: navegar a "forgot password"
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      PetfyButton(
+                        text: 'Ingresar',
+                        loading: isLoading, // <- sigue funcionando
+                        onPressed: () async {
+                          // TODO: login
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                PetfyLink(
+                  text: '¿No tienes cuenta? Regístrate',
+                  onTap: () {
+                    // TODO: navegar a register
+                  },
+                ),
+                const SizedBox(height: 8),
+                Text('Al continuar aceptas nuestras políticas.', style: theme.textTheme.bodySmall),
+              ],
             ),
-            const SizedBox(height: 8),
-            const Text('Al continuar aceptas nuestras políticas.',
-                textAlign: TextAlign.center),
-          ],
+          ),
         ),
       ),
     );
   }
 }
+
+const _kGap = SizedBox(height: 12);
