@@ -10,7 +10,7 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
-  final nameCtrl = TextEditingController();
+  final nameCtrl  = TextEditingController();
   final emailCtrl = TextEditingController();
   final passCtrl  = TextEditingController();
 
@@ -42,18 +42,14 @@ class _RegisterPageState extends State<RegisterPage> {
           children: [
             const SizedBox(height: 8),
             Center(
-              child: Image.asset(
-                'assets/logo/petfyco_logo_full.png',
-                height: 120,
-              ),
+              child: Image.asset('assets/logo/petfyco_logo_full.png', height: 140),
             ),
             const SizedBox(height: 12),
-            Text(
-              'Crear cuenta',
-              style: Theme.of(context).textTheme.headlineMedium,
-              textAlign: TextAlign.center,
-            ),
+            Text('Crear cuenta',
+                style: Theme.of(context).textTheme.headlineMedium,
+                textAlign: TextAlign.center),
             const SizedBox(height: 16),
+
             PetfyCard(
               child: Column(
                 children: [
@@ -83,7 +79,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   const SizedBox(height: 16),
                   PetfyButton(
                     text: 'Registrarme',
-                    loading: isLoading, // <-- usa 'loading'
+                    loading: isLoading, // acepta también isLoading si lo prefieres
                     onPressed: _onRegister,
                   ),
                   const SizedBox(height: 12),
