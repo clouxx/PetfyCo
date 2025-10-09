@@ -41,7 +41,7 @@ class _LoginPageState extends State<LoginPage> {
             Center(
               child: Image.asset(
                 'assets/logo/petfyco_logo_full.png',
-                height: 200, // logo más grande
+                height: 300, // logo más grande
                 fit: BoxFit.contain,
               ),
             ),
