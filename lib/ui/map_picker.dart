@@ -1,43 +1,19 @@
-// lib/ui/map_picker.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
-class MapPicker {
-  /// Abre un modal con el mapa y devuelve la lat/lng seleccionada.
-  static Future<LatLng?> show(
-    BuildContext context, {
-    LatLng? initial,
-    String title = 'Selecciona tu ubicación',
-  }) {
-    return showDialog<LatLng?>(
-      context: context,
-      barrierDismissible: true,
-      builder: (_) => _MapPickerDialog(
-        initial: initial,
-        title: title,
-      ),
-    );
-  }
-}
-
-class _MapPickerDialog extends StatefulWidget {
+/// Muestra un mapa (OpenStreetMap) para elegir una coordenada.
+/// Devuelve un LatLng al cerrar con "Usar este punto".
+class MapPicker extends StatefulWidget {
   final LatLng? initial;
-  final String title;
-
-  const _MapPickerDialog({
-    super.key,
-    this.initial,
-    required this.title,
-  });
+  const MapPicker({super.key, this.initial});
 
   @override
-  State<_MapPickerDialog> createState() => _MapPickerDialogState();
+  State<MapPicker> createState() => _MapPickerState();
 }
 
-class _MapPickerDialogState extends State<_MapPickerDialog> {
+class _MapPickerState extends State<MapPicker> {
   late LatLng _center;
-  final MapController _mapController = MapController();
 
   @override
   void initState() {
@@ -45,57 +21,80 @@ class _MapPickerDialogState extends State<_MapPickerDialog> {
     _center = widget.initial ?? const LatLng(6.2518, -75.5636); // Medellín por defecto
   }
 
-  void _onMapTap(TapPosition _, LatLng latlng) {
-    setState(() => _center = latlng);
-  }
-
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(widget.title),
-      content: SizedBox(
-        width: MediaQuery.of(context).size.width * 0.9,
-        height: 420,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: _center,
-              initialZoom: 14,
-              onTap: _onMapTap,
+    final theme = Theme.of(context);
+
+    return Dialog(
+      clipBehavior: Clip.antiAlias,
+      insetPadding: const EdgeInsets.all(16),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 900, maxHeight: 620),
+        child: Column(
+          children: [
+            Container(
+              color: theme.colorScheme.surfaceContainerHighest,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              width: double.infinity,
+              child: Text('Selecciona tu ubicación',
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
             ),
-            // 👇 OJO: NO usar `const` aquí
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.example.petfyco',
-              ),
-              MarkerLayer(
-                markers: [
-                  Marker(
-                    point: _center,
-                    width: 40,
-                    height: 40,
-                    alignment: Alignment.topCenter,
-                    child: const Icon(Icons.location_on, size: 40, color: Colors.red),
+            Expanded(
+              child: Stack(
+                children: [
+                  FlutterMap(
+                    options: MapOptions(
+                      initialCenter: _center,
+                      initialZoom: 13,
+                      onTap: (tapPos, latlng) => setState(() => _center = latlng),
+                    ),
+                    children: [
+                      TileLayer(
+                        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        userAgentPackageName: 'com.petfyco.app',
+                      ),
+                      MarkerLayer(markers: [
+                        Marker(
+                          point: _center,
+                          width: 44,
+                          height: 44,
+                          child: const Icon(Icons.location_pin, size: 44, color: Colors.red),
+                        ),
+                      ]),
+                    ],
+                  ),
+                  // Crosshair opcional
+                  const IgnorePointer(
+                    child: Center(
+                      child: Icon(Icons.add_location_alt_outlined, size: 40, color: Colors.black54),
+                    ),
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop<LatLng>(null),
+                      child: const Text('Cancelar'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () => Navigator.of(context).pop<LatLng>(_center),
+                      child: Text('Usar este punto (${_center.latitude.toStringAsFixed(4)}, ${_center.longitude.toStringAsFixed(4)})'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).maybePop(),
-          child: const Text('Cancelar'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(_center),
-          child: const Text('Usar ubicación'),
-        ),
-      ],
     );
   }
 }
