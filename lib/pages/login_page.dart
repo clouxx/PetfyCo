@@ -41,12 +41,12 @@ class _LoginPageState extends State<LoginPage> {
             Center(
               child: Image.asset(
                 'assets/logo/petfyco_logo_full.png',
-                height: 170, // logo más grande
+                height: 200, // logo más grande
                 fit: BoxFit.contain,
               ),
             ),
             const SizedBox(height: 16),
-            Text('¡Bienvenido a PetfyCo!',
+            Text('¡Bienvenido!',
                 style: Theme.of(context).textTheme.headlineMedium,
                 textAlign: TextAlign.center),
             const SizedBox(height: 6),
