@@ -25,9 +25,14 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _doLogin() async {
     if (_sending) return;
     setState(() => _sending = true);
-    // TODO: integra tu lógica de login (Supabase)
+
+    // TODO: integra aquí tu lógica real de login con Supabase
     await Future.delayed(const Duration(milliseconds: 800));
+
+    if (!mounted) return;
     setState(() => _sending = false);
+    // Si quieres navegar al home después de loguear:
+    // context.go('/home');
   }
 
   @override
@@ -44,15 +49,15 @@ class _LoginPageState extends State<LoginPage> {
               constraints: const BoxConstraints(maxWidth: 520),
               child: Column(
                 children: [
-                  // Logo
+                  // Logo con fallback para que no reviente si el asset falta
                   ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: Image.asset(
                       'assets/logo/petfyco_logo_full.png',
-                      width: 300,
-                      height: 300,
+                      width: 120,
+                      height: 120,
                       fit: BoxFit.contain,
-                      errorBuilder: (c, _, __) => const SizedBox(
+                      errorBuilder: (_, __, ___) => const SizedBox(
                         width: 120,
                         height: 120,
                         child: Icon(Icons.pets, size: 64),
@@ -60,40 +65,44 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Text('Iniciar sesión',
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      )),
+                  Text(
+                    'Iniciar sesión',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  Text('Rescate y adopción de mascotas en Colombia',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(.7),
-                      )),
+                  Text(
+                    'Rescate y adopción de mascotas en Colombia',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withOpacity(.7),
+                    ),
+                  ),
                   const SizedBox(height: 24),
 
-                  // Card form
+                  // Card con el formulario
                   PetfyCard(
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       children: [
+                        // OJO: PetfyTextField NO acepta 'label', usamos 'hint'
                         PetfyTextField(
                           controller: emailCtrl,
-                          label: 'Correo electrónico',
-                          hint: 'Ingresa tu correo',
+                          hint: 'Correo electrónico',
                           keyboardType: TextInputType.emailAddress,
                           prefix: const Icon(Icons.mail_outline),
                         ),
                         const SizedBox(height: 12),
                         PetfyTextField(
                           controller: passCtrl,
-                          label: 'Contraseña',
-                          hint: 'Ingresa tu contraseña',
+                          hint: 'Contraseña',
                           obscureText: _obscure,
                           prefix: const Icon(Icons.lock_outline),
                           suffix: IconButton(
                             icon: Icon(
                                 _obscure ? Icons.visibility : Icons.visibility_off),
-                            onPressed: () => setState(() => _obscure = !_obscure),
+                            onPressed: () =>
+                                setState(() => _obscure = !_obscure),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -101,19 +110,22 @@ class _LoginPageState extends State<LoginPage> {
                           alignment: Alignment.centerRight,
                           child: TextButton(
                             onPressed: () {
-                              // TODO: ruta de recuperación si la tienes
+                              // TODO: navegar a recuperación si la tienes
+                              // context.go('/forgot');
                             },
                             child: const Text('¿Olvidaste la contraseña?'),
                           ),
                         ),
                         const SizedBox(height: 8),
+                        // En onPressed envolvemos el async para que el tipo sea void Function()
                         PetfyButton(
                           text: _sending ? 'Ingresando…' : 'Ingresar',
-                          onPressed: _sending ? null : _doLogin,
+                          onPressed: _sending ? null : () => _doLogin(),
                         ),
                       ],
                     ),
                   ),
+
                   const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
