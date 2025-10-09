@@ -1,36 +1,39 @@
 import 'package:flutter/material.dart';
 
-/// ====== Constantes de estilo rápidas ======
-const _kRadius = 16.0;
-const _kGap = SizedBox(height: 12);
-const _kBorderColor = Color(0xFFE6E9F2);
+/// Colores base PetfyCo (usa los tuyos si ya tienes Theme)
+const _kPrimary = Color(0xFF45BDF1);
+const _kSurface = Color(0xFFF6F9FF);
 
-/// Tarjeta contenedora (permite color opcional)
+/// ---------- CARD ----------
 class PetfyCard extends StatelessWidget {
   final Widget child;
-  final EdgeInsetsGeometry padding;
-  final Color? color;
+  final EdgeInsetsGeometry? padding;
+  final EdgeInsetsGeometry? margin;
+  final Color? color; // <— agregado para tu uso en register
+  final double radius;
+
   const PetfyCard({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(16),
+    this.padding,
+    this.margin,
     this.color,
+    this.radius = 16,
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Container(
-      padding: padding,
+      margin: margin ?? const EdgeInsets.symmetric(vertical: 8),
+      padding: padding ?? const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color ?? theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(_kRadius),
-        border: Border.all(color: _kBorderColor.withOpacity(.7)),
+        color: color ?? _kSurface,
+        borderRadius: BorderRadius.circular(radius),
         boxShadow: [
           BoxShadow(
+            color: Colors.black.withOpacity(.05),
             blurRadius: 12,
-            offset: const Offset(0, 4),
-            color: Colors.black.withOpacity(.04),
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -39,17 +42,99 @@ class PetfyCard extends StatelessWidget {
   }
 }
 
-/// TextField estilizado
+/// ---------- BUTTON ----------
+class PetfyButton extends StatelessWidget {
+  final String text;
+  final VoidCallback onPressed;
+  final bool loading;
+  final Widget? leading; // <— agregado para casos como “Mostrar mapa”
+  final bool expanded;
+
+  const PetfyButton({
+    super.key,
+    required this.text,
+    required this.onPressed,
+    this.loading = false,
+    this.leading,
+    this.expanded = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final child = loading
+        ? const SizedBox(
+            height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+        : Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (leading != null) ...[
+                leading!,
+                const SizedBox(width: 8),
+              ],
+              Text(text, style: const TextStyle(fontWeight: FontWeight.w600)),
+            ],
+          );
+
+    final btn = ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: _kPrimary,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+      ),
+      onPressed: loading ? null : onPressed,
+      child: child,
+    );
+
+    return expanded ? SizedBox(width: double.infinity, child: btn) : btn;
+  }
+}
+
+/// ---------- LINK ----------
+class PetfyLink extends StatelessWidget {
+  final String text;
+  final VoidCallback onTap;
+  final TextAlign align;
+
+  const PetfyLink({
+    super.key,
+    required this.text,
+    required this.onTap,
+    this.align = TextAlign.center,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Text(
+          text,
+          textAlign: align,
+          style: TextStyle(
+            color: _kPrimary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// ---------- TEXT FIELD ----------
 class PetfyTextField extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
   final bool obscure;
-  final TextInputType? keyboard; // <- solicitado
-  final Widget? prefix;          // <- solicitado
-  final Widget? suffix;          // <- solicitado
-  final String? Function(String?)? validator; // <- solicitado
-  final void Function(String)? onChanged;     // <- solicitado
+  final TextInputType? keyboard;          // <— para tu login/register
+  final Widget? prefix;                    // <— icono a la izquierda
+  final Widget? suffix;                    // <— icono/botón a la derecha (ojo)
+  final String? Function(String?)? validator;
+  final void Function(String)? onChanged;
   final TextInputAction? textInputAction;
+  final bool enabled;
 
   const PetfyTextField({
     super.key,
@@ -62,111 +147,54 @@ class PetfyTextField extends StatelessWidget {
     this.validator,
     this.onChanged,
     this.textInputAction,
+    this.enabled = true,
   });
 
   @override
   Widget build(BuildContext context) {
     return TextFormField(
       controller: controller,
+      enabled: enabled,
       obscureText: obscure,
+      onChanged: onChanged,
+      validator: validator,
       keyboardType: keyboard,
       textInputAction: textInputAction,
-      validator: validator,
-      onChanged: onChanged,
       decoration: InputDecoration(
         hintText: hint,
         prefixIcon: prefix,
         suffixIcon: suffix,
         filled: true,
-        fillColor: const Color(0xFFF8FAFF),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.black.withOpacity(.08)),
+        ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_kRadius),
-          borderSide: const BorderSide(color: _kBorderColor),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.black.withOpacity(.08)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_kRadius),
-          borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 1.5),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: _kPrimary, width: 1.6),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_kRadius),
-          borderSide: BorderSide(color: Theme.of(context).colorScheme.error),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Colors.redAccent),
         ),
       ),
     );
   }
 }
 
-/// Botón principal
-class PetfyButton extends StatelessWidget {
-  final String text;
-  final VoidCallback? onPressed;
-  final bool loading; // <- compatible con tus llamadas previas
-  final Widget? leading; // <- para ícono opcional a la izquierda
-
-  const PetfyButton({
-    super.key,
-    required this.text,
-    required this.onPressed,
-    this.loading = false,
-    this.leading,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
-    return SizedBox(
-      height: 48,
-      width: double.infinity,
-      child: FilledButton(
-        onPressed: loading ? null : onPressed,
-        style: FilledButton.styleFrom(
-          backgroundColor: primary,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_kRadius)),
-        ),
-        child: loading
-            ? const SizedBox(
-                height: 22, width: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (leading != null) ...[leading!, const SizedBox(width: 8)],
-                  Text(text),
-                ],
-              ),
-      ),
-    );
-  }
-}
-
-/// Enlace
-class PetfyLink extends StatelessWidget {
-  final String text;
-  final VoidCallback onTap;
-  const PetfyLink({super.key, required this.text, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.primary;
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Text(text, style: TextStyle(color: color, fontWeight: FontWeight.w600)),
-      ),
-    );
-  }
-}
-
-/// Dropdown estilizado genérico (con hint y label opcionales)
+/// ---------- DROPDOWN ----------
 class PetfyDropdown<T> extends StatelessWidget {
   final T? value;
   final List<DropdownMenuItem<T>> items;
-  final ValueChanged<T?> onChanged;
-  final String? hint;   // <- solicitado
-  final String? label;  // <- por si lo usas en otros lados
-  final String? Function(T?)? validator;
+  final void Function(T?)? onChanged;
+  final String? hint;   // <— aceptamos “hint”
+  final String? label;  // <— y también “label” (opcional)
 
   const PetfyDropdown({
     super.key,
@@ -175,29 +203,35 @@ class PetfyDropdown<T> extends StatelessWidget {
     required this.onChanged,
     this.hint,
     this.label,
-    this.validator,
   });
 
   @override
   Widget build(BuildContext context) {
-    return DropdownButtonFormField<T>(
-      value: value,
-      items: items,
-      onChanged: onChanged,
-      validator: validator,
+    return InputDecorator(
       decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
+        hintText: hint ?? label,
         filled: true,
-        fillColor: const Color(0xFFF8FAFF),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.black.withOpacity(.08)),
+        ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_kRadius),
-          borderSide: const BorderSide(color: _kBorderColor),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.black.withOpacity(.08)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_kRadius),
-          borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 1.5),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: _kPrimary, width: 1.6),
+        ),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<T>(
+          value: value,
+          isExpanded: true,
+          items: items,
+          onChanged: onChanged,
         ),
       ),
     );
