@@ -25,10 +25,7 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _onLogin() async {
     if (isLoading) return;
     setState(() => isLoading = true);
-
-    // TODO: autenticar
     await Future<void>.delayed(const Duration(milliseconds: 600));
-
     if (!mounted) return;
     context.go('/home');
   }
@@ -41,11 +38,10 @@ class _LoginPageState extends State<LoginPage> {
           padding: const EdgeInsets.fromLTRB(20, 28, 20, 20),
           children: [
             const SizedBox(height: 6),
-            // LOGO MÁS GRANDE 👇
             Center(
               child: Image.asset(
                 'assets/logo/petfyco_logo_full.png',
-                height: 120, // <-- aquí agrandas
+                height: 140, // <-- logo más grande
                 fit: BoxFit.contain,
               ),
             ),
@@ -69,14 +65,15 @@ class _LoginPageState extends State<LoginPage> {
                     controller: emailCtrl,
                     hint: 'Correo electrónico',
                     keyboard: TextInputType.emailAddress,
-                    prefixIcon: Icons.mail_outline,
+                    // tu widget acepta 'prefix' (no 'prefixIcon')
+                    prefix: const Icon(Icons.mail_outline),
                   ),
                   const SizedBox(height: 12),
                   PetfyTextField(
                     controller: passCtrl,
                     hint: 'Contraseña',
                     obscure: !showPass,
-                    prefixIcon: Icons.lock_outline,
+                    prefix: const Icon(Icons.lock_outline),
                     suffix: IconButton(
                       onPressed: () => setState(() => showPass = !showPass),
                       icon: Icon(showPass ? Icons.visibility_off : Icons.visibility),
@@ -87,15 +84,14 @@ class _LoginPageState extends State<LoginPage> {
                     alignment: Alignment.centerRight,
                     child: TextButton(
                       onPressed: () {
-                        // si tienes ruta de olvidaste, ponla aquí
-                        // context.go('/forgot');
+                        // context.go('/forgot'); // cuando la tengas
                       },
                       child: const Text('¿Olvidaste la contraseña?'),
                     ),
                   ),
                   PetfyButton(
                     text: 'Ingresar',
-                    isLoading: isLoading,
+                    loading: isLoading, // <-- tu botón usa 'loading'
                     onPressed: _onLogin,
                   ),
                 ],
