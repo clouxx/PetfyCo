@@ -62,8 +62,8 @@ class _LoginPageState extends State<LoginPage> {
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: Image.asset(
-                        'assets/images/petfy_logo.png',
-                        height: 72,
+                        'assets/logo/petfyco_logo_full.png',
+                        height: 300,
                         errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                       ),
                     ),
