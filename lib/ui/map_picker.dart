@@ -1,106 +1,126 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../widgets/petfy_widgets.dart';
 
-/// Diálogo simple de selección de coordenadas (placeholder).
-/// Devuelve un Map con {'lat': double, 'lng': double} al cerrar con "Usar".
-class MapPickerDialog extends StatefulWidget {
-  final dynamic initial; // admite LatLng propio o {'lat':..,'lng':..}
-  const MapPickerDialog({super.key, this.initial});
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
 
   @override
-  State<MapPickerDialog> createState() => _MapPickerDialogState();
+  State<LoginPage> createState() => _LoginPageState();
 }
 
-class _MapPickerDialogState extends State<MapPickerDialog> {
-  late final TextEditingController _latCtrl;
-  late final TextEditingController _lngCtrl;
-
-  @override
-  void initState() {
-    super.initState();
-    double? lat;
-    double? lng;
-
-    // Intento flexible de leer valores iniciales
-    final i = widget.initial;
-    try {
-      if (i != null) {
-        if (i is Map && i['lat'] != null && i['lng'] != null) {
-          lat = (i['lat'] as num).toDouble();
-          lng = (i['lng'] as num).toDouble();
-        } else {
-          // Campos comunes: lat/lng o latitude/longitude
-          final latField = (i as dynamic?)?.lat ?? (i as dynamic?)?.latitude;
-          final lngField = (i as dynamic?)?.lng ?? (i as dynamic?)?.longitude;
-          lat = (latField as num?)?.toDouble();
-          lng = (lngField as num?)?.toDouble();
-        }
-      }
-    } catch (_) {}
-
-    _latCtrl = TextEditingController(text: lat?.toStringAsFixed(6) ?? '');
-    _lngCtrl = TextEditingController(text: lng?.toStringAsFixed(6) ?? '');
-  }
+class _LoginPageState extends State<LoginPage> {
+  final _form = GlobalKey<FormState>();
+  final _email = TextEditingController();
+  final _pass = TextEditingController();
+  bool _sending = false;
+  bool _obscure = true;
 
   @override
   void dispose() {
-    _latCtrl.dispose();
-    _lngCtrl.dispose();
+    _email.dispose();
+    _pass.dispose();
     super.dispose();
+  }
+
+  Future<void> _doLogin() async {
+    if (!_form.currentState!.validate()) return;
+    setState(() => _sending = true);
+    try {
+      await Supabase.instance.client.auth.signInWithPassword(
+        email: _email.text.trim(),
+        password: _pass.text,
+      );
+      if (mounted) context.go('/home');
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo iniciar sesión: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Selecciona ubicación'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('Versión temporal: ingresa latitud y longitud.'),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _latCtrl,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true, signed: true),
-            decoration: const InputDecoration(
-              labelText: 'Latitud',
-              border: OutlineInputBorder(),
-              isDense: true,
+    return Scaffold(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: PetfyCard(
+              child: Form(
+                key: _form,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // LOGO (asegúrate de tenerlo en pubspec.yaml bajo assets:)
+                    // assets/images/petfy_logo.png
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Image.asset(
+                        'assets/images/petfy_logo.png',
+                        height: 72,
+                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                      ),
+                    ),
+                    Text('Iniciar sesión',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: 16),
+                    PetfyTextField(
+                      controller: _email,
+                      label: 'Correo electrónico',
+                      keyboardType: TextInputType.emailAddress,
+                      prefix: const Icon(Icons.mail_outline),
+                      validator: (v) {
+                        final t = v?.trim() ?? '';
+                        if (t.isEmpty) return 'Ingresa tu correo';
+                        if (!t.contains('@')) return 'Correo inválido';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    PetfyTextField(
+                      controller: _pass,
+                      label: 'Contraseña',
+                      obscureText: _obscure, // <- ahora es válido
+                      prefix: const Icon(Icons.lock_outline),
+                      suffix: IconButton(
+                        icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
+                        onPressed: () => setState(() => _obscure = !_obscure),
+                        tooltip: _obscure ? 'Mostrar' : 'Ocultar',
+                      ),
+                      validator: (v) => (v == null || v.isEmpty) ? 'Ingresa tu contraseña' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    PetfyButton(
+                      text: 'Entrar',
+                      loading: _sending,
+                      onPressed: _sending ? null : () => _doLogin(), // <- no pasa Future
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text('¿No tienes cuenta?'),
+                        const SizedBox(width: 8),
+                        PetfyLink(
+                          text: 'Registrarse',
+                          onTap: () => context.go('/register'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _lngCtrl,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true, signed: true),
-            decoration: const InputDecoration(
-              labelText: 'Longitud',
-              border: OutlineInputBorder(),
-              isDense: true,
-            ),
-          ),
-        ],
+        ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(null),
-          child: const Text('Cancelar'),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            final lat = double.tryParse(_latCtrl.text.trim());
-            final lng = double.tryParse(_lngCtrl.text.trim());
-            if (lat == null || lng == null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Lat/Lng inválidos')),
-              );
-              return;
-            }
-            // Devuelve un map simple para no chocar tipos
-            Navigator.of(context).pop({'lat': lat, 'lng': lng});
-          },
-          child: const Text('Usar'),
-        ),
-      ],
     );
   }
 }
