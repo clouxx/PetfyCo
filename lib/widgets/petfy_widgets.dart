@@ -1,35 +1,32 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
-/// ---------- CARD ----------
+/// Tarjeta simple con sombra y radio
 class PetfyCard extends StatelessWidget {
   final Widget child;
-  final EdgeInsetsGeometry? padding;
-  final EdgeInsetsGeometry? margin;
+  final EdgeInsetsGeometry padding;
   final Color? color;
-
   const PetfyCard({
     super.key,
     required this.child,
-    this.padding,
-    this.margin,
+    this.padding = const EdgeInsets.all(16),
     this.color,
   });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
-      margin: margin ?? const EdgeInsets.all(12),
-      padding: padding ?? const EdgeInsets.all(16),
+      padding: padding,
       decoration: BoxDecoration(
-        color: color ?? Colors.white.withOpacity(0.95),
+        color: color ?? theme.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            blurRadius: 12,
-            spreadRadius: 0,
-            offset: const Offset(0, 6),
             color: Colors.black.withOpacity(0.06),
-          )
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: child,
@@ -37,165 +34,163 @@ class PetfyCard extends StatelessWidget {
   }
 }
 
-/// ---------- TEXT FIELD ----------
+/// TextFormField con API compatible con tus pantallas (label, prefix, suffix, obscure, keyboardType)
 class PetfyTextField extends StatelessWidget {
   final TextEditingController? controller;
-  final String? hint;
   final String? label;
-  final bool obscureText;
+  final String? hint;
   final TextInputType? keyboardType;
+  final bool obscure;
+  final Widget? prefix; // icono a la izquierda
+  final Widget? suffix; // icono/botón a la derecha
   final String? Function(String?)? validator;
   final void Function(String)? onChanged;
-  final Widget? prefix;
-  final Widget? suffix;
-  final TextInputAction? textInputAction;
-  final int? maxLines;
-  final int? minLines;
+  final int maxLines;
+  final bool enabled;
 
   const PetfyTextField({
     super.key,
     this.controller,
-    this.hint,
     this.label,
-    this.obscureText = false,
+    this.hint,
     this.keyboardType,
-    this.validator,
-    this.onChanged,
+    this.obscure = false,
     this.prefix,
     this.suffix,
-    this.textInputAction,
+    this.validator,
+    this.onChanged,
     this.maxLines = 1,
-    this.minLines,
+    this.enabled = true,
   });
 
   @override
   Widget build(BuildContext context) {
     return TextFormField(
       controller: controller,
-      obscureText: obscureText,
       keyboardType: keyboardType,
+      obscureText: obscure,
       validator: validator,
       onChanged: onChanged,
-      textInputAction: textInputAction,
-      maxLines: obscureText ? 1 : maxLines,
-      minLines: obscureText ? 1 : minLines,
+      maxLines: obscure ? 1 : maxLines,
+      enabled: enabled,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
         prefixIcon: prefix,
         suffixIcon: suffix,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       ),
     );
   }
 }
 
-/// ---------- BUTTON ----------
+/// Botón que acepta callbacks async y muestra loading
 class PetfyButton extends StatelessWidget {
   final String text;
-  final VoidCallback? onPressed;
+  final FutureOr<void> Function()? onPressed; // acepta async
   final bool loading;
-  final Widget? leading;
+  final Widget? leading; // icono opcional a la izquierda
 
   const PetfyButton({
     super.key,
     required this.text,
-    required this.onPressed,
+    this.onPressed,
     this.loading = false,
     this.leading,
   });
 
   @override
   Widget build(BuildContext context) {
-    final child = Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (leading != null) ...[
-          leading!,
-          const SizedBox(width: 8),
-        ],
-        Text(text),
-      ],
-    );
-
     return SizedBox(
-      height: 48,
+      height: 44,
       width: double.infinity,
-      child: FilledButton(
-        onPressed: loading ? null : onPressed,
-        child: loading
-            ? const SizedBox(
-                width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : child,
+      child: ElevatedButton(
+        onPressed: (loading || onPressed == null)
+            ? null
+            : () async {
+                await onPressed!();
+              },
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (loading) ...const [
+              SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              SizedBox(width: 8),
+            ],
+            if (!loading && leading != null) ...[
+              leading!,
+              const SizedBox(width: 8),
+            ],
+            Text(text),
+          ],
+        ),
       ),
     );
   }
 }
 
-/// ---------- DROPDOWN ----------
-class PetfyDropdown<T> extends StatelessWidget {
-  final T? value;
-  /// Acepta `List<String>` o `List<DropdownMenuItem<T>>`.
-  final List<dynamic> items;
-  final ValueChanged<T?>? onChanged;
-  final String? label;
-  final String? hint;
-
-  const PetfyDropdown({
-    super.key,
-    required this.value,
-    required this.items,
-    required this.onChanged,
-    this.label,
-    this.hint,
-  });
-
-  List<DropdownMenuItem<T>> _buildItems() {
-    if (items.isEmpty) return <DropdownMenuItem<T>>[]; // <-- sin const
-    if (items.first is DropdownMenuItem<T>) {
-      return items.cast<DropdownMenuItem<T>>();
-    }
-    // Asumimos List<String>
-    return (items as List).map<DropdownMenuItem<T>>((e) {
-      final text = e.toString();
-      return DropdownMenuItem<T>(
-        value: text as T,
-        child: Text(text),
-      );
-    }).toList();
-  }
+/// Link de texto simple
+class PetfyLink extends StatelessWidget {
+  final String text;
+  final VoidCallback? onTap;
+  const PetfyLink({super.key, required this.text, this.onTap});
 
   @override
   Widget build(BuildContext context) {
+    return TextButton(onPressed: onTap, child: Text(text));
+  }
+}
+
+/// Dropdown genérico que recibe una lista de valores `items` (List<T>)
+/// y los convierte internamente en `DropdownMenuItem<T>`.
+class PetfyDropdown<T> extends StatelessWidget {
+  final List<T> items;
+  final T? value;
+  final void Function(T?)? onChanged;
+  final String Function(T)? itemBuilder; // cómo mostrar cada item
+  final String? hint;
+  final String? label;
+
+  const PetfyDropdown({
+    super.key,
+    required this.items,
+    required this.value,
+    required this.onChanged,
+    this.itemBuilder,
+    this.hint,
+    this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final menuItems = items
+        .map(
+          (e) => DropdownMenuItem<T>(
+            value: e,
+            child: Text(itemBuilder != null ? itemBuilder!(e) : '$e'),
+          ),
+        )
+        .toList();
+
     return DropdownButtonFormField<T>(
       value: value,
-      items: _buildItems(),
+      items: menuItems.isEmpty ? <DropdownMenuItem<T>>[] : menuItems, // ❗ sin const con genérico T
       onChanged: onChanged,
+      isExpanded: true,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       ),
-    );
-  }
-}
-
-/// ---------- LINK ----------
-class PetfyLink extends StatelessWidget {
-  final String text;
-  final VoidCallback onTap;
-
-  const PetfyLink({super.key, required this.text, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Text(text, style: const TextStyle(decoration: TextDecoration.underline)),
     );
   }
 }
