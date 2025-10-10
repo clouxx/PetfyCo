@@ -148,7 +148,7 @@ class _RegisterPageState extends State<RegisterPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Image.asset('assets/logo.png', width: 120, height: 120, fit: BoxFit.contain),
+                  Image.asset('assets/logo/petfyco_logo_full.png', width: 200, height: 200, fit: BoxFit.contain),
                   const SizedBox(height: 8),
                   const Text('Registrarse', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 16),
