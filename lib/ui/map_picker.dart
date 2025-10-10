@@ -1,123 +1,69 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../widgets/petfy_widgets.dart';
+import 'package:latlong2/latlong.dart';
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+class MapPickerDialog extends StatefulWidget {
+  final LatLng? initial;
+  const MapPickerDialog({super.key, this.initial});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<MapPickerDialog> createState() => _MapPickerDialogState();
 }
 
-class _LoginPageState extends State<LoginPage> {
-  final _form = GlobalKey<FormState>();
-  final _email = TextEditingController();
-  final _pass = TextEditingController();
-  bool _sending = false;
-  bool _obscure = true;
+class _MapPickerDialogState extends State<MapPickerDialog> {
+  late LatLng _point;
 
   @override
-  void dispose() {
-    _email.dispose();
-    _pass.dispose();
-    super.dispose();
-  }
-
-  Future<void> _doLogin() async {
-    if (!_form.currentState!.validate()) return;
-    setState(() => _sending = true);
-    try {
-      await Supabase.instance.client.auth.signInWithPassword(
-        email: _email.text.trim(),
-        password: _pass.text,
-      );
-      if (mounted) context.go('/home');
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No se pudo iniciar sesión: $e')),
-      );
-    } finally {
-      if (mounted) setState(() => _sending = false);
-    }
+  void initState() {
+    super.initState();
+    _point = widget.initial ?? const LatLng(4.7110, -74.0721); // Bogotá por defecto
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: PetfyCard(
-              child: Form(
-                key: _form,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // LOGO (asegúrate de tenerlo en pubspec.yaml bajo assets:)
-                    // assets/images/petfy_logo.png
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Image.asset(
-                        'assets/images/petfy_logo.png',
-                        height: 72,
-                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                      ),
-                    ),
-                    Text('Iniciar sesión',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.titleLarge),
-                    const SizedBox(height: 16),
-                    PetfyTextField(
-                      controller: _email,
-                      label: 'Correo electrónico',
-                      keyboardType: TextInputType.emailAddress,
-                      prefix: const Icon(Icons.mail_outline),
-                      validator: (v) {
-                        final t = v?.trim() ?? '';
-                        if (t.isEmpty) return 'Ingresa tu correo';
-                        if (!t.contains('@')) return 'Correo inválido';
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    PetfyTextField(
-                      controller: _pass,
-                      label: 'Contraseña',
-                      obscureText: _obscure, // <- ahora es válido
-                      prefix: const Icon(Icons.lock_outline),
-                      suffix: IconButton(
-                        icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
-                        onPressed: () => setState(() => _obscure = !_obscure),
-                        tooltip: _obscure ? 'Mostrar' : 'Ocultar',
-                      ),
-                      validator: (v) => (v == null || v.isEmpty) ? 'Ingresa tu contraseña' : null,
-                    ),
-                    const SizedBox(height: 16),
-                    PetfyButton(
-                      text: 'Entrar',
-                      loading: _sending,
-                      onPressed: _sending ? null : () => _doLogin(), // <- no pasa Future
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text('¿No tienes cuenta?'),
-                        const SizedBox(width: 8),
-                        PetfyLink(
-                          text: 'Registrarse',
-                          onTap: () => context.go('/register'),
-                        ),
-                      ],
-                    ),
-                  ],
+    // Placeholder sin dependencias pesadas (flutter_map/google_maps).
+    // Si ya añadiste el mapa real, reemplaza este Container por tu widget de mapa
+    // y actualiza _point cuando el usuario toque/arrastre.
+    return Dialog(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 700, maxHeight: 520),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            children: [
+              const Text('Selecciona una ubicación', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 12),
+              Expanded(
+                child: Container(
+                  color: Colors.grey.shade200,
+                  alignment: Alignment.center,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.map_outlined, size: 64),
+                      const SizedBox(height: 8),
+                      Text('Mapa de ejemplo (reemplaza por tu widget de mapa)'),
+                      const SizedBox(height: 8),
+                      Text('Lat: ${_point.latitude.toStringAsFixed(6)}  Lng: ${_point.longitude.toStringAsFixed(6)}'),
+                    ],
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancelar'),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(context, _point),
+                    child: const Text('Usar este punto'),
+                  ),
+                ],
+              )
+            ],
           ),
         ),
       ),
