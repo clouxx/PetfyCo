@@ -28,7 +28,7 @@ class PetfyCard extends StatelessWidget {
             blurRadius: 12,
             spreadRadius: 0,
             offset: const Offset(0, 6),
-            color: Colors.black.withValues(alpha: 0.06),
+            color: Colors.black.withOpacity(0.06),
           )
         ],
       ),
@@ -38,8 +38,6 @@ class PetfyCard extends StatelessWidget {
 }
 
 /// ---------- TEXT FIELD ----------
-/// Acepta los nombres que te daban error: label, keyboardType, obscureText,
-/// validator, onChanged, prefix, suffix.
 class PetfyTextField extends StatelessWidget {
   final TextEditingController? controller;
   final String? hint;
@@ -138,11 +136,10 @@ class PetfyButton extends StatelessWidget {
 }
 
 /// ---------- DROPDOWN ----------
-/// Ahora acepta directamente List<String> (construye los items) o
-/// List<DropdownMenuItem<T>>. También soporta 'label' y 'hint'.
 class PetfyDropdown<T> extends StatelessWidget {
   final T? value;
-  final List<dynamic> items; // puede ser List<String> o List<DropdownMenuItem<T>>
+  /// Acepta `List<String>` o `List<DropdownMenuItem<T>>`.
+  final List<dynamic> items;
   final ValueChanged<T?>? onChanged;
   final String? label;
   final String? hint;
@@ -157,7 +154,7 @@ class PetfyDropdown<T> extends StatelessWidget {
   });
 
   List<DropdownMenuItem<T>> _buildItems() {
-    if (items.isEmpty) return const <DropdownMenuItem<T>>[];
+    if (items.isEmpty) return <DropdownMenuItem<T>>[]; // <-- sin const
     if (items.first is DropdownMenuItem<T>) {
       return items.cast<DropdownMenuItem<T>>();
     }
