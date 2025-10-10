@@ -50,7 +50,7 @@ class _LoginPageState extends State<LoginPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 // Logo (asegúrate que exista en pubspec.yaml)
-                Image.asset('assets/logo.png', width: 120, height: 120, fit: BoxFit.contain),
+                Image.asset('assets/logo/petfyco_logo_full.png', width: 300, height: 300, fit: BoxFit.contain),
                 const SizedBox(height: 12),
                 const Text('Iniciar sesión', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 16),
