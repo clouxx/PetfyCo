@@ -34,7 +34,6 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _sending = false;
   bool _terms = false;
 
-  // datos desde BD (ajusta con tus queries reales)
   List<String> _deptNames = [];
   List<String> _cityNames = [];
 
@@ -45,27 +44,23 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Future<void> _loadDeps() async {
-    // Carga departamentos desde Supabase
-    // Asumo tablas public.departments(name) y public.cities(name, dept_name)
     final sb = Supabase.instance.client;
-
-    final deps = await sb.from('departments').select<List<Map<String, dynamic>>>('name');
-    _deptNames = deps.map((e) => (e['name'] as String)).toList();
-    _deptNames.sort((a, b) => a.compareTo(b)); // ascendente
-
-    setState(() {});
+    // *** quitar genéricos de select ***
+    final deps = await sb.from('departments').select('name');
+    _deptNames = (deps as List).map((e) => (e['name'] as String)).toList();
+    _deptNames.sort((a, b) => a.compareTo(b));
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadCities(String deptName) async {
     final sb = Supabase.instance.client;
     final rows = await sb
         .from('cities')
-        .select<List<Map<String, dynamic>>>('name')
+        .select('name')
         .eq('dept_name', deptName);
-
-    _cityNames = rows.map((e) => (e['name'] as String)).toList();
-    _cityNames.sort((a, b) => a.compareTo(b)); // ascendente
-    setState(() {});
+    _cityNames = (rows as List).map((e) => (e['name'] as String)).toList();
+    _cityNames.sort((a, b) => a.compareTo(b));
+    if (mounted) setState(() {});
   }
 
   Future<void> _pickOnMap() async {
@@ -90,7 +85,6 @@ class _RegisterPageState extends State<RegisterPage> {
     }
     setState(() => _sending = true);
     try {
-      // 1) registro
       final auth = Supabase.instance.client.auth;
       final res = await auth.signUp(
         email: emailCtrl.text.trim(),
@@ -100,7 +94,6 @@ class _RegisterPageState extends State<RegisterPage> {
       final userId = res.user?.id;
       if (userId == null) throw 'No se pudo registrar';
 
-      // 2) upsert del perfil
       await Supabase.instance.client.rpc('upsert_profile', params: {
         'p_id': userId,
         'p_name': nameCtrl.text.trim(),
@@ -117,7 +110,7 @@ class _RegisterPageState extends State<RegisterPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Registro exitoso')),
       );
-      context.go('/'); // volver a login
+      context.go('/');
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
@@ -148,12 +141,11 @@ class _RegisterPageState extends State<RegisterPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Image.asset('assets/logo/petfyco_logo_full.png', width: 200, height: 200, fit: BoxFit.contain),
+                  Image.asset('assets/logo.png', width: 120, height: 120, fit: BoxFit.contain),
                   const SizedBox(height: 8),
                   const Text('Registrarse', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 16),
 
-                  // Nombre
                   PetfyTextField(
                     controller: nameCtrl,
                     label: 'Nombre',
@@ -162,7 +154,6 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Email
                   PetfyTextField(
                     controller: emailCtrl,
                     label: 'Correo electrónico',
@@ -177,7 +168,6 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Contraseña
                   PetfyTextField(
                     controller: passCtrl,
                     label: 'Contraseña',
@@ -191,7 +181,6 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Confirmar contraseña
                   PetfyTextField(
                     controller: pass2Ctrl,
                     label: 'Confirmar contraseña',
@@ -205,9 +194,8 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Teléfono
                   Row(
-                    children: [
+                    children: {
                       Expanded(
                         flex: 5,
                         child: PetfyDropdown<String>(
@@ -228,11 +216,10 @@ class _RegisterPageState extends State<RegisterPage> {
                           validator: (v) => (v == null || v.trim().isEmpty) ? 'Ingresa tu teléfono' : null,
                         ),
                       ),
-                    ],
+                    }.toList(),
                   ),
                   const SizedBox(height: 12),
 
-                  // Departamento
                   PetfyDropdown<String>(
                     value: _dept,
                     items: _deptNames,
@@ -241,6 +228,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       setState(() {
                         _dept = v;
                         _city = null;
+                        _cityNames = [];
                       });
                       if (v != null) {
                         _loadCities(v);
@@ -249,7 +237,6 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Ciudad
                   PetfyDropdown<String>(
                     value: _city,
                     items: _cityNames,
@@ -258,7 +245,6 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Ubicación
                   Row(
                     children: [
                       Expanded(
@@ -276,7 +262,6 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Términos
                   Row(
                     children: [
                       Checkbox(
@@ -284,39 +269,13 @@ class _RegisterPageState extends State<RegisterPage> {
                         onChanged: (v) => setState(() => _terms = v ?? false),
                       ),
                       const SizedBox(width: 6),
-                      Expanded(
-                        child: Wrap(
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            const Text('Acepto los '),
-                            GestureDetector(
-                              onTap: () {
-                                showDialog(
-                                  context: context,
-                                  builder: (_) => AlertDialog(
-                                    title: const Text('Términos y condiciones'),
-                                    content: const SingleChildScrollView(
-                                      child: Text('Aquí van tus términos...'),
-                                    ),
-                                    actions: [
-                                      TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar')),
-                                    ],
-                                  ),
-                                );
-                              },
-                              child: const Text(
-                                'términos y condiciones',
-                                style: TextStyle(decoration: TextDecoration.underline),
-                              ),
-                            ),
-                          ],
-                        ),
+                      const Expanded(
+                        child: Text('Acepto los términos y condiciones'),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
 
-                  // Botón registrar
                   PetfyButton(
                     text: 'Registrarse',
                     loading: _sending,
