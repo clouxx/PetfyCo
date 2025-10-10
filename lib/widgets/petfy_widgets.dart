@@ -40,7 +40,7 @@ class PetfyTextField extends StatelessWidget {
   final String? label;
   final String? hint;
   final TextInputType? keyboardType;
-  final bool obscure;
+  final bool obscureText;
   final Widget? prefix; // icono a la izquierda
   final Widget? suffix; // icono/botón a la derecha
   final String? Function(String?)? validator;
@@ -68,7 +68,7 @@ class PetfyTextField extends StatelessWidget {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
-      obscureText: obscure,
+      obscureText: obscureText, // 👈 úsalo aquí
       validator: validator,
       onChanged: onChanged,
       maxLines: obscure ? 1 : maxLines,
