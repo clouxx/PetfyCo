@@ -104,7 +104,7 @@ class _LoginPageState extends State<LoginPage> {
                         PetfyButton(
                           text: 'Iniciar sesión',
                           loading: _sending,
-                          onPressed: _sending ? null : () async => _doLogin(),
+                          onPressed: _sending ? null : () { _doLogin(); },
                         ),
                       ],
                     ),
