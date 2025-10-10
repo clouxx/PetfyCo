@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:petfyco/widgets/petfy_widgets.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../widgets/petfy_widgets.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -10,22 +12,36 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final emailCtrl = TextEditingController();
-  final passCtrl = TextEditingController();
+  final _form = GlobalKey<FormState>();
+  final _email = TextEditingController();
+  final _pass = TextEditingController();
   bool _sending = false;
   bool _obscure = true;
 
+  @override
+  void dispose() {
+    _email.dispose();
+    _pass.dispose();
+    super.dispose();
+  }
+
   Future<void> _doLogin() async {
+    if (!_form.currentState!.validate()) return;
+
     setState(() => _sending = true);
     try {
-      // TODO: tu lógica de login con Supabase
-      await Future.delayed(const Duration(milliseconds: 600));
+      final sb = Supabase.instance.client;
+      await sb.auth.signInWithPassword(
+        email: _email.text.trim(),
+        password: _pass.text,
+      );
       if (!mounted) return;
-      context.go('/home'); // o tu ruta real
-    } catch (e) {
+      // Ajusta esta ruta a la que tengas definida como "home"
+      context.go('/home');
+    } on AuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+        SnackBar(content: Text(e.message)),
       );
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -33,68 +49,81 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   @override
-  void dispose() {
-    emailCtrl.dispose();
-    passCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420),
-          child: PetfyCard(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Logo (asegúrate que exista en pubspec.yaml)
-                Image.asset('assets/logo/petfyco_logo_full.png', width: 300, height: 300, fit: BoxFit.contain),
-                const SizedBox(height: 12),
-                const Text('Iniciar sesión', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 16),
-
-                PetfyTextField(
-                  controller: emailCtrl,
-                  label: 'Correo electrónico',
-                  keyboardType: TextInputType.emailAddress,
-                  prefix: const Icon(Icons.mail_outlined),
-                ),
-                const SizedBox(height: 12),
-
-                PetfyTextField(
-                  controller: passCtrl,
-                  label: 'Contraseña',
-                  obscureText: _obscure,
-                  prefix: const Icon(Icons.lock_outline),
-                  suffix: IconButton(
-                    icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
-                    onPressed: () => setState(() => _obscure = !_obscure),
+                // Logo (asegúrate de que la ruta exista en pubspec.yaml)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Image.asset(
+                    'assets/logo/petfyco_logo_full.png',
+                    height: 300,
+                    fit: BoxFit.contain,
                   ),
                 ),
-                const SizedBox(height: 16),
-
-                PetfyButton(
-                  text: 'Entrar',
-                  loading: _sending,
-                  onPressed: _sending ? null : () => _doLogin(),
+                PetfyCard(
+                  child: Form(
+                    key: _form,
+                    child: Column(
+                      children: [
+                        PetfyTextField(
+                          controller: _email,
+                          label: 'Correo electrónico',
+                          keyboardType: TextInputType.emailAddress,
+                          prefix: const Icon(Icons.mail_outline),
+                          validator: (v) {
+                            final t = (v ?? '').trim();
+                            if (t.isEmpty) return 'Ingresa tu correo';
+                            if (!t.contains('@')) return 'Correo inválido';
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        PetfyTextField(
+                          controller: _pass,
+                          label: 'Contraseña',
+                          obscure: _obscure,
+                          prefix: const Icon(Icons.lock_outline),
+                          suffix: IconButton(
+                            icon: Icon(
+                              _obscure ? Icons.visibility : Icons.visibility_off,
+                            ),
+                            onPressed: () => setState(() => _obscure = !_obscure),
+                          ),
+                          validator: (v) =>
+                              (v == null || v.isEmpty) ? 'Ingresa tu contraseña' : null,
+                        ),
+                        const SizedBox(height: 16),
+                        PetfyButton(
+                          text: 'Iniciar sesión',
+                          loading: _sending,
+                          onPressed: _sending ? null : () async => _doLogin(),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 8),
-
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    PetfyLink(
-                      text: '¿Olvidaste la contraseña?',
-                      onTap: () => context.push('/forgot'),
-                    ),
-                    const SizedBox(width: 12),
-                    PetfyLink(
-                      text: 'Registrarse',
-                      onTap: () => context.push('/register'),
+                    const Text('¿No tienes cuenta?'),
+                    TextButton(
+                      onPressed: () => context.go('/register'),
+                      child: const Text('Registrarse'),
                     ),
                   ],
+                ),
+                TextButton(
+                  onPressed: () => context.go('/forgot'), // ajusta si tienes otra ruta
+                  child: const Text('¿Olvidaste tu contraseña?'),
                 ),
               ],
             ),
