@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import '../widgets/petfy_widgets.dart';
 import '../ui/map_picker.dart';
@@ -14,23 +16,23 @@ class RegisterPage extends StatefulWidget {
 class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
 
-  // Textos
+  // Controllers
   final _name = TextEditingController();
   final _email = TextEditingController();
   final _pass1 = TextEditingController();
   final _pass2 = TextEditingController();
   final _phone = TextEditingController();
 
-  // ubicación / listas
+  // Ubicación
   final List<String> _deptNames = [];
   final List<String> _cityNames = [];
   String? _deptSel;
   String? _citySel;
 
-  // prefijo (solo Colombia)
-  final String _countryCode = '+57 (Colombia)';
+  // Prefijo fijo para Colombia
+  final String _countryCode = '+57';
 
-  // mapa
+  // Mapa
   LatLng? _pickedPoint;
   double? _lat;
   double? _lng;
@@ -63,13 +65,13 @@ class _RegisterPageState extends State<RegisterPage> {
           .from('departments')
           .select('name')
           .order('name', ascending: true);
-      // data es List<dynamic> con maps
-      _deptNames
-        ..clear()
-        ..addAll(data.map((e) => (e['name'] as String)).toList());
-      setState(() {});
+      
+      setState(() {
+        _deptNames.clear();
+        _deptNames.addAll(data.map((e) => e['name'] as String));
+      });
     } catch (e) {
-      // no rompas la pantalla si falla
+      debugPrint('Error cargando departamentos: $e');
     }
   }
 
@@ -81,12 +83,13 @@ class _RegisterPageState extends State<RegisterPage> {
           .select('name')
           .eq('department_name', dept)
           .order('name', ascending: true);
-      _cityNames
-        ..clear()
-        ..addAll(data.map((e) => (e['name'] as String)).toList());
-      setState(() {});
+      
+      setState(() {
+        _cityNames.clear();
+        _cityNames.addAll(data.map((e) => e['name'] as String));
+      });
     } catch (e) {
-      // ignora para no romper UI
+      debugPrint('Error cargando ciudades: $e');
     }
   }
 
@@ -110,14 +113,89 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
+  Future<void> _getCurrentLocation() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Por favor activa los servicios de ubicación'),
+          ),
+        );
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Permiso de ubicación denegado'),
+            ),
+          );
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Permiso de ubicación denegado permanentemente'),
+          ),
+        );
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition();
+      setState(() {
+        _lat = position.latitude;
+        _lng = position.longitude;
+        _pickedPoint = LatLng(_lat!, _lng!);
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ubicación obtenida exitosamente'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al obtener ubicación: $e')),
+      );
+    }
+  }
+
   Future<void> _submit() async {
     if (_sending) return;
+
+    // Validar términos
     if (!_accepted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Debes aceptar Términos y Condiciones')),
+        const SnackBar(
+          content: Text('Debes aceptar los Términos y Condiciones'),
+        ),
       );
       return;
     }
+
+    // Validar departamento y ciudad
+    if (_deptSel == null || _citySel == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Selecciona departamento y ciudad'),
+        ),
+      );
+      return;
+    }
+
+    // Validar formulario
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     setState(() => _sending = true);
@@ -128,43 +206,67 @@ class _RegisterPageState extends State<RegisterPage> {
       final name = _name.text.trim();
       final phone = _phone.text.trim();
 
-      final auth = await sb.auth.signUp(email: email, password: pass);
+      // Registrar usuario
+      final auth = await sb.auth.signUp(
+        email: email,
+        password: pass,
+      );
+      
       final uid = auth.user?.id;
       if (uid != null) {
-        await sb.rpc('upsert_profile', params: {
-          'p_id': uid,
-          'p_name': name,
-          'p_email': email,
-          'p_country_code': '+57',
-          'p_phone': phone,
-          'p_province': _deptSel,
-          'p_city': _citySel,
-          'p_lat': _lat,
-          'p_lng': _lng,
+        // Crear perfil
+        await sb.from('profiles').upsert({
+          'id': uid,
+          'name': name,
+          'email': email,
+          'country_code': _countryCode,
+          'phone': phone,
+          'province': _deptSel,
+          'city': _citySel,
+          'lat': _lat,
+          'lng': _lng,
         });
       }
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Registro exitoso. Revisa tu correo.')),
+        const SnackBar(
+          content: Text('Registro exitoso. Revisa tu correo.'),
+          backgroundColor: Colors.green,
+        ),
       );
-      Navigator.pushReplacementNamed(context, '/login');
+      
+      context.go('/login'); // ✅ CORREGIDO
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.message}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al registrarse: $e')),
+        SnackBar(
+          content: Text('Error al registrarse: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       if (mounted) setState(() => _sending = false);
     }
   }
 
-  String? _req(String? v, String msg) =>
-      (v == null || v.trim().isEmpty) ? msg : null;
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.pop(),
+        ),
+      ),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -176,7 +278,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // encabezado
+                    // Logo
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Image.asset(
@@ -192,7 +294,10 @@ class _RegisterPageState extends State<RegisterPage> {
                       controller: _name,
                       hint: 'Nombre completo',
                       prefix: const Icon(Icons.person_outline),
-                      validator: (v) => _req(v, 'Ingresa tu nombre'),
+                      validator: (v) =>
+                          (v == null || v.trim().isEmpty) 
+                              ? 'Ingresa tu nombre' 
+                              : null,
                     ),
                     const SizedBox(height: 10),
 
@@ -202,8 +307,15 @@ class _RegisterPageState extends State<RegisterPage> {
                       hint: 'Correo electrónico',
                       keyboardType: TextInputType.emailAddress,
                       prefix: const Icon(Icons.mail_outline),
-                      validator: (v) =>
-                          (v == null || !v.contains('@')) ? 'Email inválido' : null,
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) {
+                          return 'Ingresa tu correo';
+                        }
+                        if (!v.contains('@')) {
+                          return 'Email inválido';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 10),
 
@@ -211,14 +323,18 @@ class _RegisterPageState extends State<RegisterPage> {
                     PetfyTextField(
                       controller: _pass1,
                       hint: 'Contraseña',
-                      obscure: _ob1,
+                      obscureText: _ob1,
                       prefix: const Icon(Icons.lock_outline),
                       suffix: IconButton(
-                        icon: Icon(_ob1 ? Icons.visibility_off : Icons.visibility),
+                        icon: Icon(
+                          _ob1 ? Icons.visibility_off : Icons.visibility,
+                        ),
                         onPressed: () => setState(() => _ob1 = !_ob1),
                       ),
                       validator: (v) =>
-                          (v == null || v.length < 6) ? 'Mínimo 6 caracteres' : null,
+                          (v == null || v.length < 6)
+                              ? 'Mínimo 6 caracteres'
+                              : null,
                     ),
                     const SizedBox(height: 10),
 
@@ -226,10 +342,12 @@ class _RegisterPageState extends State<RegisterPage> {
                     PetfyTextField(
                       controller: _pass2,
                       hint: 'Confirmar contraseña',
-                      obscure: _ob2,
+                      obscureText: _ob2,
                       prefix: const Icon(Icons.lock_reset),
                       suffix: IconButton(
-                        icon: Icon(_ob2 ? Icons.visibility_off : Icons.visibility),
+                        icon: Icon(
+                          _ob2 ? Icons.visibility_off : Icons.visibility,
+                        ),
                         onPressed: () => setState(() => _ob2 = !_ob2),
                       ),
                       validator: (v) =>
@@ -237,32 +355,27 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Teléfono (prefijo fijo +57)
-                    Row(
-                      children: [
-                        Expanded(
-                          flex: 4,
-                          child: PetfyTextField(
-                            controller: TextEditingController(text: _countryCode),
-                            hint: 'Prefijo',
-                            prefix: const Icon(Icons.flag_outlined),
-                            // Solo lectura del prefijo fijo
-                            onChanged: (_) {},
-                          ),
+                    // Teléfono
+                    PetfyTextField(
+                      controller: _phone,
+                      hint: 'Número de teléfono (ej: 3001234567)',
+                      keyboardType: TextInputType.phone,
+                      prefix: Text(
+                        '  $_countryCode ',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          flex: 6,
-                          child: PetfyTextField(
-                            controller: _phone,
-                            hint: 'Número de teléfono',
-                            keyboardType: TextInputType.phone,
-                            prefix: const Icon(Icons.phone_outlined),
-                            validator: (v) =>
-                                _req(v, 'Ingresa tu teléfono'),
-                          ),
-                        ),
-                      ],
+                      ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) {
+                          return 'Ingresa tu teléfono';
+                        }
+                        if (v.length < 10) {
+                          return 'Número inválido';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 16),
 
@@ -297,34 +410,22 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Mapa + usar ubicación
+                    // Ubicación
                     Row(
                       children: [
                         Expanded(
                           child: PetfyButton(
                             text: _pickedPoint == null
-                                ? '📍 Elegir en el mapa'
+                                ? '📍 Elegir en mapa'
                                 : '📍 Cambiar ubicación',
-                            onPressed: () => _pickOnMap(),
+                            onPressed: _pickOnMap,
                           ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: PetfyButton(
-                            text: '📡 Usar mi ubicación actual',
-                            onPressed: () async {
-                              // Llama a geolocator si lo agregaste en móvil; en web puede no pedir permiso
-                              try {
-                                // import dinámico simple para no romper si no está en web móvil
-                                // (si ya añadiste geolocator en pubspec, puedes importar normal y usarlo)
-                                // Aquí dejamos el botón como “hook” para tu implementación real.
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Implementa Geolocator en móvil (OK).'),
-                                  ),
-                                );
-                              } catch (_) {}
-                            },
+                            text: '📡 Mi ubicación',
+                            onPressed: _getCurrentLocation,
                           ),
                         ),
                       ],
@@ -332,8 +433,10 @@ class _RegisterPageState extends State<RegisterPage> {
                     if (_lat != null && _lng != null) ...[
                       const SizedBox(height: 8),
                       Text(
-                        'Lat: ${_lat!.toStringAsFixed(6)}  Lng: ${_lng!.toStringAsFixed(6)}',
+                        'Lat: ${_lat!.toStringAsFixed(6)}  '
+                        'Lng: ${_lng!.toStringAsFixed(6)}',
                         textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 12),
                       ),
                     ],
                     const SizedBox(height: 16),
@@ -343,7 +446,8 @@ class _RegisterPageState extends State<RegisterPage> {
                       children: [
                         Checkbox(
                           value: _accepted,
-                          onChanged: (v) => setState(() => _accepted = v ?? false),
+                          onChanged: (v) =>
+                              setState(() => _accepted = v ?? false),
                         ),
                         Expanded(
                           child: Wrap(
@@ -355,7 +459,9 @@ class _RegisterPageState extends State<RegisterPage> {
                                   showDialog(
                                     context: context,
                                     builder: (_) => AlertDialog(
-                                      title: const Text('Términos y Condiciones'),
+                                      title: const Text(
+                                        'Términos y Condiciones',
+                                      ),
                                       content: const SingleChildScrollView(
                                         child: Text(
                                           'Aquí van tus términos y condiciones...',
@@ -389,13 +495,14 @@ class _RegisterPageState extends State<RegisterPage> {
                     PetfyButton(
                       text: 'Registrarse',
                       loading: _sending,
-                      onPressed: _sending ? null : () => _submit(),
+                      onPressed: _sending ? null : _submit,
                     ),
                     const SizedBox(height: 12),
+                    
                     Center(
                       child: PetfyLink(
                         text: '¿Ya tienes cuenta? Inicia sesión',
-                        onTap: () => Navigator.pushReplacementNamed(context, '/login'),
+                        onTap: () => context.go('/login'), // ✅ CORREGIDO
                       ),
                     ),
                   ],
