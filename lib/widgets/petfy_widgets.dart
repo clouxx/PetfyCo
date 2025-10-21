@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 
+/// Card reutilizable con bordes redondeados
 class PetfyCard extends StatelessWidget {
-  const PetfyCard({super.key, this.color, this.padding, required this.child});
+  const PetfyCard({
+    super.key,
+    this.color,
+    this.padding,
+    required this.child,
+  });
 
   final Color? color;
   final EdgeInsetsGeometry? padding;
@@ -12,7 +18,9 @@ class PetfyCard extends StatelessWidget {
     return Card(
       elevation: 0,
       color: color ?? Theme.of(context).colorScheme.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Padding(
         padding: padding ?? const EdgeInsets.all(16),
         child: child,
@@ -21,9 +29,7 @@ class PetfyCard extends StatelessWidget {
   }
 }
 
-/// TextField reutilizable con API compatible con lo que ya usas en login/register.
-/// - Soporta: label, hint, prefix, suffix, keyboardType, obscureText, validator, onChanged.
-/// - Mantiene compatibilidad con nombres antiguos (keyboard / obscure) por si aparecen en tu código.
+/// TextField personalizado compatible con FormField
 class PetfyTextField extends StatelessWidget {
   const PetfyTextField({
     super.key,
@@ -36,9 +42,8 @@ class PetfyTextField extends StatelessWidget {
     this.obscureText,
     this.validator,
     this.onChanged,
-    // compat (por si en algún archivo quedó):
-    this.keyboard,
-    this.obscure,
+    this.maxLines = 1,
+    this.enabled = true,
   });
 
   final TextEditingController? controller;
@@ -50,60 +55,76 @@ class PetfyTextField extends StatelessWidget {
   final bool? obscureText;
   final String? Function(String?)? validator;
   final void Function(String)? onChanged;
-
-  // Compat aliases (no los uses nuevos, sólo por compatibilidad):
-  final TextInputType? keyboard;
-  final bool? obscure;
+  final int maxLines;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
-    final effectiveObscure = obscureText ?? obscure ?? false;
-    final effectiveKeyboard = keyboardType ?? keyboard;
-
     return TextFormField(
       controller: controller,
-      keyboardType: effectiveKeyboard,
-      obscureText: effectiveObscure,
+      keyboardType: keyboardType,
+      obscureText: obscureText ?? false,
       validator: validator,
       onChanged: onChanged,
+      maxLines: maxLines,
+      enabled: enabled,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
         prefixIcon: prefix,
         suffixIcon: suffix,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
         isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
       ),
     );
   }
 }
 
+/// Botón personalizado con loading
 class PetfyButton extends StatelessWidget {
   const PetfyButton({
     super.key,
     required this.text,
     required this.onPressed,
     this.loading = false,
+    this.color,
+    this.textColor,
   });
 
   final String text;
   final VoidCallback? onPressed;
   final bool loading;
+  final Color? color;
+  final Color? textColor;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 44,
+      height: 48,
       width: double.infinity,
       child: ElevatedButton(
         onPressed: loading ? null : onPressed,
         style: ElevatedButton.styleFrom(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          backgroundColor: color,
+          foregroundColor: textColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
         child: loading
             ? const SizedBox(
-                height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2),
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
               )
             : Text(text),
       ),
@@ -111,13 +132,7 @@ class PetfyButton extends StatelessWidget {
   }
 }
 
-/// Dropdown genérico que acepta directamente una lista de valores `items` (p.ej. List<String>)
-/// y opcionalmente un `itemBuilder` para mostrar el texto.
-/// También soporta `label` para el InputDecoration.
-///
-/// Ejemplos de uso válidos:
-///   PetfyDropdown<String>(items: const ['+57'], value: '+57', onChanged: ...);
-///   PetfyDropdown<String>(items: _deptNames, value: _dept, onChanged: ..., label: 'Departamento');
+/// Dropdown reutilizable genérico
 class PetfyDropdown<T> extends StatelessWidget {
   const PetfyDropdown({
     super.key,
@@ -129,60 +144,29 @@ class PetfyDropdown<T> extends StatelessWidget {
     this.hint,
   });
 
-  final List<T> items;
+  final List<DropdownMenuItem<T>> items;
   final T? value;
   final void Function(T?)? onChanged;
   final String Function(T value)? itemBuilder;
   final String? label;
   final String? hint;
 
-  List<DropdownMenuItem<T>> _toMenuItems() {
-    if (items.isEmpty) return <DropdownMenuItem<T>>[]; // <- sin const (corrige el error)
-    return items
-        .map(
-          (e) => DropdownMenuItem<T>(
-            value: e,
-            child: Text(itemBuilder?.call(e) ?? e.toString()),
-          ),
-        )
-        .toList();
-  }
-
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<T>(
       value: value,
-      items: _toMenuItems(),
+      items: items,
       onChanged: onChanged,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
         isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
       ),
     );
-  }
-}
-
-class PetfyLink extends StatelessWidget {
-  const PetfyLink({super.key, required this.text, required this.onTap, this.fontSize});
-  final String text;
-  final VoidCallback onTap;
-  final double? fontSize;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Text(
-        text,
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-              decoration: TextDecoration.underline,
-              fontSize: fontSize,
-            ),
-      ),
-    );
-  }
-}
