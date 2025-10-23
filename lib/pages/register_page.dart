@@ -479,7 +479,61 @@ class _RegisterPageState extends State<RegisterPage> {
                                       ),
                                       content: const SingleChildScrollView(
                                         child: Text(
-                                          'Aquí van tus términos y condiciones...',
+                                          'Última actualización: 23/10/2025
+
+Bienvenido a PetfyCo. Al utilizar nuestra aplicación móvil, usted acepta los siguientes Términos y Condiciones de uso. Por favor, léalos cuidadosamente.
+
+1. Descripción del Servicio
+PetfyCo es una plataforma digital que permite a los usuarios:
+
+Publicar mascotas disponibles para adopción.
+Reportar mascotas perdidas o encontradas.
+Contactarse con otros usuarios con el fin de ayudar en la localización, adopción o cuidado de animales.
+
+2. Aceptación de Términos
+El uso de la aplicación implica la aceptación total de estos Términos y Condiciones. Si no está de acuerdo con ellos, le recomendamos no utilizar la aplicación.
+
+3. Registro y Responsabilidad del Usuario
+Para utilizar ciertas funcionalidades, es posible que deba registrarse y proporcionar información veraz y actualizada. Usted es responsable de mantener la confidencialidad de sus credenciales de acceso.
+
+Usted acepta que:
+
+No publicará información falsa, ofensiva o engañosa.
+No utilizará la plataforma para fines comerciales sin autorización expresa.
+Toda información sobre mascotas deberá ser real, precisa y actualizada.
+
+4. Publicación de Contenido
+Usted conserva los derechos sobre el contenido que publique, pero al hacerlo otorga a PetfyCo una licencia gratuita, no exclusiva y mundial para mostrar, distribuir y modificar dicho contenido únicamente con fines relacionados con el funcionamiento de la aplicación.
+Nos reservamos el derecho a eliminar contenido que consideremos inapropiado o que infrinja estos Términos.
+
+5. Uso Adecuado
+Está prohibido:
+
+Utilizar la app con fines ilegales, fraudulentos o que afecten a terceros.
+Suplantar la identidad de otra persona o entidad.
+Interferir con el funcionamiento de la app o intentar acceder a áreas restringidas.
+
+6. Responsabilidad
+PetfyCo no se responsabiliza por:
+La veracidad o exactitud de las publicaciones realizadas por los usuarios.
+Acuerdos o transacciones realizadas entre usuarios fuera de la aplicación.
+Daños derivados del uso o imposibilidad de uso de la app.
+
+7. Modificaciones
+Nos reservamos el derecho de actualizar estos Términos y Condiciones en cualquier momento. Le notificaremos sobre cambios importantes a través de la app o correo electrónico. El uso continuo del servicio implica la aceptación de los términos actualizados.
+
+8. Cancelación de Cuenta
+Podemos suspender o cancelar su cuenta si se detecta uso indebido, violación de estos términos o actividades sospechosas.
+
+9. Legislación Aplicable
+Estos Términos se regirán por las leyes de Colombia, sin perjuicio de los derechos que le asistan como consumidor bajo la legislación aplicable.
+
+10. Contacto
+Si tiene dudas o consultas sobre estos Términos, puede contactarnos en:
+
+Correo electrónico: support@petfyco.org
+
+Teléfono de contacto: +573003334030',
                                         ),
                                       ),
                                       actions: [
