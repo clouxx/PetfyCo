@@ -479,7 +479,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                       ),
                                       content: const SingleChildScrollView(
                                         child: Text(
-                                          'Última actualización: 23/10/2025
+                                          '''Última actualización: 23/10/2025
 
 Bienvenido a PetfyCo. Al utilizar nuestra aplicación móvil, usted acepta los siguientes Términos y Condiciones de uso. Por favor, léalos cuidadosamente.
 
@@ -533,7 +533,7 @@ Si tiene dudas o consultas sobre estos Términos, puede contactarnos en:
 
 Correo electrónico: support@petfyco.org
 
-Teléfono de contacto: +573003334030',
+Teléfono de contacto: +573003334030''',
                                         ),
                                       ),
                                       actions: [
