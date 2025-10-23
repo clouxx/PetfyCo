@@ -6,7 +6,6 @@ import '../theme/app_theme.dart';
 
 class PetDetailPage extends StatefulWidget {
   const PetDetailPage({super.key, required this.petId});
-
   final String petId;
 
   @override
@@ -27,7 +26,6 @@ class _PetDetailPageState extends State<PetDetailPage> {
 
   Future<void> _loadPet() async {
     try {
-      // ADAPTADO: Cargar pet con fotos de pet_photos
       final data = await _sb
           .from('pets')
           .select('''
@@ -38,13 +36,11 @@ class _PetDetailPageState extends State<PetDetailPage> {
           .eq('id', widget.petId)
           .single();
 
-      // ADAPTADO: Ordenar fotos por position
       final petPhotos = data['pet_photos'] as List<dynamic>?;
       if (petPhotos != null && petPhotos.isNotEmpty) {
         final sortedPhotos = List<Map<String, dynamic>>.from(petPhotos);
-        sortedPhotos.sort((a, b) => 
-          (a['position'] as int? ?? 0).compareTo(b['position'] as int? ?? 0)
-        );
+        sortedPhotos.sort((a, b) =>
+            (((a['position'] as int?) ?? 0)).compareTo(((b['position'] as int?) ?? 0)));
         _photos = sortedPhotos.map((p) => p['url'] as String).toList();
       }
 
@@ -68,12 +64,9 @@ class _PetDetailPageState extends State<PetDetailPage> {
     if (profile == null) return;
 
     final phone = profile['phone'] as String?;
-    
     if (phone == null || phone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('El dueño no tiene teléfono registrado'),
-        ),
+        const SnackBar(content: Text('El dueño no tiene teléfono registrado')),
       );
       return;
     }
@@ -82,10 +75,11 @@ class _PetDetailPageState extends State<PetDetailPage> {
     final message = Uri.encodeComponent(
       'Hola! Vi tu publicación de $nombre en PetfyCo y me gustaría saber más.',
     );
-    final url = 'https://wa.me/+57$phone?text=$message'; // ADAPTADO: +57 fijo
+    final url = 'https://wa.me/+57$phone?text=$message';
 
-    if (await canLaunchUrl(Uri.parse(url))) {
-      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -97,33 +91,31 @@ class _PetDetailPageState extends State<PetDetailPage> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (_pet == null) {
       return Scaffold(
         appBar: AppBar(),
-        body: const Center(
-          child: Text('Mascota no encontrada'),
-        ),
+        body: const Center(child: Text('Mascota no encontrada')),
       );
     }
 
-    // ADAPTADO: Mapear columnas de tu BD
     final nombre = _pet!['nombre'] as String? ?? 'Sin nombre';
     final especie = _pet!['especie'] as String? ?? 'desconocido';
     final raza = _pet!['raza'] as String?;
     final edadMeses = _pet!['edad_meses'] as int?;
-    final talla = _pet!['talla'] as String?; // ADAPTADO
-    final sexo = _pet!['sexo'] as String?; // ADAPTADO
-    final temperamento = _pet!['temperamento'] as String?; // NUEVO
+    final talla = _pet!['talla'] as String?;
+    final sexo = _pet!['sexo'] as String?;
+    final temperamento = _pet!['temperamento'] as String?;
     final descripcion = _pet!['descripcion'] as String?;
     final estado = _pet!['estado'] as String? ?? 'publicado';
-    final municipio = _pet!['municipio'] as String?; // ADAPTADO
+    final municipio = _pet!['municipio'] as String?;
     final profile = _pet!['profiles'] as Map<String, dynamic>?;
-    final ownerName = profile?['display_name'] as String? ?? 'Desconocido'; // ADAPTADO
+    final ownerName = (profile?['display_name'] as String?)?.trim();
+    final ownerInitial = (ownerName?.isNotEmpty ?? false)
+        ? ownerName![0].toUpperCase()
+        : '?';
 
     return Scaffold(
       appBar: AppBar(
@@ -135,7 +127,7 @@ class _PetDetailPageState extends State<PetDetailPage> {
           IconButton(
             icon: const Icon(Icons.share),
             onPressed: () {
-              // Implementar compartir
+              // TODO: compartir ficha
             },
           ),
         ],
@@ -144,7 +136,6 @@ class _PetDetailPageState extends State<PetDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Carrusel de imágenes
             if (_photos.isNotEmpty)
               SizedBox(
                 height: 300,
@@ -171,13 +162,11 @@ class _PetDetailPageState extends State<PetDetailPage> {
                 ),
               ),
 
-            // Información
             Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Nombre y estado
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -187,9 +176,7 @@ class _PetDetailPageState extends State<PetDetailPage> {
                           style: Theme.of(context)
                               .textTheme
                               .headlineMedium!
-                              .copyWith(
-                                fontWeight: FontWeight.w800,
-                              ),
+                              .copyWith(fontWeight: FontWeight.w800),
                         ),
                       ),
                       Chip(
@@ -200,7 +187,6 @@ class _PetDetailPageState extends State<PetDetailPage> {
                   ),
                   const SizedBox(height: 8),
 
-                  // Ubicación
                   if (municipio != null)
                     Row(
                       children: [
@@ -214,7 +200,6 @@ class _PetDetailPageState extends State<PetDetailPage> {
                     ),
                   const SizedBox(height: 16),
 
-                  // Detalles
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
@@ -244,21 +229,21 @@ class _PetDetailPageState extends State<PetDetailPage> {
                             _DetailRow(
                               icon: Icons.cake,
                               label: 'Edad',
-                              value: _formatEdad(edadMeses), // ADAPTADO
+                              value: _formatEdad(edadMeses),
                             ),
-                          if (talla != null) // ADAPTADO
+                          if (talla != null)
                             _DetailRow(
                               icon: Icons.straighten,
                               label: 'Talla',
                               value: talla,
                             ),
-                          if (sexo != null) // ADAPTADO
+                          if (sexo != null)
                             _DetailRow(
                               icon: Icons.wc,
                               label: 'Sexo',
                               value: sexo == 'M' ? 'Macho' : 'Hembra',
                             ),
-                          if (temperamento != null) // NUEVO
+                          if (temperamento != null)
                             _DetailRow(
                               icon: Icons.emoji_emotions,
                               label: 'Temperamento',
@@ -270,7 +255,6 @@ class _PetDetailPageState extends State<PetDetailPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Descripción
                   if (descripcion != null && descripcion.isNotEmpty) ...[
                     Text(
                       'Descripción',
@@ -292,7 +276,6 @@ class _PetDetailPageState extends State<PetDetailPage> {
                     const SizedBox(height: 16),
                   ],
 
-                  // Dueño
                   Text(
                     'Publicado por',
                     style: Theme.of(context)
@@ -303,14 +286,12 @@ class _PetDetailPageState extends State<PetDetailPage> {
                   const SizedBox(height: 8),
                   Card(
                     child: ListTile(
-                      leading: CircleAvatar(
-                        child: Text(ownerName[0].toUpperCase()),
-                      ),
-                      title: Text(ownerName),
+                      leading: CircleAvatar(child: Text(ownerInitial)),
+                      title: Text(ownerName ?? 'Desconocido'),
                       subtitle: const Text('Ver perfil'),
                       trailing: const Icon(Icons.arrow_forward_ios),
                       onTap: () {
-                        // Navegar a perfil del dueño
+                        // TODO: navegar a perfil
                       },
                     ),
                   ),
@@ -340,7 +321,7 @@ class _PetDetailPageState extends State<PetDetailPage> {
             label: const Text('Contactar por WhatsApp'),
             style: ElevatedButton.styleFrom(
               minimumSize: const Size.fromHeight(50),
-              backgroundColor: const Color(0xFF25D366), // WhatsApp color
+              backgroundColor: const Color(0xFF25D366),
               foregroundColor: Colors.white,
             ),
           ),
@@ -349,17 +330,18 @@ class _PetDetailPageState extends State<PetDetailPage> {
     );
   }
 
-  // ADAPTADO: Formatear edad desde meses
+  // Formatea edad desde meses (identificadores sin ñ)
   String _formatEdad(int meses) {
     if (meses < 12) {
       return '$meses ${meses == 1 ? 'mes' : 'meses'}';
     } else {
-      final años = meses ~/ 12;
+      final anios = meses ~/ 12;
       final mesesRestantes = meses % 12;
       if (mesesRestantes == 0) {
-        return '$años ${años == 1 ? 'año' : 'años'}';
+        return '$anios ${anios == 1 ? 'año' : 'años'}';
       } else {
-        return '$años ${años == 1 ? 'año' : 'años'} y $mesesRestantes ${mesesRestantes == 1 ? 'mes' : 'meses'}';
+        return '$anios ${anios == 1 ? 'año' : 'años'} y '
+            '$mesesRestantes ${mesesRestantes == 1 ? 'mes' : 'meses'}';
       }
     }
   }
@@ -421,9 +403,7 @@ class _DetailRow extends StatelessWidget {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w600),
             ),
           ),
         ],
