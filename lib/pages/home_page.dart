@@ -26,22 +26,23 @@ class _HomePageState extends State<HomePage> {
   Future<void> _loadPets() async {
     setState(() => _loading = true);
     try {
-      var query = _sb
+      // 1) Construye el query y aplica filtros primero
+      var q = _sb
           .from('pets')
           .select('''
             *,
             profiles:owner_id(display_name, phone),
             pet_photos(url, position)
           ''')
-          .eq('estado', _statusFilter)
-          .order('created_at', ascending: false)
-          .limit(20);
+          .eq('estado', _statusFilter);
 
       if (_filter != 'todos') {
-        query = query.eq('especie', _filter);
+        q = q.eq('especie', _filter);
       }
 
-      final data = await query;
+      // 2) Luego ordena y limita
+      final data = await q.order('created_at', ascending: false).limit(20);
+
       setState(() {
         _pets = List<Map<String, dynamic>>.from(data);
         _loading = false;
