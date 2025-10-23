@@ -1,14 +1,20 @@
 import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../widgets/petfy_widgets.dart';
 import '../theme/app_theme.dart';
+import '../widgets/petfy_widgets.dart';
 
 class PublishPetPage extends StatefulWidget {
-  const PublishPetPage({super.key});
+  const PublishPetPage({
+    super.key,
+    this.presetEstado,  // ej. 'perdido' cuando vienes del banner
+    this.editPetId,     // opcional si luego quieres edición
+  });
+
+  final String? presetEstado;
+  final String? editPetId;
 
   @override
   State<PublishPetPage> createState() => _PublishPetPageState();
@@ -22,14 +28,14 @@ class _PublishPetPageState extends State<PublishPetPage> {
   final _nombre = TextEditingController();
   final _descripcion = TextEditingController();
 
-  // Valores BD
+  // Valores según tu BD
   String _especie = 'gato';
   String? _raza;
   int? _edadMeses;
   String? _talla;
-  String? _sexo = 'macho'; // default para no quedar null
+  String? _sexo; // 'macho' / 'hembra'
   String? _temperamento;
-  String _estado = 'publicado';
+  String _estado = 'publicado'; // publicado | reservado | adoptado | perdido
 
   // Ubicación
   final List<Map<String, dynamic>> _departments = [];
@@ -39,16 +45,22 @@ class _PublishPetPageState extends State<PublishPetPage> {
   String? _cityName;
 
   // Imágenes
-  final List<XFile> _images = [];
   final _picker = ImagePicker();
-
+  final List<XFile> _images = [];
   bool _sending = false;
 
   @override
   void initState() {
     super.initState();
+    // Prellenar estado si llega por query param
+    if (widget.presetEstado != null &&
+        ['publicado', 'reservado', 'adoptado', 'perdido']
+            .contains(widget.presetEstado)) {
+      _estado = widget.presetEstado!;
+    }
     _loadDepartments();
     _loadUserLocation();
+    // Si implementas edición, aquí podrías cargar la mascota por editPetId
   }
 
   @override
@@ -60,7 +72,10 @@ class _PublishPetPageState extends State<PublishPetPage> {
 
   Future<void> _loadDepartments() async {
     try {
-      final data = await _sb.from('departments').select('id, name').order('name');
+      final data = await _sb
+          .from('departments')
+          .select('id, name')
+          .order('name', ascending: true);
       setState(() {
         _departments
           ..clear()
@@ -77,7 +92,7 @@ class _PublishPetPageState extends State<PublishPetPage> {
           .from('cities')
           .select('name')
           .eq('department_id', deptId)
-          .order('name');
+          .order('name', ascending: true);
       setState(() {
         _cityNames
           ..clear()
@@ -100,13 +115,21 @@ class _PublishPetPageState extends State<PublishPetPage> {
           .single();
 
       if (profile['depto'] != null) {
-        final depts = await _sb.from('departments').select('id, name').eq('name', profile['depto']).single();
+        final depts = await _sb
+            .from('departments')
+            .select('id, name')
+            .eq('name', profile['depto'])
+            .single();
+
         setState(() {
           _deptId = depts['id'] as int;
           _deptName = depts['name'] as String;
           _cityName = profile['municipio'] as String?;
         });
-        if (_deptId != null) await _loadCities(_deptId!);
+
+        if (_deptId != null) {
+          await _loadCities(_deptId!);
+        }
       }
     } catch (e) {
       debugPrint('Error cargando ubicación del usuario: $e');
@@ -115,11 +138,13 @@ class _PublishPetPageState extends State<PublishPetPage> {
 
   Future<void> _pickImages() async {
     try {
-      final pickedImages = await _picker.pickMultiImage();
-      if (pickedImages.isNotEmpty) {
+      final picked = await _picker.pickMultiImage();
+      if (picked.isNotEmpty) {
         setState(() {
-          _images.addAll(pickedImages);
-          if (_images.length > 5) _images.removeRange(5, _images.length);
+          _images.addAll(picked);
+          if (_images.length > 5) {
+            _images.removeRange(5, _images.length);
+          }
         });
       }
     } catch (e) {
@@ -132,21 +157,25 @@ class _PublishPetPageState extends State<PublishPetPage> {
 
   Future<List<String>> _uploadImages() async {
     final List<String> urls = [];
+    final user = _sb.auth.currentUser!;
     for (var i = 0; i < _images.length; i++) {
       try {
         final file = _images[i];
         final bytes = await file.readAsBytes();
-        final fileExt = file.path.split('.').last;
+        final fileExt = file.path.split('.').last.toLowerCase();
         final fileName = '${DateTime.now().millisecondsSinceEpoch}_$i.$fileExt';
-        final filePath = '${_sb.auth.currentUser!.id}/$fileName';
+        final path = '${user.id}/$fileName';
 
         await _sb.storage.from('pet-images').uploadBinary(
-              filePath,
+              path,
               bytes,
-              fileOptions: FileOptions(contentType: 'image/$fileExt', upsert: false),
+              fileOptions: FileOptions(
+                contentType: 'image/$fileExt',
+                upsert: false,
+              ),
             );
 
-        final url = _sb.storage.from('pet-images').getPublicUrl(filePath);
+        final url = _sb.storage.from('pet-images').getPublicUrl(path);
         urls.add(url);
       } catch (e) {
         debugPrint('Error subiendo imagen $i: $e');
@@ -157,15 +186,7 @@ class _PublishPetPageState extends State<PublishPetPage> {
 
   Future<void> _submit() async {
     if (_sending) return;
-
     if (!(_formKey.currentState?.validate() ?? false)) return;
-
-    if (_sexo == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecciona el sexo')),
-      );
-      return;
-    }
 
     if (_deptName == null || _cityName == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -181,41 +202,45 @@ class _PublishPetPageState extends State<PublishPetPage> {
 
       final imageUrls = await _uploadImages();
 
-      final petData = await _sb.from('pets').insert({
+      final pet = await _sb.from('pets').insert({
         'owner_id': user.id,
         'nombre': _nombre.text.trim(),
         'especie': _especie,
         'raza': _raza,
         'edad_meses': _edadMeses,
         'talla': _talla,
-        'sexo': _sexo, // 'macho' | 'hembra'
+        'sexo': _sexo, // 'macho' / 'hembra'
         'temperamento': _temperamento,
         'descripcion': _descripcion.text.trim(),
-        'estado': _estado,
+        'estado': _estado, // publicado | reservado | adoptado | perdido
         'depto': _deptName,
         'municipio': _cityName,
       }).select().single();
 
-      final petId = petData['id'];
+      final petId = pet['id'];
 
       if (imageUrls.isNotEmpty) {
-        final photoInserts = imageUrls.asMap().entries.map((e) => {
-          'pet_id': petId,
-          'url': e.value,
-          'position': e.key,
+        final rows = imageUrls.asMap().entries.map((e) {
+          return {'pet_id': petId, 'url': e.value, 'position': e.key};
         }).toList();
-        await _sb.from('pet_photos').insert(photoInserts);
+        await _sb.from('pet_photos').insert(rows);
       }
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('¡Mascota publicada exitosamente!'), backgroundColor: Colors.green),
+        const SnackBar(
+          content: Text('¡Mascota publicada exitosamente!'),
+          backgroundColor: Colors.green,
+        ),
       );
       context.go('/home');
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al publicar: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Error al publicar: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -227,7 +252,10 @@ class _PublishPetPageState extends State<PublishPetPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Publicar Mascota'),
-        leading: IconButton(icon: const Icon(Icons.close), onPressed: () => context.pop()),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => context.pop(),
+        ),
       ),
       body: Form(
         key: _formKey,
@@ -236,6 +264,7 @@ class _PublishPetPageState extends State<PublishPetPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Imágenes
               Text('Fotos (máximo 5)', style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 8),
               SizedBox(
@@ -243,6 +272,7 @@ class _PublishPetPageState extends State<PublishPetPage> {
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   children: [
+                    // Botón agregar
                     InkWell(
                       onTap: _pickImages,
                       child: Container(
@@ -254,46 +284,52 @@ class _PublishPetPageState extends State<PublishPetPage> {
                         ),
                         child: const Column(
                           mainAxisAlignment: MainAxisAlignment.center,
-                          children: [Icon(Icons.add_photo_alternate, size: 40), SizedBox(height: 4), Text('Agregar fotos')],
+                          children: [
+                            Icon(Icons.add_photo_alternate, size: 40),
+                            SizedBox(height: 4),
+                            Text('Agregar fotos'),
+                          ],
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    ..._images.map((img) {
-                      final index = _images.indexOf(img);
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: Stack(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: FutureBuilder<Uint8List>(
-                                future: img.readAsBytes(),
-                                builder: (_, snap) {
-                                  if (!snap.hasData) {
-                                    return Container(
-                                      width: 120, height: 120,
-                                      color: Colors.grey.shade300,
-                                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                                    );
-                                  }
-                                  return Image.memory(
-                                    snap.data!,
-                                    width: 120, height: 120, fit: BoxFit.cover,
-                                  );
-                                },
-                              ),
+
+                    // Miniaturas (WEB: Image.memory)
+                    ..._images.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final img = entry.value;
+                      return FutureBuilder<Uint8List>(
+                        future: img.readAsBytes(),
+                        builder: (_, snap) {
+                          final bytes = snap.data;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: Stack(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: bytes != null
+                                      ? Image.memory(bytes, width: 120, height: 120, fit: BoxFit.cover)
+                                      : Container(
+                                          width: 120,
+                                          height: 120,
+                                          color: Colors.grey.shade300,
+                                          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                        ),
+                                ),
+                                Positioned(
+                                  top: 4,
+                                  right: 4,
+                                  child: IconButton(
+                                    icon: const Icon(Icons.close, color: Colors.white),
+                                    style: IconButton.styleFrom(backgroundColor: Colors.black54),
+                                    onPressed: () => setState(() => _images.removeAt(index)),
+                                  ),
+                                ),
+                              ],
                             ),
-                            Positioned(
-                              top: 4, right: 4,
-                              child: IconButton(
-                                icon: const Icon(Icons.close, color: Colors.white),
-                                style: IconButton.styleFrom(backgroundColor: Colors.black54),
-                                onPressed: () => setState(() => _images.removeAt(index)),
-                              ),
-                            ),
-                          ],
-                        ),
+                          );
+                        },
                       );
                     }),
                   ],
@@ -301,6 +337,7 @@ class _PublishPetPageState extends State<PublishPetPage> {
               ),
               const SizedBox(height: 24),
 
+              // Nombre
               PetfyTextField(
                 controller: _nombre,
                 label: 'Nombre de la mascota *',
@@ -310,31 +347,70 @@ class _PublishPetPageState extends State<PublishPetPage> {
               ),
               const SizedBox(height: 16),
 
+              // Especie
               Text('Especie *', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Expanded(child: RadioListTile<String>(title: const Text('🐶 Perro'), value: 'perro', groupValue: _especie, onChanged: (v) => setState(() => _especie = v!))),
-                  Expanded(child: RadioListTile<String>(title: const Text('🐱 Gato'), value: 'gato', groupValue: _especie, onChanged: (v) => setState(() => _especie = v!))),
+                  Expanded(
+                    child: RadioListTile<String>(
+                      title: const Text('🐶 Perro'),
+                      value: 'perro',
+                      groupValue: _especie,
+                      onChanged: (v) => setState(() => _especie = v!),
+                    ),
+                  ),
+                  Expanded(
+                    child: RadioListTile<String>(
+                      title: const Text('🐱 Gato'),
+                      value: 'gato',
+                      groupValue: _especie,
+                      onChanged: (v) => setState(() => _especie = v!),
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
 
+              // Estado
               Text('Estado *', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 children: [
-                  ChoiceChip(label: const Text('Publicado'), selected: _estado == 'publicado', onSelected: (_) => setState(() => _estado = 'publicado')),
-                  ChoiceChip(label: const Text('Reservado'), selected: _estado == 'reservado', onSelected: (_) => setState(() => _estado = 'reservado')),
-                  ChoiceChip(label: const Text('Adoptado'), selected: _estado == 'adoptado', onSelected: (_) => setState(() => _estado = 'adoptado')),
+                  ChoiceChip(
+                    label: const Text('Publicado'),
+                    selected: _estado == 'publicado',
+                    onSelected: (v) => setState(() => _estado = 'publicado'),
+                  ),
+                  ChoiceChip(
+                    label: const Text('Reservado'),
+                    selected: _estado == 'reservado',
+                    onSelected: (v) => setState(() => _estado = 'reservado'),
+                  ),
+                  ChoiceChip(
+                    label: const Text('Adoptado'),
+                    selected: _estado == 'adoptado',
+                    onSelected: (v) => setState(() => _estado = 'adoptado'),
+                  ),
+                  ChoiceChip(
+                    label: const Text('Perdido'),
+                    selected: _estado == 'perdido',
+                    onSelected: (v) => setState(() => _estado = 'perdido'),
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
 
-              PetfyTextField(label: 'Raza (opcional)', hint: 'Ej: Jack Russell', onChanged: (v) => _raza = v.isEmpty ? null : v),
+              // Raza
+              PetfyTextField(
+                label: 'Raza (opcional)',
+                hint: 'Ej: Golden Retriever',
+                onChanged: (v) => _raza = v.isEmpty ? null : v,
+              ),
               const SizedBox(height: 16),
 
+              // Edad en meses
               PetfyTextField(
                 label: 'Edad en meses (opcional)',
                 hint: 'Ej: 24 (2 años)',
@@ -343,26 +419,38 @@ class _PublishPetPageState extends State<PublishPetPage> {
               ),
               const SizedBox(height: 16),
 
-              PetfyDropdown<String>(
-                label: 'Talla',
+              // Talla
+              DropdownButtonFormField<String>(
                 value: _talla,
                 items: ['pequeña', 'mediana', 'grande']
-                    .map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                    .toList(),
                 onChanged: (v) => setState(() => _talla = v),
+                decoration: InputDecoration(
+                  labelText: 'Talla',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  isDense: true,
+                ),
               ),
               const SizedBox(height: 16),
 
-              PetfyDropdown<String>(
-                label: 'Sexo',
+              // Sexo (macho/hembra)
+              DropdownButtonFormField<String>(
                 value: _sexo,
                 items: const [
-                  DropdownMenuItem(value: 'macho',  child: Text('Macho')),
+                  DropdownMenuItem(value: 'macho', child: Text('Macho')),
                   DropdownMenuItem(value: 'hembra', child: Text('Hembra')),
                 ],
                 onChanged: (v) => setState(() => _sexo = v),
+                decoration: InputDecoration(
+                  labelText: 'Sexo',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  isDense: true,
+                ),
               ),
               const SizedBox(height: 16),
 
+              // Temperamento
               PetfyTextField(
                 label: 'Temperamento (opcional)',
                 hint: 'Ej: Juguetón, tranquilo, activo',
@@ -370,17 +458,18 @@ class _PublishPetPageState extends State<PublishPetPage> {
               ),
               const SizedBox(height: 16),
 
+              // Ubicación
               Row(
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<int>(
                       value: _deptId,
-                      decoration: InputDecoration(
-                        labelText: 'Departamento *',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        isDense: true,
-                      ),
-                      items: _departments.map((d) => DropdownMenuItem<int>(value: d['id'] as int, child: Text(d['name'] as String))).toList(),
+                      items: _departments
+                          .map((d) => DropdownMenuItem<int>(
+                                value: d['id'] as int,
+                                child: Text(d['name'] as String),
+                              ))
+                          .toList(),
                       onChanged: (val) async {
                         if (val == null) return;
                         final selected = _departments.firstWhere((d) => d['id'] == val);
@@ -392,25 +481,36 @@ class _PublishPetPageState extends State<PublishPetPage> {
                         });
                         await _loadCities(val);
                       },
+                      decoration: InputDecoration(
+                        labelText: 'Departamento *',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        isDense: true,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: DropdownButtonFormField<String>(
                       value: _cityName,
+                      items: _cityNames
+                          .map((c) => DropdownMenuItem<String>(
+                                value: c,
+                                child: Text(c),
+                              ))
+                          .toList(),
+                      onChanged: (val) => setState(() => _cityName = val),
                       decoration: InputDecoration(
                         labelText: 'Ciudad *',
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         isDense: true,
                       ),
-                      items: _cityNames.map((c) => DropdownMenuItem<String>(value: c, child: Text(c))).toList(),
-                      onChanged: (val) => setState(() => _cityName = val),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
 
+              // Descripción
               PetfyTextField(
                 controller: _descripcion,
                 label: 'Descripción',
@@ -419,7 +519,12 @@ class _PublishPetPageState extends State<PublishPetPage> {
               ),
               const SizedBox(height: 24),
 
-              PetfyButton(text: 'Publicar Mascota', loading: _sending, onPressed: _sending ? null : _submit),
+              // Publicar
+              PetfyButton(
+                text: 'Publicar Mascota',
+                loading: _sending,
+                onPressed: _sending ? null : _submit,
+              ),
               const SizedBox(height: 32),
             ],
           ),
