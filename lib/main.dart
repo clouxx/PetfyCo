@@ -1,88 +1,104 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'theme/app_theme.dart';
+// PAGES (ajusta los imports a tus rutas reales)
 import 'pages/splash_page.dart';
 import 'pages/login_page.dart';
 import 'pages/register_page.dart';
 import 'pages/home_page.dart';
-import 'pages/pet_detail_page.dart';
 import 'pages/publish_pet_page.dart';
+import 'pages/pet_detail_page.dart';
 import 'pages/lost_pets_page.dart';
 import 'pages/profile_page.dart';
 
+// Lee las variables de entorno pasadas con --dart-define
+const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
+const _supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Inicializa Supabase con variables de entorno
+
+  // Inicializa Supabase
   await Supabase.initialize(
-    url: const String.fromEnvironment(
-      'SUPABASE_URL',
-      defaultValue: 'https://YOUR-PROJECT.supabase.co',
-    ),
-    anonKey: const String.fromEnvironment(
-      'SUPABASE_ANON_KEY',
-      defaultValue: 'YOUR-ANON-KEY',
-    ),
+    url: _supabaseUrl,
+    anonKey: _supabaseAnonKey,
   );
-  
-  runApp(const ProviderScope(child: App()));
+
+  runApp(const MyApp());
 }
 
-// Router global con todas las rutas
-final _router = GoRouter(
-  initialLocation: '/splash',
-  routes: [
-    GoRoute(
-      path: '/splash',
-      builder: (_, __) => const SplashPage(),
-    ),
-    GoRoute(
-      path: '/login',
-      builder: (_, __) => const LoginPage(),
-    ),
-    GoRoute(
-      path: '/register',
-      builder: (_, __) => const RegisterPage(),
-    ),
-    GoRoute(
-      path: '/home',
-      builder: (_, __) => const HomePage(),
-    ),
-    GoRoute(
-      path: '/pet/:id',
-      builder: (_, state) {
-        final id = state.pathParameters['id']!;
-        return PetDetailPage(petId: id);
-      },
-    ),
-    GoRoute(
-      path: '/publish',
-      builder: (_, __) => const PublishPetPage(),
-    ),
-    GoRoute(
-      path: '/lost',
-      builder: (_, __) => const LostPetsPage(),
-    ),
-    GoRoute(
-      path: '/profile',
-      builder: (_, __) => const ProfilePage(),
-    ),
-  ],
-);
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
-class App extends StatelessWidget {
-  const App({super.key});
-  
   @override
   Widget build(BuildContext context) {
+    final router = GoRouter(
+      initialLocation: '/splash',
+      routes: [
+        GoRoute(
+          path: '/splash',
+          builder: (_, __) => const SplashPage(),
+        ),
+        GoRoute(
+          path: '/login',
+          builder: (_, __) => const LoginPage(),
+        ),
+        GoRoute(
+          path: '/register',
+          builder: (_, __) => const RegisterPage(),
+        ),
+        GoRoute(
+          path: '/home',
+          builder: (_, __) => const HomePage(),
+        ),
+        GoRoute(
+          path: '/publish',
+          builder: (_, state) {
+            // Lee ?estado=perdido (u otros) para prellenar el formulario
+            final presetEstado = state.uri.queryParameters['estado'];
+            // Si luego implementas edición, podrías pasar ?editId=...
+            final editId = state.uri.queryParameters['editId'];
+            return PublishPetPage(
+              presetEstado: presetEstado,
+              editPetId: editId,
+            );
+          },
+        ),
+        GoRoute(
+          path: '/pet/:id',
+          builder: (_, state) => PetDetailPage(
+            petId: state.pathParameters['id']!,
+          ),
+        ),
+        GoRoute(
+          path: '/lost',
+          builder: (_, __) => const LostPetsPage(),
+        ),
+        GoRoute(
+          path: '/profile',
+          builder: (_, state) {
+            // Si quieres ver el perfil de otro usuario: /profile?uid=xxx
+            final uid = state.uri.queryParameters['uid'];
+            return const ProfilePage(); // Ajusta si vas a usar uid
+          },
+        ),
+        // Redirección básica
+        GoRoute(
+          path: '/',
+          builder: (_, __) => const SplashPage(),
+        ),
+      ],
+    );
+
     return MaterialApp.router(
-      debugShowCheckedModeBanner: false,
       title: 'PetfyCo',
-      routerConfig: _router,
-      theme: AppTheme.light,
+      routerConfig: router,
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorSchemeSeed: const Color(0xFF1F6FEB),
+        useMaterial3: true,
+      ),
     );
   }
 }
