@@ -138,3 +138,218 @@ class _HomePageState extends State<HomePage> {
                   ],
                 ),
               ),
+            ),
+
+            if (_loading)
+              const SliverFillRemaining(child: Center(child: CircularProgressIndicator()))
+            else if (_pets.isEmpty)
+              SliverFillRemaining(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.pets, size: 64, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      const Text('No hay mascotas disponibles', style: TextStyle(fontSize: 18, color: Colors.grey)),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        onPressed: () => context.push('/publish'),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Publicar la primera'),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                sliver: SliverGrid(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2, childAspectRatio: 0.75, crossAxisSpacing: 12, mainAxisSpacing: 12),
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => _PetCard(pet: _pets[index]),
+                    childCount: _pets.length,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HeaderBanner extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [
+          AppColors.blue.withOpacity(0.18),
+          AppColors.orange.withOpacity(0.14),
+        ]),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Image.asset('assets/logo/petfyco_icon.png', height: 60),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Encuentra y publica mascotas en Colombia',
+              style: Theme.of(context).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({required this.label, required this.selected, required this.onTap});
+  final String label; final bool selected; final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return FilterChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => onTap(),
+      backgroundColor: Colors.grey.shade200,
+      selectedColor: AppColors.blue.withOpacity(0.2),
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.label, required this.selected, required this.onTap});
+  final String label; final bool selected; final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.blue.withOpacity(0.2) : Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(12),
+          border: selected ? Border.all(color: AppColors.blue, width: 2) : null,
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              color: selected ? AppColors.navy : Colors.grey.shade700,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PetCard extends StatelessWidget {
+  const _PetCard({required this.pet});
+  final Map<String, dynamic> pet;
+
+  @override
+  Widget build(BuildContext context) {
+    final nombre = pet['nombre'] as String? ?? 'Sin nombre';
+    final especie = pet['especie'] as String? ?? 'desconocido';
+    final municipio = pet['municipio'] as String? ?? 'Colombia';
+    final estado = pet['estado'] as String? ?? 'publicado';
+
+    // primera foto ordenada por position
+    final petPhotos = pet['pet_photos'] as List<dynamic>?;
+    String? imageUrl;
+    if (petPhotos != null && petPhotos.isNotEmpty) {
+      final sorted = List<Map<String, dynamic>>.from(petPhotos);
+      sorted.sort((a, b) =>
+          ((a['position'] as int?) ?? 0).compareTo((b['position'] as int?) ?? 0));
+      imageUrl = sorted.first['url'] as String?;
+    }
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.push('/pet/${pet['id']}'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: imageUrl != null
+                  ? Image.network(
+                      imageUrl,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: AppColors.blue.withOpacity(0.15),
+                        child: const Icon(Icons.pets, size: 48, color: AppColors.navy),
+                      ),
+                    )
+                  : Container(
+                      color: AppColors.blue.withOpacity(0.15),
+                      child: const Center(
+                        child: Icon(Icons.pets, size: 48, color: AppColors.navy),
+                      ),
+                    ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    nombre,
+                    style: Theme.of(context).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.w700),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.place, size: 16, color: AppColors.pink),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          municipio,
+                          style: Theme.of(context).textTheme.bodySmall,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Chip(
+                        label: Text(especie == 'perro' ? 'Perro' : 'Gato', style: const TextStyle(fontSize: 11)),
+                        padding: EdgeInsets.zero,
+                        labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Chip(
+                          label: Text(_getEstadoLabel(estado), style: const TextStyle(fontSize: 11)),
+                          padding: EdgeInsets.zero,
+                          labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
