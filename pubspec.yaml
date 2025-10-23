@@ -1,5 +1,5 @@
 name: petfyco
-description: PetfyCo app (rescate y adopción) - Flutter starter
+description: PetfyCo app (rescate y adopción) - Flutter
 publish_to: "none"
 
 environment:
@@ -8,21 +8,40 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  
+  # Backend
   supabase_flutter: ^2.6.0
+  
+  # State Management
   flutter_riverpod: ^2.5.1
+  
+  # Navigation
   go_router: ^14.8.1
+  
+  # HTTP
   dio: ^5.5.0
+  
+  # Firebase
   firebase_core: ^3.4.0
   firebase_messaging: ^15.1.2
   flutter_local_notifications: ^17.2.3
+  
+  # Maps
   google_maps_flutter: ^2.9.0
+  flutter_map: ^6.1.0
+  latlong2: ^0.9.1
+  
+  # Location
+  geolocator: ^12.0.0
+  
+  # Utils
   url_launcher: ^6.3.0
   google_fonts: ^6.2.1
   flutter_svg: ^2.0.9
   cupertino_icons: ^1.0.8
-  flutter_map: ^6.1.0
-  latlong2: ^0.9.1
-  geolocator: ^12.0.0 # (para obtener ubicación actual en móvil)
+  
+  # Image Picker (NUEVO - para subir fotos)
+  image_picker: ^1.0.7
 
 dev_dependencies:
   flutter_test:
@@ -38,7 +57,7 @@ flutter:
     - assets/images/
     - assets/logo/
 
-# --- Splash en raíz (no debajo de 'flutter') ---
+# Splash Screen
 flutter_native_splash:
   color: "#FFFFFF"
   image: assets/logo/petfyco_splash.png
@@ -53,7 +72,7 @@ flutter_native_splash:
   android: true
   ios: true
 
-# --- Iconos en raíz (no debajo de 'flutter') ---
+# App Icons
 flutter_launcher_icons:
   android: true
   ios: true
