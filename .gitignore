@@ -1,4 +1,4 @@
-﻿# Flutter/Dart
+# Flutter / Dart
 .dart_tool/
 .packages
 .pub-cache/
@@ -9,7 +9,30 @@ build/
 .pub/
 *.lock
 
-# VSCode / IDE
+# VSCode / Android Studio / IntelliJ
 .vscode/
 .idea/
 *.iml
+
+# Firebase / Credenciales
+**/google-services.json
+**/GoogleService-Info.plist
+**/firebase_app_id_file.json
+serviceAccount*.json
+*.p12
+*.pem
+*.key
+*.keystore
+key.properties
+.env
+.env.*
+
+# macOS / iOS
+*.xcworkspace/
+Pods/
+DerivedData/
+*.xcuserstate
+Runner.xcworkspace/
+
+# Web
+/build/web/
