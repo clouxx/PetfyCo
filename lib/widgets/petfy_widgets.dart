@@ -132,6 +132,27 @@ class PetfyButton extends StatelessWidget {
   }
 }
 
+/// Link simple subrayado (para “¿Olvidaste tu contraseña?”, etc.)
+class PetfyLink extends StatelessWidget {
+  const PetfyLink({super.key, required this.text, this.onTap});
+  final String text;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Text(
+        text,
+        style: const TextStyle(
+          decoration: TextDecoration.underline,
+          color: Colors.blue,
+        ),
+      ),
+    );
+  }
+}
+
 /// Dropdown reutilizable genérico
 class PetfyDropdown<T> extends StatelessWidget {
   const PetfyDropdown({
@@ -139,7 +160,6 @@ class PetfyDropdown<T> extends StatelessWidget {
     required this.items,
     required this.value,
     required this.onChanged,
-    this.itemBuilder,
     this.label,
     this.hint,
   });
@@ -147,7 +167,6 @@ class PetfyDropdown<T> extends StatelessWidget {
   final List<DropdownMenuItem<T>> items;
   final T? value;
   final void Function(T?)? onChanged;
-  final String Function(T value)? itemBuilder;
   final String? label;
   final String? hint;
 
@@ -170,3 +189,5 @@ class PetfyDropdown<T> extends StatelessWidget {
         ),
       ),
     );
+  }
+}
