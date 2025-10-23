@@ -1,12 +1,15 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/petfy_widgets.dart';
 import '../theme/app_theme.dart';
 
 class PublishPetPage extends StatefulWidget {
   const PublishPetPage({super.key});
+
   @override
   State<PublishPetPage> createState() => _PublishPetPageState();
 }
@@ -15,23 +18,27 @@ class _PublishPetPageState extends State<PublishPetPage> {
   final _formKey = GlobalKey<FormState>();
   final _sb = Supabase.instance.client;
 
+  // Controllers
   final _nombre = TextEditingController();
   final _descripcion = TextEditingController();
 
+  // Valores BD
   String _especie = 'gato';
   String? _raza;
   int? _edadMeses;
   String? _talla;
-  String? _sexo;
+  String? _sexo = 'macho'; // default para no quedar null
   String? _temperamento;
   String _estado = 'publicado';
 
+  // Ubicación
   final List<Map<String, dynamic>> _departments = [];
   final List<String> _cityNames = [];
   int? _deptId;
   String? _deptName;
   String? _cityName;
 
+  // Imágenes
   final List<XFile> _images = [];
   final _picker = ImagePicker();
 
@@ -53,7 +60,7 @@ class _PublishPetPageState extends State<PublishPetPage> {
 
   Future<void> _loadDepartments() async {
     try {
-      final data = await _sb.from('departments').select('id, name').order('name', ascending: true);
+      final data = await _sb.from('departments').select('id, name').order('name');
       setState(() {
         _departments
           ..clear()
@@ -66,11 +73,15 @@ class _PublishPetPageState extends State<PublishPetPage> {
 
   Future<void> _loadCities(int deptId) async {
     try {
-      final data = await _sb.from('cities').select('name').eq('department_id', deptId).order('name', ascending: true);
+      final data = await _sb
+          .from('cities')
+          .select('name')
+          .eq('department_id', deptId)
+          .order('name');
       setState(() {
         _cityNames
           ..clear()
-          ..addAll(data.map<String>((e) => e['name'] as String));
+          ..addAll(data.map((e) => e['name'] as String));
       });
     } catch (e) {
       debugPrint('Error cargando ciudades: $e');
@@ -82,7 +93,11 @@ class _PublishPetPageState extends State<PublishPetPage> {
       final user = _sb.auth.currentUser;
       if (user == null) return;
 
-      final profile = await _sb.from('profiles').select('depto, municipio').eq('id', user.id).single();
+      final profile = await _sb
+          .from('profiles')
+          .select('depto, municipio')
+          .eq('id', user.id)
+          .single();
 
       if (profile['depto'] != null) {
         final depts = await _sb.from('departments').select('id, name').eq('name', profile['depto']).single();
@@ -91,9 +106,7 @@ class _PublishPetPageState extends State<PublishPetPage> {
           _deptName = depts['name'] as String;
           _cityName = profile['municipio'] as String?;
         });
-        if (_deptId != null) {
-          await _loadCities(_deptId!);
-        }
+        if (_deptId != null) await _loadCities(_deptId!);
       }
     } catch (e) {
       debugPrint('Error cargando ubicación del usuario: $e');
@@ -102,21 +115,23 @@ class _PublishPetPageState extends State<PublishPetPage> {
 
   Future<void> _pickImages() async {
     try {
-      final picked = await _picker.pickMultiImage();
-      if (picked.isNotEmpty) {
+      final pickedImages = await _picker.pickMultiImage();
+      if (pickedImages.isNotEmpty) {
         setState(() {
-          _images.addAll(picked);
+          _images.addAll(pickedImages);
           if (_images.length > 5) _images.removeRange(5, _images.length);
         });
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error seleccionando imágenes: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error seleccionando imágenes: $e')),
+      );
     }
   }
 
   Future<List<String>> _uploadImages() async {
-    final urls = <String>[];
+    final List<String> urls = [];
     for (var i = 0; i < _images.length; i++) {
       try {
         final file = _images[i];
@@ -128,7 +143,7 @@ class _PublishPetPageState extends State<PublishPetPage> {
         await _sb.storage.from('pet-images').uploadBinary(
               filePath,
               bytes,
-              fileOptions: const FileOptions(upsert: false),
+              fileOptions: FileOptions(contentType: 'image/$fileExt', upsert: false),
             );
 
         final url = _sb.storage.from('pet-images').getPublicUrl(filePath);
@@ -142,10 +157,20 @@ class _PublishPetPageState extends State<PublishPetPage> {
 
   Future<void> _submit() async {
     if (_sending) return;
+
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
+    if (_sexo == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecciona el sexo')),
+      );
+      return;
+    }
+
     if (_deptName == null || _cityName == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Selecciona departamento y ciudad')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecciona departamento y ciudad')),
+      );
       return;
     }
 
@@ -163,7 +188,7 @@ class _PublishPetPageState extends State<PublishPetPage> {
         'raza': _raza,
         'edad_meses': _edadMeses,
         'talla': _talla,
-        'sexo': _sexo,
+        'sexo': _sexo, // 'macho' | 'hembra'
         'temperamento': _temperamento,
         'descripcion': _descripcion.text.trim(),
         'estado': _estado,
@@ -174,20 +199,24 @@ class _PublishPetPageState extends State<PublishPetPage> {
       final petId = petData['id'];
 
       if (imageUrls.isNotEmpty) {
-        final rows = imageUrls.asMap().entries.map((e) => {
-              'pet_id': petId,
-              'url': e.value,
-              'position': e.key,
-            });
-        await _sb.from('pet_photos').insert(rows.toList());
+        final photoInserts = imageUrls.asMap().entries.map((e) => {
+          'pet_id': petId,
+          'url': e.value,
+          'position': e.key,
+        }).toList();
+        await _sb.from('pet_photos').insert(photoInserts);
       }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('¡Mascota publicada exitosamente!'), backgroundColor: Colors.green));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('¡Mascota publicada exitosamente!'), backgroundColor: Colors.green),
+      );
       context.go('/home');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al publicar: $e'), backgroundColor: Colors.red));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al publicar: $e'), backgroundColor: Colors.red),
+      );
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -236,24 +265,27 @@ class _PublishPetPageState extends State<PublishPetPage> {
                         padding: const EdgeInsets.only(right: 8),
                         child: Stack(
                           children: [
-                            ClipRRect( // ✅ corregido
+                            ClipRRect(
                               borderRadius: BorderRadius.circular(12),
-                              child: Image.network( // (para web, si quieres vista previa real usa Image.memory con bytes)
-                                img.path,
-                                width: 120,
-                                height: 120,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
-                                  width: 120,
-                                  height: 120,
-                                  color: Colors.grey.shade300,
-                                  child: const Icon(Icons.error),
-                                ),
+                              child: FutureBuilder<Uint8List>(
+                                future: img.readAsBytes(),
+                                builder: (_, snap) {
+                                  if (!snap.hasData) {
+                                    return Container(
+                                      width: 120, height: 120,
+                                      color: Colors.grey.shade300,
+                                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                    );
+                                  }
+                                  return Image.memory(
+                                    snap.data!,
+                                    width: 120, height: 120, fit: BoxFit.cover,
+                                  );
+                                },
                               ),
                             ),
                             Positioned(
-                              top: 4,
-                              right: 4,
+                              top: 4, right: 4,
                               child: IconButton(
                                 icon: const Icon(Icons.close, color: Colors.white),
                                 style: IconButton.styleFrom(backgroundColor: Colors.black54),
@@ -283,7 +315,7 @@ class _PublishPetPageState extends State<PublishPetPage> {
               Row(
                 children: [
                   Expanded(child: RadioListTile<String>(title: const Text('🐶 Perro'), value: 'perro', groupValue: _especie, onChanged: (v) => setState(() => _especie = v!))),
-                  Expanded(child: RadioListTile<String>(title: const Text('🐱 Gato'),  value: 'gato',  groupValue: _especie, onChanged: (v) => setState(() => _especie = v!))),
+                  Expanded(child: RadioListTile<String>(title: const Text('🐱 Gato'), value: 'gato', groupValue: _especie, onChanged: (v) => setState(() => _especie = v!))),
                 ],
               ),
               const SizedBox(height: 16),
@@ -295,12 +327,12 @@ class _PublishPetPageState extends State<PublishPetPage> {
                 children: [
                   ChoiceChip(label: const Text('Publicado'), selected: _estado == 'publicado', onSelected: (_) => setState(() => _estado = 'publicado')),
                   ChoiceChip(label: const Text('Reservado'), selected: _estado == 'reservado', onSelected: (_) => setState(() => _estado = 'reservado')),
-                  ChoiceChip(label: const Text('Adoptado'),  selected: _estado == 'adoptado',  onSelected: (_) => setState(() => _estado = 'adoptado')),
+                  ChoiceChip(label: const Text('Adoptado'), selected: _estado == 'adoptado', onSelected: (_) => setState(() => _estado = 'adoptado')),
                 ],
               ),
               const SizedBox(height: 16),
 
-              PetfyTextField(label: 'Raza (opcional)', hint: 'Ej: Golden Retriever', onChanged: (v) => _raza = v.isEmpty ? null : v),
+              PetfyTextField(label: 'Raza (opcional)', hint: 'Ej: Jack Russell', onChanged: (v) => _raza = v.isEmpty ? null : v),
               const SizedBox(height: 16),
 
               PetfyTextField(
@@ -314,7 +346,8 @@ class _PublishPetPageState extends State<PublishPetPage> {
               PetfyDropdown<String>(
                 label: 'Talla',
                 value: _talla,
-                items: ['pequeña', 'mediana', 'grande'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                items: ['pequeña', 'mediana', 'grande']
+                    .map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
                 onChanged: (v) => setState(() => _talla = v),
               ),
               const SizedBox(height: 16),
@@ -323,8 +356,8 @@ class _PublishPetPageState extends State<PublishPetPage> {
                 label: 'Sexo',
                 value: _sexo,
                 items: const [
-                  DropdownMenuItem(value: 'M', child: Text('Macho')),
-                  DropdownMenuItem(value: 'H', child: Text('Hembra')),
+                  DropdownMenuItem(value: 'macho',  child: Text('Macho')),
+                  DropdownMenuItem(value: 'hembra', child: Text('Hembra')),
                 ],
                 onChanged: (v) => setState(() => _sexo = v),
               ),
@@ -348,17 +381,16 @@ class _PublishPetPageState extends State<PublishPetPage> {
                         isDense: true,
                       ),
                       items: _departments.map((d) => DropdownMenuItem<int>(value: d['id'] as int, child: Text(d['name'] as String))).toList(),
-                      onChanged: (val) {
-                        if (val != null) {
-                          final selected = _departments.firstWhere((d) => d['id'] == val);
-                          setState(() {
-                            _deptId = val;
-                            _deptName = selected['name'] as String;
-                            _cityName = null;
-                            _cityNames.clear();
-                          });
-                          _loadCities(val);
-                        }
+                      onChanged: (val) async {
+                        if (val == null) return;
+                        final selected = _departments.firstWhere((d) => d['id'] == val);
+                        setState(() {
+                          _deptId = val;
+                          _deptName = selected['name'] as String;
+                          _cityName = null;
+                          _cityNames.clear();
+                        });
+                        await _loadCities(val);
                       },
                     ),
                   ),
