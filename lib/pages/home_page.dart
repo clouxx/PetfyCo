@@ -29,7 +29,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _loadPets() async {
     setState(() => _loading = true);
     try {
-      // *** Importante: evitamos .eq/.filter para que compile en tu postgrest 2.5 ***
+      // ✅ Query corregido
       final data = await _sb
           .from('pets')
           .select('''
@@ -39,22 +39,38 @@ class _HomePageState extends State<HomePage> {
           .order('created_at', ascending: false)
           .limit(200);
 
-      // Filtrado en memoria
-      List<Map<String, dynamic>> list =
-          List<Map<String, dynamic>>.from(data as List<dynamic>);
+      // ✅ SOLUCIÓN: Convertir correctamente a List<Map<String, dynamic>>
+      final List<Map<String, dynamic>> allPets = [];
+      
+      if (data is List) {
+        for (var item in data) {
+          if (item is Map) {
+            // Convertir cada item a Map<String, dynamic>
+            final petMap = Map<String, dynamic>.from(item as Map);
+            allPets.add(petMap);
+          }
+        }
+      }
 
-      list = list.where((row) {
-        final estadoOk = (row['estado'] == _statusFilter);
-        final especieOk =
-            (_filter == 'todos') ? true : (row['especie'] == _filter);
+      // Filtrado en memoria
+      final filteredPets = allPets.where((pet) {
+        final estadoOk = (pet['estado'] == _statusFilter);
+        final especieOk = (_filter == 'todos') || (pet['especie'] == _filter);
         return estadoOk && especieOk;
       }).toList();
 
       setState(() {
-        _pets = list;
+        _pets = filteredPets;
         _loading = false;
       });
+
+      // Debug
+      debugPrint('✅ Mascotas cargadas: ${_pets.length}');
+      if (_pets.isNotEmpty && _pets[0]['pet_photos'] != null) {
+        debugPrint('📸 Fotos disponibles: ${_pets[0]['pet_photos']}');
+      }
     } catch (e) {
+      debugPrint('❌ Error cargando mascotas: $e');
       setState(() => _loading = false);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -73,8 +89,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title:
-            Image.asset('assets/logo/petfyco_logo_full.png', height: 40),
+        title: Image.asset('assets/logo/petfyco_logo_full.png', height: 40),
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
@@ -150,10 +165,11 @@ class _HomePageState extends State<HomePage> {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _StatusChip(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _StatusChip(
                         label: 'Publicados',
                         selected: _statusFilter == 'publicado',
                         onTap: () {
@@ -161,10 +177,8 @@ class _HomePageState extends State<HomePage> {
                           _loadPets();
                         },
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _StatusChip(
+                      const SizedBox(width: 8),
+                      _StatusChip(
                         label: 'Adoptados',
                         selected: _statusFilter == 'adoptado',
                         onTap: () {
@@ -172,10 +186,8 @@ class _HomePageState extends State<HomePage> {
                           _loadPets();
                         },
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _StatusChip(
+                      const SizedBox(width: 8),
+                      _StatusChip(
                         label: 'Reservados',
                         selected: _statusFilter == 'reservado',
                         onTap: () {
@@ -183,10 +195,8 @@ class _HomePageState extends State<HomePage> {
                           _loadPets();
                         },
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _StatusChip(
+                      const SizedBox(width: 8),
+                      _StatusChip(
                         label: 'Perdidos',
                         selected: _statusFilter == 'perdido',
                         onTap: () {
@@ -194,15 +204,16 @@ class _HomePageState extends State<HomePage> {
                           _loadPets();
                         },
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
 
             if (_loading)
               const SliverFillRemaining(
-                  child: Center(child: CircularProgressIndicator()))
+                child: Center(child: CircularProgressIndicator()),
+              )
             else if (_pets.isEmpty)
               SliverFillRemaining(
                 child: Center(
@@ -215,8 +226,7 @@ class _HomePageState extends State<HomePage> {
                         _statusFilter == 'perdido'
                             ? 'No hay reportes de mascotas perdidas'
                             : 'No hay mascotas disponibles',
-                        style: const TextStyle(
-                            fontSize: 18, color: Colors.grey),
+                        style: const TextStyle(fontSize: 18, color: Colors.grey),
                       ),
                       const SizedBox(height: 24),
                       ElevatedButton.icon(
@@ -232,12 +242,11 @@ class _HomePageState extends State<HomePage> {
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
                 sliver: SliverGrid(
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     mainAxisSpacing: 14,
                     crossAxisSpacing: 14,
-                    mainAxisExtent: 320, // altura fija de cada card
+                    mainAxisExtent: 320, // altura fija
                   ),
                   delegate: SliverChildBuilderDelegate(
                     (context, i) => _PetCard(pet: _pets[i]),
@@ -353,7 +362,7 @@ class _StatusChip extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         decoration: BoxDecoration(
           color: selected
               ? AppColors.blue.withOpacity(0.2)
@@ -361,13 +370,11 @@ class _StatusChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           border: selected ? Border.all(color: AppColors.blue, width: 2) : null,
         ),
-        child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              color: selected ? AppColors.navy : Colors.grey.shade700,
-            ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            color: selected ? AppColors.navy : Colors.grey.shade700,
           ),
         ),
       ),
@@ -390,15 +397,31 @@ class _PetCard extends StatelessWidget {
     final edadMeses = pet['edad_meses'] as int?;
     final edadAnios = edadMeses == null ? null : (edadMeses ~/ 12);
 
-    // 1a foto ordenada por position
-    final petPhotos = pet['pet_photos'] as List<dynamic>?;
+    // ✅ SOLUCIÓN: Obtener primera foto correctamente
     String? imageUrl;
-    if (petPhotos != null && petPhotos.isNotEmpty) {
-      final sorted = List<Map<String, dynamic>>.from(petPhotos)
-        ..sort((a, b) =>
-            ((a['position'] as int?) ?? 0)
-                .compareTo(((b['position'] as int?) ?? 0)));
-      imageUrl = sorted.first['url'] as String?;
+    final petPhotosRaw = pet['pet_photos'];
+    
+    if (petPhotosRaw != null) {
+      List<Map<String, dynamic>> petPhotos = [];
+      
+      if (petPhotosRaw is List) {
+        for (var photo in petPhotosRaw) {
+          if (photo is Map) {
+            petPhotos.add(Map<String, dynamic>.from(photo as Map));
+          }
+        }
+      }
+      
+      if (petPhotos.isNotEmpty) {
+        // Ordenar por position
+        petPhotos.sort((a, b) {
+          final posA = a['position'] as int? ?? 0;
+          final posB = b['position'] as int? ?? 0;
+          return posA.compareTo(posB);
+        });
+        
+        imageUrl = petPhotos.first['url'] as String?;
+      }
     }
 
     return Card(
@@ -413,9 +436,20 @@ class _PetCard extends StatelessWidget {
               aspectRatio: 16 / 9,
               child: imageUrl != null
                   ? Image.network(
-                      imageUrl!,
+                      imageUrl,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => const _ImagePlaceholder(),
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Center(
+                          child: CircularProgressIndicator(
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded /
+                                    loadingProgress.expectedTotalBytes!
+                                : null,
+                          ),
+                        );
+                      },
                     )
                   : const _ImagePlaceholder(),
             ),
@@ -453,12 +487,11 @@ class _PetCard extends StatelessWidget {
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 6,
-                    runSpacing: -6,
+                    runSpacing: 4,
                     children: [
                       _buildTag(especie == 'perro' ? 'Perro' : 'Gato'),
                       if (edadAnios != null)
-                        _buildTag(
-                            '$edadAnios año${edadAnios == 1 ? '' : 's'}'),
+                        _buildTag('$edadAnios año${edadAnios == 1 ? '' : 's'}'),
                       if (talla != null && talla.isNotEmpty) _buildTag(talla),
                       if (temperamento != null && temperamento.isNotEmpty)
                         _buildTag(temperamento),
@@ -491,8 +524,11 @@ class _PetCard extends StatelessWidget {
 
   Widget _buildTag(String text) {
     return Chip(
-      label: Text(text, style: const TextStyle(fontSize: 12)),
-      backgroundColor: Colors.blue.withValues(alpha: 0.1),
+      label: Text(text, style: const TextStyle(fontSize: 11)),
+      backgroundColor: Colors.blue.withOpacity(0.1),
+      padding: EdgeInsets.zero,
+      labelPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
@@ -511,5 +547,5 @@ class _ImagePlaceholder extends StatelessWidget {
         child: Icon(Icons.pets, size: 40, color: AppColors.navy),
       ),
     );
-    }
+  }
 }
