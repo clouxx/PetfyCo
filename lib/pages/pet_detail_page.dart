@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
 
 class PetDetailPage extends StatefulWidget {
+  final int petId;
   const PetDetailPage({super.key, required this.petId});
-  final String petId;
 
   @override
   State<PetDetailPage> createState() => _PetDetailPageState();
@@ -14,8 +13,8 @@ class PetDetailPage extends StatefulWidget {
 
 class _PetDetailPageState extends State<PetDetailPage> {
   final _sb = Supabase.instance.client;
+
   Map<String, dynamic>? _pet;
-  List<String> _photos = [];
   bool _loading = true;
 
   @override
@@ -29,70 +28,35 @@ class _PetDetailPageState extends State<PetDetailPage> {
       final data = await _sb
           .from('pets')
           .select('''
-            *,
-            profiles:owner_id(display_name, phone),
+            id, nombre, especie, municipio, descripcion, edad_meses,
+            talla, temperamento, estado,
             pet_photos(url, position)
           ''')
           .eq('id', widget.petId)
-          .single();
-
-      final petPhotos = data['pet_photos'] as List<dynamic>?;
-      if (petPhotos != null && petPhotos.isNotEmpty) {
-        final sortedPhotos = List<Map<String, dynamic>>.from(petPhotos)
-          ..sort((a, b) =>
-              ((a['position'] as int?) ?? 0).compareTo((b['position'] as int?) ?? 0));
-        _photos = sortedPhotos.map((p) => p['url'] as String).toList();
-      }
+          .maybeSingle();
 
       setState(() {
         _pet = data;
         _loading = false;
       });
     } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al cargar detalles: $e')),
+        );
+      }
       setState(() => _loading = false);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error cargando mascota: $e')),
-      );
-    }
-  }
-
-  Future<void> _contactOwner() async {
-    if (_pet == null) return;
-
-    final profile = _pet!['profiles'] as Map<String, dynamic>?;
-    if (profile == null) return;
-
-    final phone = profile['phone'] as String?;
-    if (phone == null || phone.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('El dueño no tiene teléfono registrado')),
-      );
-      return;
-    }
-
-    final nombre = _pet!['nombre'];
-    final message = Uri.encodeComponent(
-      'Hola! Vi tu publicación de $nombre en PetfyCo y me gustaría saber más.',
-    );
-    final url = 'https://wa.me/+57$phone?text=$message';
-
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pudo abrir WhatsApp')),
-      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
+
     if (_pet == null) {
       return Scaffold(
         appBar: AppBar(),
@@ -100,343 +64,193 @@ class _PetDetailPageState extends State<PetDetailPage> {
       );
     }
 
-    final userId = _sb.auth.currentUser?.id;
-    final isOwner = userId != null && userId == _pet!['owner_id'];
+    final pet = _pet!;
+    final nombre = pet['nombre'] ?? 'Sin nombre';
+    final especie = pet['especie'] ?? 'Desconocido';
+    final municipio = pet['municipio'] ?? 'Colombia';
+    final descripcion = pet['descripcion'] ?? 'Sin descripción';
+    final talla = pet['talla'];
+    final temperamento = pet['temperamento'];
+    final edadMeses = pet['edad_meses'] as int?;
+    final edadAnios = edadMeses == null ? null : (edadMeses ~/ 12);
 
-    // Campos
-    final nombre = _pet!['nombre'] as String? ?? 'Sin nombre';
-    final especie = _pet!['especie'] as String? ?? 'desconocido';
-    final raza = _pet!['raza'] as String?;
-    final edadMeses = _pet!['edad_meses'] as int?;
-    final talla = _pet!['talla'] as String?;
-    final sexo = _pet!['sexo'] as String?;
-    final temperamento = _pet!['temperamento'] as String?;
-    final descripcion = _pet!['descripcion'] as String?;
-    final estado = _pet!['estado'] as String? ?? 'publicado';
-    final municipio = _pet!['municipio'] as String?;
-    final profile = _pet!['profiles'] as Map<String, dynamic>?;
-    final ownerName = (profile?['display_name'] as String?)?.trim();
-    final ownerInitial =
-        (ownerName?.isNotEmpty ?? false) ? ownerName![0].toUpperCase() : 'U';
+    // Ordenar fotos
+    final petPhotos = pet['pet_photos'] as List<dynamic>?;
+    List<String> imageUrls = [];
+    if (petPhotos != null && petPhotos.isNotEmpty) {
+      final sorted = List<Map<String, dynamic>>.from(petPhotos)
+        ..sort((a, b) =>
+            ((a['position'] as int?) ?? 0)
+                .compareTo(((b['position'] as int?) ?? 0)));
+      imageUrls = sorted.map((e) => e['url'] as String).toList();
+    }
 
     return Scaffold(
       appBar: AppBar(
+        title: Text(nombre),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.pop(),
         ),
-        actions: [
-          IconButton(icon: const Icon(Icons.share), onPressed: () {}),
-          if (isOwner)
-            IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () {
-                // Abre el formulario en modo edición (ajusta ruta si usas otra)
-                context.push('/publish?editId=${_pet!['id']}');
-              },
-            ),
-        ],
       ),
       body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Cabecera con altura fija y recorte
-            if (_photos.isNotEmpty)
-              SizedBox(
-                height: 260,
-                child: PageView.builder(
-                  itemCount: _photos.length,
-                  itemBuilder: (_, i) => ClipRRect(
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(12),
-                      bottomRight: Radius.circular(12),
-                    ),
-                    child: Image.network(
-                      _photos[i],
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: AppColors.blue.withOpacity(0.15),
-                        child: const Icon(Icons.pets, size: 80),
-                      ),
-                    ),
-                  ),
-                ),
-              )
-            else
-              Container(
-                height: 260,
-                decoration: BoxDecoration(
-                  color: AppColors.blue.withOpacity(0.15),
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(12),
-                    bottomRight: Radius.circular(12),
-                  ),
-                ),
-                child: const Center(
-                  child: Icon(Icons.pets, size: 80, color: AppColors.navy),
-                ),
+            // Galería de fotos
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: imageUrls.isNotEmpty
+                    ? PageView.builder(
+                        itemCount: imageUrls.length,
+                        itemBuilder: (context, index) => Image.network(
+                          imageUrls[index],
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              const _ImagePlaceholder(),
+                        ),
+                      )
+                    : const _ImagePlaceholder(),
               ),
+            ),
+            const SizedBox(height: 16),
 
-            // Información
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Título + estado
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          nombre,
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineMedium!
-                              .copyWith(fontWeight: FontWeight.w800),
-                        ),
-                      ),
-                      Chip(
-                        label: Text(_getEstadoLabel(estado)),
-                        backgroundColor: _getEstadoColor(estado),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Ubicación
-                  if (municipio != null)
-                    Row(
-                      children: [
-                        const Icon(Icons.place, color: AppColors.pink),
-                        const SizedBox(width: 8),
-                        Text(
-                          municipio,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                      ],
-                    ),
-                  const SizedBox(height: 16),
-
-                  // Detalles
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Detalles',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge!
-                                .copyWith(fontWeight: FontWeight.w700),
-                          ),
-                          const SizedBox(height: 12),
-                          _DetailRow(
-                            icon: Icons.pets,
-                            label: 'Especie',
-                            value: especie == 'perro' ? 'Perro' : 'Gato',
-                          ),
-                          if (raza != null)
-                            _DetailRow(
-                              icon: Icons.category,
-                              label: 'Raza',
-                              value: raza,
-                            ),
-                          if (edadMeses != null)
-                            _DetailRow(
-                              icon: Icons.cake,
-                              label: 'Edad',
-                              value: _formatEdad(edadMeses),
-                            ),
-                          if (talla != null)
-                            _DetailRow(
-                              icon: Icons.straighten,
-                              label: 'Talla',
-                              value: talla,
-                            ),
-                          if (sexo != null)
-                            _DetailRow(
-                              icon: Icons.wc,
-                              label: 'Sexo',
-                              value: sexo == 'macho' ? 'Macho' : 'Hembra',
-                            ),
-                          if (temperamento != null)
-                            _DetailRow(
-                              icon: Icons.emoji_emotions,
-                              label: 'Temperamento',
-                              value: temperamento,
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Descripción
-                  if (descripcion != null && descripcion.isNotEmpty) ...[
-                    Text(
-                      'Descripción',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleLarge!
-                          .copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 8),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Text(
-                          descripcion,
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // Dueño
-                  Text(
-                    'Publicado por',
+            // Nombre y ubicación
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    nombre,
                     style: Theme.of(context)
                         .textTheme
-                        .titleLarge!
-                        .copyWith(fontWeight: FontWeight.w700),
+                        .headlineSmall!
+                        .copyWith(fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 8),
-                  Card(
-                    child: ListTile(
-                      leading: CircleAvatar(child: Text(ownerInitial)),
-                      title: Text(ownerName ?? 'Desconocido'),
-                      subtitle: const Text('Ver perfil'),
-                      trailing: const Icon(Icons.arrow_forward_ios),
-                      onTap: () {
-                        final ownerId = _pet!['owner_id'] as String?;
-                        if (ownerId != null) {
-                          context.push('/profile?uid=$ownerId');
-                        }
-                      },
+                ),
+                Icon(
+                  especie == 'perro' ? Icons.pets : Icons.pets_outlined,
+                  color: AppColors.navy,
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(Icons.place, size: 18, color: AppColors.pink),
+                const SizedBox(width: 4),
+                Text(
+                  municipio,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium!
+                      .copyWith(color: Colors.grey[600]),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Chips informativos
+            Wrap(
+              spacing: 8,
+              runSpacing: -4,
+              children: [
+                Chip(
+                  label: Text(
+                    especie == 'perro' ? 'Perro' : 'Gato',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  backgroundColor: AppColors.blue.withOpacity(0.1),
+                ),
+                if (edadAnios != null)
+                  Chip(
+                    label: Text(
+                      '$edadAnios año${edadAnios == 1 ? "" : "s"}',
+                      style: const TextStyle(fontSize: 12),
                     ),
+                    backgroundColor: AppColors.blue.withOpacity(0.1),
                   ),
-                  const SizedBox(height: 100),
-                ],
-              ),
+                if (talla != null && talla.isNotEmpty)
+                  Chip(
+                    label: Text(talla, style: const TextStyle(fontSize: 12)),
+                    backgroundColor: AppColors.blue.withOpacity(0.1),
+                  ),
+                if (temperamento != null && temperamento.isNotEmpty)
+                  Chip(
+                    label: Text(temperamento,
+                        style: const TextStyle(fontSize: 12)),
+                    backgroundColor: AppColors.blue.withOpacity(0.1),
+                  ),
+              ],
             ),
+            const SizedBox(height: 24),
+
+            // Descripción
+            Text(
+              'Descripción',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium!
+                  .copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              descripcion,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium!
+                  .copyWith(color: Colors.grey[800]),
+            ),
+            const SizedBox(height: 32),
+
+            // Botones de acción
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.favorite_border),
+                    label: const Text('Quiero adoptar'),
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Funcionalidad en desarrollo')),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.share_outlined),
+                    label: const Text('Compartir'),
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Enlace copiado')),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
           ],
-        ),
-      ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, -5),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: ElevatedButton.icon(
-            onPressed: _contactOwner,
-            icon: const Icon(Icons.chat),
-            label: const Text('Contactar por WhatsApp'),
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size.fromHeight(50),
-              backgroundColor: const Color(0xFF25D366),
-              foregroundColor: Colors.white,
-            ),
-          ),
         ),
       ),
     );
   }
-
-  // ---- Helpers ----
-
-  String _formatEdad(int meses) {
-    if (meses < 12) {
-      return '$meses ${meses == 1 ? 'mes' : 'meses'}';
-    } else {
-      final anios = meses ~/ 12;
-      final mesesRestantes = meses % 12;
-      if (mesesRestantes == 0) {
-        return '$anios ${anios == 1 ? 'año' : 'años'}';
-      } else {
-        return '$anios ${anios == 1 ? 'año' : 'años'} y '
-            '$mesesRestantes ${mesesRestantes == 1 ? 'mes' : 'meses'}';
-      }
-    }
-  }
-
-  String _getEstadoLabel(String estado) {
-    switch (estado) {
-      case 'publicado':
-        return 'Disponible';
-      case 'adoptado':
-        return 'Adoptado';
-      case 'reservado':
-        return 'Reservado';
-      case 'perdido':
-        return 'Perdido';
-      default:
-        return estado;
-    }
-  }
-
-  Color _getEstadoColor(String estado) {
-    switch (estado) {
-      case 'publicado':
-        return AppColors.blue.withOpacity(0.2);
-      case 'adoptado':
-        return Colors.green.withOpacity(0.2);
-      case 'reservado':
-        return Colors.orange.withOpacity(0.2);
-      case 'perdido':
-        return Colors.redAccent.withOpacity(0.2);
-      default:
-        return Colors.grey.withOpacity(0.2);
-    }
-  }
 }
 
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
+class _ImagePlaceholder extends StatelessWidget {
+  const _ImagePlaceholder();
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: AppColors.blue),
-          const SizedBox(width: 12),
-          Text(
-            '$label:',
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
+    return Container(
+      color: AppColors.blue.withOpacity(0.1),
+      child: const Center(
+        child: Icon(Icons.pets, color: AppColors.navy, size: 60),
       ),
     );
   }
