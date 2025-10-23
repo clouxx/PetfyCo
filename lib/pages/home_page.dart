@@ -28,23 +28,24 @@ class _HomePageState extends State<HomePage> {
   Future<void> _loadPets() async {
     setState(() => _loading = true);
     try {
-      var query = _sb
+      // 1) Query base
+      var q = _sb
           .from('pets')
           .select('''
             *,
             profiles:owner_id(display_name, phone),
             pet_photos(url, position)
-          ''')
-          .eq('estado', _statusFilter)
-          .order('created_at', ascending: false)
-          .limit(40);
+          ''');
 
+      // 2) Filtros SIEMPRE antes de order/limit
+      q = q.eq('estado', _statusFilter);
       if (_filter != 'todos') {
-        // postgrest 2.5 usa filter(..., 'eq', ...)
-        query = query.filter('especie', 'eq', _filter);
+        q = q.eq('especie', _filter);
       }
 
-      final data = await query;
+      // 3) Transforms
+      final data = await q.order('created_at', ascending: false).limit(40);
+
       setState(() {
         _pets = List<Map<String, dynamic>>.from(data);
         _loading = false;
@@ -72,8 +73,7 @@ class _HomePageState extends State<HomePage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
-            // TODO: aquí podrás abrir tu pantalla de notificaciones
-            onPressed: () => context.push('/lost'), 
+            onPressed: () => context.push('/lost'),
           ),
           IconButton(
             icon: const Icon(Icons.person_outline),
@@ -82,7 +82,8 @@ class _HomePageState extends State<HomePage> {
           IconButton(icon: const Icon(Icons.logout), onPressed: _logout),
         ],
       ),
-      floatingActionButton: _PublishButtons(onPublish: () => context.push('/publish')),
+      floatingActionButton:
+          _PublishButtons(onPublish: () => context.push('/publish')),
       body: RefreshIndicator(
         onRefresh: _loadPets,
         child: CustomScrollView(
@@ -92,10 +93,7 @@ class _HomePageState extends State<HomePage> {
                 padding: const EdgeInsets.all(16),
                 child: _HeaderBanner(
                   onPublish: () => context.push('/publish'),
-                  onLost: () {
-                    // Puedes pasar un query param si quieres prellenar el estado en el form
-                    context.push('/publish?estado=perdido');
-                  },
+                  onLost: () => context.push('/publish?estado=perdido'),
                 ),
               ),
             ),
@@ -109,19 +107,28 @@ class _HomePageState extends State<HomePage> {
                     _FilterChip(
                       label: 'Todos',
                       selected: _filter == 'todos',
-                      onTap: () { setState(() => _filter = 'todos'); _loadPets(); },
+                      onTap: () {
+                        setState(() => _filter = 'todos');
+                        _loadPets();
+                      },
                     ),
                     const SizedBox(width: 8),
                     _FilterChip(
                       label: '🐶 Perros',
                       selected: _filter == 'perro',
-                      onTap: () { setState(() => _filter = 'perro'); _loadPets(); },
+                      onTap: () {
+                        setState(() => _filter = 'perro');
+                        _loadPets();
+                      },
                     ),
                     const SizedBox(width: 8),
                     _FilterChip(
                       label: '🐱 Gatos',
                       selected: _filter == 'gato',
-                      onTap: () { setState(() => _filter = 'gato'); _loadPets(); },
+                      onTap: () {
+                        setState(() => _filter = 'gato');
+                        _loadPets();
+                      },
                     ),
                   ],
                 ),
@@ -138,7 +145,10 @@ class _HomePageState extends State<HomePage> {
                       child: _StatusChip(
                         label: 'Publicados',
                         selected: _statusFilter == 'publicado',
-                        onTap: () { setState(() => _statusFilter = 'publicado'); _loadPets(); },
+                        onTap: () {
+                          setState(() => _statusFilter = 'publicado');
+                          _loadPets();
+                        },
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -146,7 +156,10 @@ class _HomePageState extends State<HomePage> {
                       child: _StatusChip(
                         label: 'Adoptados',
                         selected: _statusFilter == 'adoptado',
-                        onTap: () { setState(() => _statusFilter = 'adoptado'); _loadPets(); },
+                        onTap: () {
+                          setState(() => _statusFilter = 'adoptado');
+                          _loadPets();
+                        },
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -154,7 +167,10 @@ class _HomePageState extends State<HomePage> {
                       child: _StatusChip(
                         label: 'Reservados',
                         selected: _statusFilter == 'reservado',
-                        onTap: () { setState(() => _statusFilter = 'reservado'); _loadPets(); },
+                        onTap: () {
+                          setState(() => _statusFilter = 'reservado');
+                          _loadPets();
+                        },
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -162,7 +178,10 @@ class _HomePageState extends State<HomePage> {
                       child: _StatusChip(
                         label: 'Perdidos',
                         selected: _statusFilter == 'perdido',
-                        onTap: () { setState(() => _statusFilter = 'perdido'); _loadPets(); },
+                        onTap: () {
+                          setState(() => _statusFilter = 'perdido');
+                          _loadPets();
+                        },
                       ),
                     ),
                   ],
@@ -186,7 +205,8 @@ class _HomePageState extends State<HomePage> {
                         _statusFilter == 'perdido'
                             ? 'No hay reportes de mascotas perdidas'
                             : 'No hay mascotas disponibles',
-                        style: const TextStyle(fontSize: 18, color: Colors.grey),
+                        style: const TextStyle(
+                            fontSize: 18, color: Colors.grey),
                       ),
                       const SizedBox(height: 24),
                       ElevatedButton.icon(
@@ -202,12 +222,12 @@ class _HomePageState extends State<HomePage> {
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
                 sliver: SliverGrid(
-                  // ---> Tamaño fijo de card: se ven pequeñas y parejas en web
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate:
+                      const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     mainAxisSpacing: 14,
                     crossAxisSpacing: 14,
-                    mainAxisExtent: 320, // altura fija de cada card
+                    mainAxisExtent: 320,
                   ),
                   delegate: SliverChildBuilderDelegate(
                     (context, i) => _PetCard(pet: _pets[i]),
@@ -234,7 +254,10 @@ class _HeaderBanner extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.blue.withOpacity(0.18), AppColors.orange.withOpacity(0.14)],
+          colors: [
+            AppColors.blue.withOpacity(0.18),
+            AppColors.orange.withOpacity(0.14)
+          ],
         ),
         borderRadius: BorderRadius.circular(18),
       ),
@@ -248,7 +271,10 @@ class _HeaderBanner extends StatelessWidget {
               Expanded(
                 child: Text(
                   'Encuentra y publica mascotas en Colombia',
-                  style: Theme.of(context).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.w700),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium!
+                      .copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
             ],
@@ -296,7 +322,8 @@ class _PublishButtons extends StatelessWidget {
 }
 
 class _FilterChip extends StatelessWidget {
-  const _FilterChip({required this.label, required this.selected, required this.onTap});
+  const _FilterChip(
+      {required this.label, required this.selected, required this.onTap});
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -314,7 +341,8 @@ class _FilterChip extends StatelessWidget {
 }
 
 class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.label, required this.selected, required this.onTap});
+  const _StatusChip(
+      {required this.label, required this.selected, required this.onTap});
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -327,7 +355,8 @@ class _StatusChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? AppColors.blue.withOpacity(0.2) : Colors.grey.shade200,
+          color:
+              selected ? AppColors.blue.withOpacity(0.2) : Colors.grey.shade200,
           borderRadius: BorderRadius.circular(12),
           border: selected ? Border.all(color: AppColors.blue, width: 2) : null,
         ),
@@ -347,7 +376,6 @@ class _StatusChip extends StatelessWidget {
 
 class _PetCard extends StatelessWidget {
   const _PetCard({required this.pet});
-
   final Map<String, dynamic> pet;
 
   @override
@@ -362,7 +390,8 @@ class _PetCard extends StatelessWidget {
     String? imageUrl;
     if (petPhotos != null && petPhotos.isNotEmpty) {
       final sorted = List<Map<String, dynamic>>.from(petPhotos)
-        ..sort((a, b) => ((a['position'] as int?) ?? 0).compareTo(((b['position'] as int?) ?? 0)));
+        ..sort((a, b) => ((a['position'] as int?) ?? 0)
+            .compareTo(((b['position'] as int?) ?? 0)));
       imageUrl = sorted.first['url'] as String?;
     }
 
@@ -373,7 +402,7 @@ class _PetCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Imagen con tamaño controlado (16:9) para que no se haga gigante
+            // Imagen controlada 16:9
             AspectRatio(
               aspectRatio: 16 / 9,
               child: imageUrl != null
@@ -385,7 +414,7 @@ class _PetCard extends StatelessWidget {
                       child: Image.network(
                         imageUrl!,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _ImagePlaceholder(),
+                        errorBuilder: (_, __, ___) => const _ImagePlaceholder(),
                       ),
                     )
                   : const _ImagePlaceholder(),
@@ -399,7 +428,10 @@ class _PetCard extends StatelessWidget {
                 children: [
                   Text(
                     nombre,
-                    style: Theme.of(context).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.w700),
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium!
+                        .copyWith(fontWeight: FontWeight.w700),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -422,17 +454,23 @@ class _PetCard extends StatelessWidget {
                   Row(
                     children: [
                       Chip(
-                        label: Text(especie == 'perro' ? 'Perro' : 'Gato', style: const TextStyle(fontSize: 11)),
+                        label: Text(
+                          especie == 'perro' ? 'Perro' : 'Gato',
+                          style: const TextStyle(fontSize: 11),
+                        ),
                         padding: EdgeInsets.zero,
-                        labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+                        labelPadding:
+                            const EdgeInsets.symmetric(horizontal: 8),
                         visualDensity: VisualDensity.compact,
                       ),
                       const SizedBox(width: 6),
                       Flexible(
                         child: Chip(
-                          label: Text(_estadoLabel(estado), style: const TextStyle(fontSize: 11)),
+                          label: Text(_estadoLabel(estado),
+                              style: const TextStyle(fontSize: 11)),
                           padding: EdgeInsets.zero,
-                          labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+                          labelPadding:
+                              const EdgeInsets.symmetric(horizontal: 8),
                           visualDensity: VisualDensity.compact,
                         ),
                       ),
