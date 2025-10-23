@@ -7,7 +7,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/app_theme.dart';
 
 class PublishPetPage extends StatefulWidget {
-  const PublishPetPage({super.key});
+  const PublishPetPage({
+    super.key,
+    this.presetEstado, // <- NUEVO
+  });
+
+  /// Permite preseleccionar el estado (publicado|reservado|adoptado|perdido)
+  final String? presetEstado;
 
   @override
   State<PublishPetPage> createState() => _PublishPetPageState();
@@ -27,15 +33,25 @@ class _PublishPetPageState extends State<PublishPetPage> {
   String _especie = 'perro'; // perro | gato
   String? _sexo; // macho | hembra
   String _estado = 'publicado'; // publicado | adoptado | reservado | perdido
-  String? _talla; // Pequeño|Mediano|Grande (texto libre)
-  String? _temperamento; // Juguetón, Tranquilo, etc (texto libre)
+  String? _talla; // Pequeño|Mediano|Grande
+  String? _temperamento; // Juguetón|Tranquilo|Guardián...
   int? _edadAnios; // UI en años (se convertirá a meses)
 
-  // Imágenes seleccionadas
+  // Imágenes
   final ImagePicker _picker = ImagePicker();
   final List<XFile> _images = [];
 
   bool _sending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Si viene preset por ruta, úsalo
+    final e = widget.presetEstado?.toLowerCase();
+    if (e == 'publicado' || e == 'reservado' || e == 'adoptado' || e == 'perdido') {
+      _estado = e!;
+    }
+  }
 
   @override
   void dispose() {
@@ -81,7 +97,7 @@ class _PublishPetPageState extends State<PublishPetPage> {
       final insert = await _sb
           .from('pets')
           .insert({
-            'owner_id': user.id, // requerido por RLS
+            'owner_id': user.id,
             'especie': _especie,
             'nombre': _nombreCtrl.text.trim(),
             'raza': _razaCtrl.text.trim().isEmpty ? null : _razaCtrl.text.trim(),
@@ -98,24 +114,20 @@ class _PublishPetPageState extends State<PublishPetPage> {
 
       final String petId = insert['id'] as String;
 
-      // 2) Subir imágenes y crear filas en pet_photos
+      // 2) Subir imágenes al bucket pet-images y crear filas en pet_photos
       for (int i = 0; i < _images.length; i++) {
         final img = _images[i];
-
-        // Leemos los bytes para usar uploadBinary (sirve para web y mobile)
         final Uint8List bytes = await img.readAsBytes();
 
-        // Extensión simple por path; si no se puede, usa jpg
         String ext = 'jpg';
-        final pathLower = img.name.toLowerCase();
-        if (pathLower.endsWith('.png')) ext = 'png';
-        if (pathLower.endsWith('.jpeg')) ext = 'jpeg';
-        if (pathLower.endsWith('.webp')) ext = 'webp';
+        final lower = img.name.toLowerCase();
+        if (lower.endsWith('.png')) ext = 'png';
+        if (lower.endsWith('.jpeg')) ext = 'jpeg';
+        if (lower.endsWith('.webp')) ext = 'webp';
 
         final storagePath =
             '${user.id}/$petId/${DateTime.now().millisecondsSinceEpoch}_$i.$ext';
 
-        // Subir al bucket pet-images
         await _sb.storage.from('pet-images').uploadBinary(
               storagePath,
               bytes,
@@ -126,11 +138,9 @@ class _PublishPetPageState extends State<PublishPetPage> {
               ),
             );
 
-        // URL pública
         final publicUrl =
             _sb.storage.from('pet-images').getPublicUrl(storagePath);
 
-        // Insertar metadata de la foto
         await _sb.from('pet_photos').insert({
           'pet_id': petId,
           'url': publicUrl,
@@ -145,7 +155,6 @@ class _PublishPetPageState extends State<PublishPetPage> {
           backgroundColor: Colors.green,
         ),
       );
-
       context.go('/home');
     } on PostgrestException catch (e) {
       if (!mounted) return;
@@ -196,7 +205,6 @@ class _PublishPetPageState extends State<PublishPetPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Nombre
                       TextFormField(
                         controller: _nombreCtrl,
                         decoration: const InputDecoration(
@@ -204,13 +212,10 @@ class _PublishPetPageState extends State<PublishPetPage> {
                           prefixIcon: Icon(Icons.pets),
                         ),
                         validator: (v) =>
-                            (v == null || v.trim().isEmpty)
-                                ? 'Ingresa el nombre'
-                                : null,
+                            (v == null || v.trim().isEmpty) ? 'Ingresa el nombre' : null,
                       ),
                       const SizedBox(height: 12),
 
-                      // Especie
                       DropdownButtonFormField<String>(
                         value: _especie,
                         decoration: const InputDecoration(
@@ -225,7 +230,6 @@ class _PublishPetPageState extends State<PublishPetPage> {
                       ),
                       const SizedBox(height: 12),
 
-                      // Sexo
                       DropdownButtonFormField<String>(
                         value: _sexo,
                         decoration: const InputDecoration(
@@ -240,7 +244,6 @@ class _PublishPetPageState extends State<PublishPetPage> {
                       ),
                       const SizedBox(height: 12),
 
-                      // Estado
                       DropdownButtonFormField<String>(
                         value: _estado,
                         decoration: const InputDecoration(
@@ -253,12 +256,10 @@ class _PublishPetPageState extends State<PublishPetPage> {
                           DropdownMenuItem(value: 'adoptado', child: Text('Adoptado')),
                           DropdownMenuItem(value: 'perdido', child: Text('Perdido')),
                         ],
-                        onChanged: (v) =>
-                            setState(() => _estado = v ?? 'publicado'),
+                        onChanged: (v) => setState(() => _estado = v ?? 'publicado'),
                       ),
                       const SizedBox(height: 12),
 
-                      // Raza
                       TextFormField(
                         controller: _razaCtrl,
                         decoration: const InputDecoration(
@@ -268,7 +269,6 @@ class _PublishPetPageState extends State<PublishPetPage> {
                       ),
                       const SizedBox(height: 12),
 
-                      // Años (se guardará como meses)
                       TextFormField(
                         keyboardType: TextInputType.number,
                         decoration: const InputDecoration(
@@ -282,7 +282,6 @@ class _PublishPetPageState extends State<PublishPetPage> {
                       ),
                       const SizedBox(height: 12),
 
-                      // Talla
                       DropdownButtonFormField<String>(
                         value: _talla,
                         decoration: const InputDecoration(
@@ -298,7 +297,6 @@ class _PublishPetPageState extends State<PublishPetPage> {
                       ),
                       const SizedBox(height: 12),
 
-                      // Temperamento
                       DropdownButtonFormField<String>(
                         value: _temperamento,
                         decoration: const InputDecoration(
@@ -308,13 +306,12 @@ class _PublishPetPageState extends State<PublishPetPage> {
                         items: const [
                           DropdownMenuItem(value: 'Juguetón', child: Text('Juguetón')),
                           DropdownMenuItem(value: 'Tranquilo', child: Text('Tranquilo')),
-                          DropdownMenuItem(value: 'Guardían', child: Text('Guardián')),
+                          DropdownMenuItem(value: 'Guardián', child: Text('Guardián')),
                         ],
                         onChanged: (v) => setState(() => _temperamento = v),
                       ),
                       const SizedBox(height: 12),
 
-                      // Descripción
                       TextFormField(
                         controller: _descripcionCtrl,
                         minLines: 3,
@@ -327,7 +324,7 @@ class _PublishPetPageState extends State<PublishPetPage> {
                       ),
 
                       const SizedBox(height: 16),
-                      // Imágenes
+
                       Row(
                         children: [
                           ElevatedButton.icon(
@@ -365,15 +362,14 @@ class _PublishPetPageState extends State<PublishPetPage> {
                                 ),
                                 IconButton(
                                   visualDensity: VisualDensity.compact,
-                                  onPressed: () {
-                                    setState(() => _images.removeAt(i));
-                                  },
+                                  onPressed: () => setState(() => _images.removeAt(i)),
                                   icon: Container(
                                     decoration: BoxDecoration(
                                       color: Colors.black.withOpacity(0.5),
                                       shape: BoxShape.circle,
                                     ),
-                                    child: const Icon(Icons.close, color: Colors.white, size: 18),
+                                    child: const Icon(Icons.close,
+                                        color: Colors.white, size: 18),
                                   ),
                                 ),
                               ],
@@ -382,7 +378,7 @@ class _PublishPetPageState extends State<PublishPetPage> {
                         ),
 
                       const SizedBox(height: 24),
-                      // Botón publicar
+
                       ElevatedButton.icon(
                         onPressed: _sending ? null : _submit,
                         icon: _sending
