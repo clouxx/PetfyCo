@@ -15,24 +15,20 @@ class RegisterPage extends StatefulWidget {
 
 class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
-
-  // Controllers
   final _name = TextEditingController();
   final _email = TextEditingController();
   final _pass1 = TextEditingController();
   final _pass2 = TextEditingController();
   final _phone = TextEditingController();
 
-  // Ubicación
-  final List<String> _deptNames = [];
+  // Ubicación - ADAPTADO a tu BD
+  final List<Map<String, dynamic>> _departments = [];
   final List<String> _cityNames = [];
-  String? _deptSel;
-  String? _citySel;
+  int? _deptId; // ID del departamento seleccionado
+  String? _deptName; // Nombre del departamento
+  String? _cityName; // Nombre de la ciudad
 
-  // Prefijo fijo para Colombia
   final String _countryCode = '+57';
-
-  // Mapa
   LatLng? _pickedPoint;
   double? _lat;
   double? _lng;
@@ -58,30 +54,32 @@ class _RegisterPageState extends State<RegisterPage> {
     super.dispose();
   }
 
+  // ADAPTADO: Cargar departamentos con ID
   Future<void> _loadDepartments() async {
     try {
       final sb = Supabase.instance.client;
       final data = await sb
           .from('departments')
-          .select('name')
+          .select('id, name')
           .order('name', ascending: true);
       
       setState(() {
-        _deptNames.clear();
-        _deptNames.addAll(data.map((e) => e['name'] as String));
+        _departments.clear();
+        _departments.addAll(List<Map<String, dynamic>>.from(data));
       });
     } catch (e) {
       debugPrint('Error cargando departamentos: $e');
     }
   }
 
-  Future<void> _loadCities(String dept) async {
+  // ADAPTADO: Cargar ciudades por department_id
+  Future<void> _loadCities(int deptId) async {
     try {
       final sb = Supabase.instance.client;
       final data = await sb
           .from('cities')
           .select('name')
-          .eq('department_name', dept)
+          .eq('department_id', deptId)
           .order('name', ascending: true);
       
       setState(() {
@@ -91,12 +89,6 @@ class _RegisterPageState extends State<RegisterPage> {
     } catch (e) {
       debugPrint('Error cargando ciudades: $e');
     }
-  }
-
-  List<DropdownMenuItem<String>> _ddItems(List<String> src) {
-    return src
-        .map((s) => DropdownMenuItem<String>(value: s, child: Text(s)))
-        .toList();
   }
 
   Future<void> _pickOnMap() async {
@@ -175,7 +167,6 @@ class _RegisterPageState extends State<RegisterPage> {
   Future<void> _submit() async {
     if (_sending) return;
 
-    // Validar términos
     if (!_accepted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -185,8 +176,7 @@ class _RegisterPageState extends State<RegisterPage> {
       return;
     }
 
-    // Validar departamento y ciudad
-    if (_deptSel == null || _citySel == null) {
+    if (_deptName == null || _cityName == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Selecciona departamento y ciudad'),
@@ -195,7 +185,6 @@ class _RegisterPageState extends State<RegisterPage> {
       return;
     }
 
-    // Validar formulario
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     setState(() => _sending = true);
@@ -203,7 +192,7 @@ class _RegisterPageState extends State<RegisterPage> {
       final sb = Supabase.instance.client;
       final email = _email.text.trim();
       final pass = _pass1.text;
-      final name = _name.text.trim();
+      final displayName = _name.text.trim();
       final phone = _phone.text.trim();
 
       // Registrar usuario
@@ -214,15 +203,14 @@ class _RegisterPageState extends State<RegisterPage> {
       
       final uid = auth.user?.id;
       if (uid != null) {
-        // Crear perfil
+        // ADAPTADO: Insertar en profiles con TUS columnas
         await sb.from('profiles').upsert({
           'id': uid,
-          'name': name,
+          'display_name': displayName, // TU columna
           'email': email,
-          'country_code': _countryCode,
           'phone': phone,
-          'province': _deptSel,
-          'city': _citySel,
+          'depto': _deptName, // TU columna
+          'municipio': _cityName, // TU columna
           'lat': _lat,
           'lng': _lng,
         });
@@ -236,7 +224,7 @@ class _RegisterPageState extends State<RegisterPage> {
         ),
       );
       
-      context.go('/login'); // ✅ CORREGIDO
+      context.go('/login');
     } on AuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -278,7 +266,6 @@ class _RegisterPageState extends State<RegisterPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Logo
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Image.asset(
@@ -379,31 +366,59 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Departamento / Ciudad
+                    // Departamento / Ciudad - ADAPTADO
                     Row(
                       children: [
                         Expanded(
-                          child: PetfyDropdown<String>(
-                            value: _deptSel,
-                            items: _ddItems(_deptNames),
-                            hint: 'Departamento',
+                          child: DropdownButtonFormField<int>(
+                            value: _deptId,
+                            decoration: InputDecoration(
+                              labelText: 'Departamento',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              isDense: true,
+                            ),
+                            items: _departments.map((dept) {
+                              return DropdownMenuItem<int>(
+                                value: dept['id'] as int,
+                                child: Text(dept['name'] as String),
+                              );
+                            }).toList(),
                             onChanged: (val) {
-                              setState(() {
-                                _deptSel = val;
-                                _citySel = null;
-                                _cityNames.clear();
-                              });
-                              if (val != null) _loadCities(val);
+                              if (val != null) {
+                                final selectedDept = _departments.firstWhere(
+                                  (d) => d['id'] == val,
+                                );
+                                setState(() {
+                                  _deptId = val;
+                                  _deptName = selectedDept['name'] as String;
+                                  _cityName = null;
+                                  _cityNames.clear();
+                                });
+                                _loadCities(val);
+                              }
                             },
                           ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: PetfyDropdown<String>(
-                            value: _citySel,
-                            items: _ddItems(_cityNames),
-                            hint: 'Ciudad/Municipio',
-                            onChanged: (val) => setState(() => _citySel = val),
+                          child: DropdownButtonFormField<String>(
+                            value: _cityName,
+                            decoration: InputDecoration(
+                              labelText: 'Ciudad',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              isDense: true,
+                            ),
+                            items: _cityNames.map((city) {
+                              return DropdownMenuItem<String>(
+                                value: city,
+                                child: Text(city),
+                              );
+                            }).toList(),
+                            onChanged: (val) => setState(() => _cityName = val),
                           ),
                         ),
                       ],
@@ -502,7 +517,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     Center(
                       child: PetfyLink(
                         text: '¿Ya tienes cuenta? Inicia sesión',
-                        onTap: () => context.go('/login'), // ✅ CORREGIDO
+                        onTap: () => context.go('/login'),
                       ),
                     ),
                   ],
