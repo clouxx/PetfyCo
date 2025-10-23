@@ -15,7 +15,7 @@ class _HomePageState extends State<HomePage> {
   List<Map<String, dynamic>> _pets = [];
   bool _loading = true;
   String _filter = 'todos';       // todos, perro, gato
-  String _statusFilter = 'publicado'; // tu BD
+  String _statusFilter = 'publicado';
 
   @override
   void initState() {
@@ -26,21 +26,22 @@ class _HomePageState extends State<HomePage> {
   Future<void> _loadPets() async {
     setState(() => _loading = true);
     try {
-      // 👇 Construimos el builder y aplicamos filtros ANTES de select()
-      var q = _sb.from('pets').eq('estado', _statusFilter);
-      if (_filter != 'todos') {
-        q = q.eq('especie', _filter);
-      }
-
-      final data = await q
+      var query = _sb
+          .from('pets')
           .select('''
             *,
             profiles:owner_id(display_name, phone),
             pet_photos(url, position)
           ''')
+          .eq('estado', _statusFilter)
           .order('created_at', ascending: false)
           .limit(20);
 
+      if (_filter != 'todos') {
+        query = query.eq('especie', _filter);
+      }
+
+      final data = await query;
       setState(() {
         _pets = List<Map<String, dynamic>>.from(data);
         _loading = false;
@@ -83,63 +84,37 @@ class _HomePageState extends State<HomePage> {
         child: CustomScrollView(
           slivers: [
             SliverToBoxAdapter(
-              child: Padding(padding: const EdgeInsets.all(16), child: _HeaderBanner()),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: _HeaderBanner(),
+              ),
             ),
-
-            // Filtros especie
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
-                    _FilterChip(
-                      label: 'Todos',
-                      selected: _filter == 'todos',
-                      onTap: () { setState(() => _filter = 'todos'); _loadPets(); },
-                    ),
+                    _FilterChip(label: 'Todos', selected: _filter == 'todos', onTap: () { setState(() => _filter = 'todos'); _loadPets(); }),
                     const SizedBox(width: 8),
-                    _FilterChip(
-                      label: '🐶 Perros',
-                      selected: _filter == 'perro',
-                      onTap: () { setState(() => _filter = 'perro'); _loadPets(); },
-                    ),
+                    _FilterChip(label: '🐶 Perros', selected: _filter == 'perro', onTap: () { setState(() => _filter = 'perro'); _loadPets(); }),
                     const SizedBox(width: 8),
-                    _FilterChip(
-                      label: '🐱 Gatos',
-                      selected: _filter == 'gato',
-                      onTap: () { setState(() => _filter = 'gato'); _loadPets(); },
-                    ),
+                    _FilterChip(label: '🐱 Gatos', selected: _filter == 'gato', onTap: () { setState(() => _filter = 'gato'); _loadPets(); }),
                   ],
                 ),
               ),
             ),
-
-            // Filtros estado
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    Expanded(
-                      child: _StatusChip(
-                        label: 'Publicados',
-                        selected: _statusFilter == 'publicado',
-                        onTap: () { setState(() => _statusFilter = 'publicado'); _loadPets(); },
-                      ),
-                    ),
+                    Expanded(child: _StatusChip(label: 'Publicados', selected: _statusFilter == 'publicado', onTap: () { setState(() => _statusFilter = 'publicado'); _loadPets(); })),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: _StatusChip(
-                        label: 'Adoptados',
-                        selected: _statusFilter == 'adoptado',
-                        onTap: () { setState(() => _statusFilter = 'adoptado'); _loadPets(); },
-                      ),
-                    ),
+                    Expanded(child: _StatusChip(label: 'Adoptados', selected: _statusFilter == 'adoptado', onTap: () { setState(() => _statusFilter = 'adoptado'); _loadPets(); })),
                   ],
                 ),
               ),
             ),
-
             if (_loading)
               const SliverFillRemaining(child: Center(child: CircularProgressIndicator()))
             else if (_pets.isEmpty)
@@ -166,10 +141,10 @@ class _HomePageState extends State<HomePage> {
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
                 sliver: SliverGrid(
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2, childAspectRatio: 0.75, crossAxisSpacing: 12, mainAxisSpacing: 12),
+                    crossAxisCount: 2, childAspectRatio: 0.75, crossAxisSpacing: 12, mainAxisSpacing: 12,
+                  ),
                   delegate: SliverChildBuilderDelegate(
-                    (context, index) => _PetCard(pet: _pets[index]),
-                    childCount: _pets.length,
+                    (context, index) => _PetCard(pet: _pets[index]), childCount: _pets.length,
                   ),
                 ),
               ),
@@ -185,10 +160,7 @@ class _HeaderBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [
-          AppColors.blue.withOpacity(0.18),
-          AppColors.orange.withOpacity(0.14),
-        ]),
+        gradient: LinearGradient(colors: [AppColors.blue.withOpacity(0.18), AppColors.orange.withOpacity(0.14)]),
         borderRadius: BorderRadius.circular(18),
       ),
       padding: const EdgeInsets.all(16),
@@ -265,13 +237,11 @@ class _PetCard extends StatelessWidget {
     final municipio = pet['municipio'] as String? ?? 'Colombia';
     final estado = pet['estado'] as String? ?? 'publicado';
 
-    // primera foto ordenada por position
     final petPhotos = pet['pet_photos'] as List<dynamic>?;
     String? imageUrl;
     if (petPhotos != null && petPhotos.isNotEmpty) {
-      final sorted = List<Map<String, dynamic>>.from(petPhotos);
-      sorted.sort((a, b) =>
-          ((a['position'] as int?) ?? 0).compareTo((b['position'] as int?) ?? 0));
+      final sorted = List<Map<String, dynamic>>.from(petPhotos)
+        ..sort((a, b) => ((a['position'] as int?) ?? 0).compareTo((b['position'] as int?) ?? 0));
       imageUrl = sorted.first['url'] as String?;
     }
 
@@ -285,7 +255,7 @@ class _PetCard extends StatelessWidget {
             Expanded(
               child: imageUrl != null
                   ? Image.network(
-                      imageUrl,
+                      imageUrl!,
                       width: double.infinity,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Container(
@@ -295,9 +265,7 @@ class _PetCard extends StatelessWidget {
                     )
                   : Container(
                       color: AppColors.blue.withOpacity(0.15),
-                      child: const Center(
-                        child: Icon(Icons.pets, size: 48, color: AppColors.navy),
-                      ),
+                      child: const Center(child: Icon(Icons.pets, size: 48, color: AppColors.navy)),
                     ),
             ),
             Padding(
@@ -308,8 +276,7 @@ class _PetCard extends StatelessWidget {
                   Text(
                     nombre,
                     style: Theme.of(context).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.w700),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Row(
@@ -317,12 +284,7 @@ class _PetCard extends StatelessWidget {
                       const Icon(Icons.place, size: 16, color: AppColors.pink),
                       const SizedBox(width: 4),
                       Expanded(
-                        child: Text(
-                          municipio,
-                          style: Theme.of(context).textTheme.bodySmall,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        child: Text(municipio, style: Theme.of(context).textTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
                       ),
                     ],
                   ),
@@ -331,16 +293,14 @@ class _PetCard extends StatelessWidget {
                     children: [
                       Chip(
                         label: Text(especie == 'perro' ? 'Perro' : 'Gato', style: const TextStyle(fontSize: 11)),
-                        padding: EdgeInsets.zero,
-                        labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+                        padding: EdgeInsets.zero, labelPadding: const EdgeInsets.symmetric(horizontal: 8),
                         visualDensity: VisualDensity.compact,
                       ),
                       const SizedBox(width: 6),
                       Flexible(
                         child: Chip(
                           label: Text(_getEstadoLabel(estado), style: const TextStyle(fontSize: 11)),
-                          padding: EdgeInsets.zero,
-                          labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+                          padding: EdgeInsets.zero, labelPadding: const EdgeInsets.symmetric(horizontal: 8),
                           visualDensity: VisualDensity.compact,
                         ),
                       ),
@@ -353,3 +313,14 @@ class _PetCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _getEstadoLabel(String estado) {
+    switch (estado) {
+      case 'publicado': return 'Disponible';
+      case 'adoptado':  return 'Adoptado';
+      case 'reservado': return 'Reservado';
+      default:          return estado;
+    }
+  }
+}
