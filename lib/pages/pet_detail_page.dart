@@ -4,8 +4,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/app_theme.dart';
 
 class PetDetailPage extends StatefulWidget {
-  final int petId;
   const PetDetailPage({super.key, required this.petId});
+  final String petId; // <- Asegúrate de que sea String
 
   @override
   State<PetDetailPage> createState() => _PetDetailPageState();
