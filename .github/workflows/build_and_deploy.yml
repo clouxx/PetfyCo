@@ -1,11 +1,20 @@
-name: build_and_deploy
+name: Build & Deploy Flutter Web to GitHub Pages
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
 
 jobs:
-  web:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,21 +26,29 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Set up Java (Android)
-        if: ${{ false }}   # pon true si vas a generar APK
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Flutter version
-        run: flutter --version
-
       - name: Flutter pub get
         run: flutter pub get
 
+      # ⚠️ IMPORTANTE: base-href para proyecto Pages: /PetfyCo/
       - name: Build Flutter Web
         run: >
-          flutter build web --release --no-wasm-dry-run --no-tree-shake-icons
+          flutter build web --release --no-tree-shake-icons
+          --base-href /PetfyCo/
           --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }}
           --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
