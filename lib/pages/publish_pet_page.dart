@@ -71,70 +71,113 @@ class _PublishPetPageState extends State<PublishPetPage> {
   }
 
   Future<void> _loadDepartments() async {
-    try {
-      final data = await _sb
+  try {
+    final data = await _sb
+        .from('departments')
+        .select('id, name')
+        .order('name', ascending: true);
+
+    // data puede venir null o no ser List<Map>
+    final rows = (data is List)
+        ? data.cast<Map<String, dynamic>>()
+        : <Map<String, dynamic>>[];
+
+    if (!mounted) return;
+    setState(() {
+      _departments
+        ..clear()
+        ..addAll(rows);
+    });
+  } catch (e) {
+    debugPrint('Error cargando departamentos: $e');
+    if (!mounted) return;
+    setState(() {
+      _departments.clear();
+    });
+    // Opcional: feedback visual sin romper flujo
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('No se pudieron cargar los departamentos')),
+    );
+  }
+}
+
+Future<void> _loadCities(int deptId) async {
+  try {
+    final data = await _sb
+        .from('cities')
+        .select('name')
+        .eq('department_id', deptId)
+        .order('name', ascending: true);
+
+    final names = (data is List)
+        ? data
+            .cast<Map<String, dynamic>>()
+            .map((e) => e['name'] as String)
+            .toList()
+        : <String>[];
+
+    if (!mounted) return;
+    setState(() {
+      _cityNames
+        ..clear()
+        ..addAll(names);
+    });
+  } catch (e) {
+    debugPrint('Error cargando ciudades: $e');
+    if (!mounted) return;
+    setState(() {
+      _cityNames.clear();
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('No se pudieron cargar las ciudades')),
+    );
+  }
+}
+
+Future<void> _loadUserLocation() async {
+  try {
+    final user = _sb.auth.currentUser;
+    if (user == null) return;
+
+    final profile = await _sb
+        .from('profiles')
+        .select('depto, municipio')
+        .eq('id', user.id)
+        .maybeSingle(); // <- evita excepción si no hay fila
+
+    if (profile == null) return;
+
+    // Si el depto del perfil existe, mapea a id
+    if (profile['depto'] != null) {
+      final deptRow = await _sb
           .from('departments')
           .select('id, name')
-          .order('name', ascending: true);
-      setState(() {
-        _departments
-          ..clear()
-          ..addAll(List<Map<String, dynamic>>.from(data));
-      });
-    } catch (e) {
-      debugPrint('Error cargando departamentos: $e');
-    }
-  }
+          .eq('name', profile['depto'])
+          .maybeSingle(); // <- evita excepción
 
-  Future<void> _loadCities(int deptId) async {
-    try {
-      final data = await _sb
-          .from('cities')
-          .select('name')
-          .eq('department_id', deptId)
-          .order('name', ascending: true);
-      setState(() {
-        _cityNames
-          ..clear()
-          ..addAll(data.map((e) => e['name'] as String));
-      });
-    } catch (e) {
-      debugPrint('Error cargando ciudades: $e');
-    }
-  }
+      if (!mounted) return;
 
-  Future<void> _loadUserLocation() async {
-    try {
-      final user = _sb.auth.currentUser;
-      if (user == null) return;
-
-      final profile = await _sb
-          .from('profiles')
-          .select('depto, municipio')
-          .eq('id', user.id)
-          .single();
-
-      if (profile['depto'] != null) {
-        final depts = await _sb
-            .from('departments')
-            .select('id, name')
-            .eq('name', profile['depto'])
-            .single();
-
+      if (deptRow != null) {
         setState(() {
-          _deptId = depts['id'] as int;
-          _deptName = depts['name'] as String;
+          _deptId = deptRow['id'] as int;
+          _deptName = deptRow['name'] as String;
           _cityName = profile['municipio'] as String?;
         });
-
-        if (_deptId != null) {
-          await _loadCities(_deptId!);
-        }
+        await _loadCities(_deptId!);
+      } else {
+        // No encontró el depto por nombre: limpia selección
+        setState(() {
+          _deptId = null;
+          _deptName = null;
+          _cityName = null;
+        });
       }
-    } catch (e) {
-      debugPrint('Error cargando ubicación del usuario: $e');
     }
+  } catch (e) {
+    debugPrint('Error cargando ubicación del usuario: $e');
+    // No rompas la UI si falla; deja los combos vacíos
   }
+}
 
   Future<void> _pickImages() async {
     try {
