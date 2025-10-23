@@ -453,12 +453,16 @@ Future<void> _loadUserLocation() async {
               ),
               const SizedBox(height: 16),
 
-              // Edad en meses
+              // Edad (ingresada en años) -> guardamos en meses
               PetfyTextField(
-                label: 'Edad en meses (opcional)',
-                hint: 'Ej: 24 (2 años)',
+                label: 'Edad (años, opcional)',
+                hint: 'Ej: 2',
                 keyboardType: TextInputType.number,
-                onChanged: (v) => _edadMeses = int.tryParse(v),
+                onChanged: (v) {
+                  final anios = int.tryParse(v);
+                  // Si el usuario deja vacío o pone algo inválido, guardamos null
+                  _edadMeses = (anios == null) ? null : anios * 12;
+                },
               ),
               const SizedBox(height: 16),
 
