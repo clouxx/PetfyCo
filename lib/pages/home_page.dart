@@ -73,7 +73,7 @@ class _HomePageState extends State<HomePage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
-            onPressed: () => context.push('/lost'),
+            onPressed: () => context.push('/lost'), // pantalla de perdidos
           ),
           IconButton(
             icon: const Icon(Icons.person_outline),
@@ -97,7 +97,6 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             ),
-
             // Filtros especie
             SliverToBoxAdapter(
               child: Padding(
@@ -134,7 +133,6 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             ),
-
             // Estados
             SliverToBoxAdapter(
               child: Padding(
@@ -188,7 +186,6 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             ),
-
             if (_loading)
               const SliverFillRemaining(
                 child: Center(child: CircularProgressIndicator()),
@@ -227,7 +224,7 @@ class _HomePageState extends State<HomePage> {
                     crossAxisCount: 2,
                     mainAxisSpacing: 14,
                     crossAxisSpacing: 14,
-                    mainAxisExtent: 320,
+                    mainAxisExtent: 320, // cards tamaño fijo
                   ),
                   delegate: SliverChildBuilderDelegate(
                     (context, i) => _PetCard(pet: _pets[i]),
