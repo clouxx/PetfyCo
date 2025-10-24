@@ -63,20 +63,20 @@ class _PublishPetPageState extends State<PublishPetPage> {
             pet_photos(url, position)
           ''')
           .eq('id', id)
-          .maybeSingle();
+          .single(); // ← forzamos exactamente 1 fila
 
-      if (data != null) {
-        _nombreCtrl.text = data['nombre'] ?? '';
-        _razaCtrl.text = data['raza'] ?? '';
-        _descripcionCtrl.text = data['descripcion'] ?? '';
-        _especie = (data['especie'] ?? 'perro') as String;
-        _sexo = (data['sexo'] ?? 'macho') as String;
-        _estado = (data['estado'] ?? 'publicado') as String;
-        _talla = data['talla'] as String?;
-        _temperamento = data['temperamento'] as String?;
-        final edadMeses = data['edad_meses'] as int?;
-        _edadAnios = edadMeses == null ? null : (edadMeses ~/ 12);
-      }
+      _nombreCtrl.text      = (data['nombre'] ?? '') as String;
+      _razaCtrl.text        = (data['raza'] ?? '') as String;
+      _descripcionCtrl.text = (data['descripcion'] ?? '') as String;
+
+      _especie      = (data['especie'] ?? 'perro') as String;
+      _sexo         = (data['sexo'] ?? 'macho') as String;
+      _estado       = (data['estado'] ?? 'publicado') as String;
+      _talla        = data['talla'] as String?;
+      _temperamento = data['temperamento'] as String?;
+
+      final edadMeses = data['edad_meses'] as int?;
+      _edadAnios = edadMeses == null ? null : (edadMeses ~/ 12);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
@@ -131,29 +131,26 @@ class _PublishPetPageState extends State<PublishPetPage> {
             await _sb.from('pets').insert(payload).select('id').single();
         petId = inserted['id'] as String;
       } else {
-        // UPDATE (aseguramos no-nulo para eq)
+        // UPDATE
         final id = _editingPetId!;
         await _sb.from('pets').update(payload).eq('id', id);
         petId = id;
       }
 
-      // Subir imágenes nuevas (compatible web y móvil)
+      // Subir imágenes nuevas
       if (_pickedImages.isNotEmpty) {
         int pos = 0;
         for (final x in _pickedImages) {
           final path =
               '$userId/${DateTime.now().millisecondsSinceEpoch}_${pos}.jpg';
-
-          // Leer bytes del XFile y subir como binario (web-friendly)
           final bytes = await x.readAsBytes();
           await _sb.storage.from('pet-images').uploadBinary(
                 path,
                 bytes,
-                fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
+                fileOptions:
+                    const FileOptions(cacheControl: '3600', upsert: false),
               );
-
           final publicUrl = _sb.storage.from('pet-images').getPublicUrl(path);
-
           await _sb.from('pet_photos').insert({
             'pet_id': petId,
             'url': publicUrl,
@@ -165,9 +162,8 @@ class _PublishPetPageState extends State<PublishPetPage> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(_editingPetId == null
-              ? '¡Mascota publicada!'
-              : 'Mascota actualizada')));
+          content: Text(
+              _editingPetId == null ? '¡Mascota publicada!' : 'Mascota actualizada')));
       context.go('/home');
     } catch (e) {
       if (!mounted) return;
@@ -187,8 +183,7 @@ class _PublishPetPageState extends State<PublishPetPage> {
           onPressed: () => context.pop(),
           icon: const Icon(Icons.arrow_back),
         ),
-        title:
-            Text(_editingPetId == null ? 'Publicar mascota' : 'Editar mascota'),
+        title: Text(_editingPetId == null ? 'Publicar mascota' : 'Editar mascota'),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -199,7 +194,7 @@ class _PublishPetPageState extends State<PublishPetPage> {
                   key: _formKey,
                   child: Column(
                     children: [
-                      // Encabezado amigable
+                      // Encabezado
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(14),
@@ -228,14 +223,13 @@ class _PublishPetPageState extends State<PublishPetPage> {
                       ),
                       const SizedBox(height: 14),
 
-                      // Campos (estilo "filled")
+                      // Campos
                       _filledText(
                         controller: _nombreCtrl,
                         label: 'Nombre',
                         icon: Icons.pets,
-                        validator: (v) => (v == null || v.trim().isEmpty)
-                            ? 'Requerido'
-                            : null,
+                        validator: (v) =>
+                            (v == null || v.trim().isEmpty) ? 'Requerido' : null,
                       ),
                       const SizedBox(height: 12),
 
@@ -263,18 +257,14 @@ class _PublishPetPageState extends State<PublishPetPage> {
                       ),
                       const SizedBox(height: 12),
 
-                      // SIN "reservado"
                       _dropdown<String>(
                         label: 'Estado',
                         icon: Icons.flag_outlined,
                         value: _estado,
                         items: const [
-                          DropdownMenuItem(
-                              value: 'publicado', child: Text('Publicado')),
-                          DropdownMenuItem(
-                              value: 'perdido', child: Text('Perdido')),
-                          DropdownMenuItem(
-                              value: 'adoptado', child: Text('Adoptado')),
+                          DropdownMenuItem(value: 'publicado', child: Text('Publicado')),
+                          DropdownMenuItem(value: 'perdido', child: Text('Perdido')),
+                          DropdownMenuItem(value: 'adoptado', child: Text('Adoptado')),
                         ],
                         onChanged: (v) => setState(() => _estado = v!),
                       ),
@@ -293,8 +283,7 @@ class _PublishPetPageState extends State<PublishPetPage> {
                         value: _edadAnios,
                         items: List.generate(
                           21,
-                          (i) =>
-                              DropdownMenuItem(value: i, child: Text('$i')),
+                          (i) => DropdownMenuItem(value: i, child: Text('$i')),
                         ),
                         onChanged: (v) => setState(() => _edadAnios = v),
                       ),
@@ -305,12 +294,9 @@ class _PublishPetPageState extends State<PublishPetPage> {
                         icon: Icons.straighten,
                         value: _talla,
                         items: const [
-                          DropdownMenuItem(
-                              value: 'pequeño', child: Text('Pequeño')),
-                          DropdownMenuItem(
-                              value: 'mediano', child: Text('Mediano')),
-                          DropdownMenuItem(
-                              value: 'grande', child: Text('Grande')),
+                          DropdownMenuItem(value: 'pequeño', child: Text('Pequeño')),
+                          DropdownMenuItem(value: 'mediano', child: Text('Mediano')),
+                          DropdownMenuItem(value: 'grande', child: Text('Grande')),
                         ],
                         onChanged: (v) => setState(() => _talla = v),
                       ),
@@ -321,12 +307,9 @@ class _PublishPetPageState extends State<PublishPetPage> {
                         icon: Icons.mood_outlined,
                         value: _temperamento,
                         items: const [
-                          DropdownMenuItem(
-                              value: 'juguetón', child: Text('Juguetón')),
-                          DropdownMenuItem(
-                              value: 'tranquilo', child: Text('Tranquilo')),
-                          DropdownMenuItem(
-                              value: 'activo', child: Text('Activo')),
+                          DropdownMenuItem(value: 'juguetón', child: Text('Juguetón')),
+                          DropdownMenuItem(value: 'tranquilo', child: Text('Tranquilo')),
+                          DropdownMenuItem(value: 'activo', child: Text('Activo')),
                         ],
                         onChanged: (v) => setState(() => _temperamento = v),
                       ),
@@ -340,7 +323,7 @@ class _PublishPetPageState extends State<PublishPetPage> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Fotos
+                      // Fotos nuevas
                       Row(
                         children: [
                           ElevatedButton.icon(
@@ -372,7 +355,7 @@ class _PublishPetPageState extends State<PublishPetPage> {
     );
   }
 
-  // --- Helpers UI "coloridos" pero sin cambiar la lógica ---
+  // --- Helpers UI ---
   Widget _filledText({
     required TextEditingController controller,
     required String label,
