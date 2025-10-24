@@ -17,10 +17,9 @@ class _HomePageState extends State<HomePage> {
   List<Map<String, dynamic>> _pets = [];
   bool _loading = true;
 
-  // Filtros
-  String _filter = 'todos';       // todos | perro | gato
-  String _statusFilter = 'todos'; // "Publicados" = todos
-  int _lostCount = 0;             // para el badge de la campana
+  String _filter = 'todos';
+  String _statusFilter = 'todos';
+  int _lostCount = 0;
 
   @override
   void initState() {
@@ -48,32 +47,26 @@ class _HomePageState extends State<HomePage> {
         }
       }
 
-      // contador para badge
       _lostCount = allPets.where((p) => p['estado'] == 'perdido').length;
 
-      // Filtro en memoria
       List<Map<String, dynamic>> filtered = allPets.where((pet) {
-        final estadoOk =
-            _statusFilter == 'todos' ? true : (pet['estado'] == _statusFilter);
-        final especieOk =
-            _filter == 'todos' ? true : (pet['especie'] == _filter);
+        final estadoOk = _statusFilter == 'todos' ? true : (pet['estado'] == _statusFilter);
+        final especieOk = _filter == 'todos' ? true : (pet['especie'] == _filter);
         return estadoOk && especieOk;
       }).toList();
 
-      // Orden en "Publicados": primero perdidos, luego resto. Siempre por fecha desc.
       int estadoRank(String e) => (e == 'perdido') ? 0 : 1;
       int compareDateDesc(a, b) {
         final da = DateTime.tryParse(a['created_at']?.toString() ?? '') ??
             DateTime.fromMillisecondsSinceEpoch(0);
         final db = DateTime.tryParse(b['created_at']?.toString() ?? '') ??
             DateTime.fromMillisecondsSinceEpoch(0);
-        return db.compareTo(da); // desc
+        return db.compareTo(da);
       }
 
       if (_statusFilter == 'todos') {
         filtered.sort((a, b) {
-          final r =
-              estadoRank(a['estado'] ?? '') - estadoRank(b['estado'] ?? '');
+          final r = estadoRank(a['estado'] ?? '') - estadoRank(b['estado'] ?? '');
           if (r != 0) return r;
           return compareDateDesc(a, b);
         });
@@ -114,38 +107,29 @@ class _HomePageState extends State<HomePage> {
       await _sb.from('pets').delete().eq('id', petId);
       await _loadPets();
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Mascota eliminada')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mascota eliminada')));
     } else {
       try {
-        // Encontrado = ya no está perdido => vuelve a "publicado"
         await _sb.from('pets').update({'estado': 'publicado'}).eq('id', petId);
         await _loadPets();
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Marcado como encontrado.')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Marcado como encontrado.')));
       } catch (e) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
 
-  // Adoptar (solo si NO es dueño y está "publicado")
   Future<void> _adoptPet(String petId) async {
     try {
       await _sb.from('pets').update({'estado': 'adoptado'}).eq('id', petId);
       await _loadPets();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('¡Gracias por adoptar!')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('¡Gracias por adoptar!')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
@@ -157,7 +141,6 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: Image.asset('assets/logo/petfyco_logo_full.png', height: 40),
         actions: [
-          // Campana con badge rojo del número de "perdidos"
           IconButton(
             onPressed: () => context.push('/lost'),
             icon: Stack(
@@ -169,8 +152,7 @@ class _HomePageState extends State<HomePage> {
                     right: -2,
                     top: -2,
                     child: Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal:... 5, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                       decoration: BoxDecoration(
                         color: Colors.red,
                         borderRadius: BorderRadius.circular(10),
@@ -208,7 +190,6 @@ class _HomePageState extends State<HomePage> {
         onRefresh: _loadPets,
         child: CustomScrollView(
           slivers: [
-            // Banner
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -219,7 +200,6 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
 
-            // Filtro por especie
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -256,7 +236,6 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
 
-            // Estados (orden solicitado) — SIN "Reservados"
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -279,8 +258,7 @@ class _HomePageState extends State<HomePage> {
                             Icon(Icons.campaign, size: 16, color: Colors.red),
                             SizedBox(width: 6),
                             Text('Perdidos',
-                                style: TextStyle(
-                                    color: Colors.red, fontWeight: FontWeight.w700)),
+                                style: TextStyle(color: Colors.red, fontWeight: FontWeight.w700)),
                           ],
                         ),
                         selected: _statusFilter == 'perdido',
@@ -351,8 +329,7 @@ class _HomePageState extends State<HomePage> {
                         pet: pet,
                         isOwner: isOwner,
                         onEdit: () => _goEdit(pet['id'] as String),
-                        onFound: () =>
-                            _markFoundAndAskDelete(pet['id'] as String),
+                        onFound: () => _markFoundAndAskDelete(pet['id'] as String),
                         onAdopt: () => _adoptPet(pet['id'] as String),
                       );
                     },
@@ -369,8 +346,8 @@ class _HomePageState extends State<HomePage> {
 
 /// ---------- Widgets auxiliares ----------
 
-class _MagicBanner extends StatelessWidget {
-  const _MagicBanner({this.onPublish, this.onLost});
+class _HeaderBanner extends StatelessWidget {
+  const _HeaderBanner({this.onPublish, this.onLost});
   final VoidCallback? onPublish;
   final VoidCallback? onLost;
 
@@ -398,7 +375,7 @@ class _MagicBanner extends StatelessWidget {
                   'Encuentra y publica mascotas en Colombia',
                   style: Theme.of(context)
                       .textTheme
-                      .タイトルMedium!
+                      .titleMedium!
                       .copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
@@ -474,8 +451,7 @@ class _StatusChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         decoration: BoxDecoration(
-          color:
-              selected ? AppColors.blue.withOpacity(0.2) : Colors.grey.shade200,
+          color: selected ? AppColors.blue.withOpacity(0.2) : Colors.grey.shade200,
           borderRadius: BorderRadius.circular(12),
           border: selected ? Border.all(color: AppColors.blue, width: 2) : null,
         ),
@@ -491,9 +467,9 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
-// ===============================================================
-// _PETCARD MODIFICADO: NOMBRE + BOTONES ARRIBA, UBICACIÓN + CHIPS ABAJO
-// ===============================================================
+// ==================================================
+// _PetCard: DISEÑO NUEVO (como en la imagen)
+// ==================================================
 
 class _PetCard extends StatelessWidget {
   const _PetCard({
@@ -521,7 +497,6 @@ class _PetCard extends StatelessWidget {
     final edadMeses = pet['edad_meses'] as int?;
     final edadAnios = edadMeses == null ? null : (edadMeses ~/ 12);
 
-    // Foto principal
     String? imageUrl;
     final petPhotosRaw = pet['pet_photos'];
     if (petPhotosRaw is List && petPhotosRaw.isNotEmpty) {
@@ -529,8 +504,7 @@ class _PetCard extends StatelessWidget {
           .whereType<Map>()
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList()
-        ..sort((a, b) =>
-            (a['position'] as int? ?? 0).compareTo(b['position'] as int? ?? 0));
+        ..sort((a, b) => (a['position'] as int? ?? 0).compareTo(b['position'] as int? ?? 0));
       imageUrl = casted.first['url'] as String?;
     }
 
@@ -542,7 +516,6 @@ class _PetCard extends StatelessWidget {
         onTap: () => context.push('/pet/${pet['id']}'),
         child: Stack(
           children: [
-            // Foto
             AspectRatio(
               aspectRatio: 16 / 9,
               child: imageUrl != null
@@ -553,7 +526,6 @@ class _PetCard extends StatelessWidget {
                     )
                   : const _ImagePlaceholder(),
             ),
-            // Degradado inferior
             Positioned.fill(
               child: DecoratedBox(
                 decoration: BoxDecoration(
@@ -571,8 +543,6 @@ class _PetCard extends StatelessWidget {
                 ),
               ),
             ),
-
-            // Contenido: Nombre + botones arriba, ubicación + chips abajo
             Positioned.fill(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
@@ -582,12 +552,10 @@ class _PetCard extends StatelessWidget {
                     // NOMBRE
                     Text(
                       nombre,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -600,29 +568,23 @@ class _PetCard extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (isOwner) ...[
-                            _ownerAction(
-                              context,
-                              icon: Icons.edit_outlined,
-                              label: 'Editar',
-                              onTap: onEdit,
-                            ),
+                            _ownerAction(context,
+                                icon: Icons.edit_outlined,
+                                label: 'Editar',
+                                onTap: onEdit),
                             const SizedBox(width: 6),
                             if (estado == 'perdido')
-                              _ownerAction(
-                                context,
-                                icon: Icons.campaign_outlined,
-                                label: 'Encontrado',
-                                onTap: onFound,
-                                bg: AppColors.orange,
-                              ),
+                              _ownerAction(context,
+                                  icon: Icons.campaign_outlined,
+                                  label: 'Encontrado',
+                                  onTap: onFound,
+                                  bg: AppColors.orange),
                           ] else if (estado == 'publicado') ...[
-                            _ownerAction(
-                              context,
-                              icon: Icons.volunteer_activism_outlined,
-                              label: 'Adoptar',
-                              onTap: onAdopt,
-                              bg: Colors.green.shade600,
-                            ),
+                            _ownerAction(context,
+                                icon: Icons.volunteer_activism_outlined,
+                                label: 'Adoptar',
+                                onTap: onAdopt,
+                                bg: Colors.green.shade600),
                           ],
                         ],
                       ),
@@ -637,13 +599,8 @@ class _PetCard extends StatelessWidget {
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
-                            municipio?.isNotEmpty == true
-                                ? municipio!
-                                : 'Colombia',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(color: Colors.white),
+                            municipio?.isNotEmpty == true ? municipio! : 'Colombia',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -658,13 +615,9 @@ class _PetCard extends StatelessWidget {
                       runSpacing: 6,
                       children: [
                         _chip(context, especie == 'perro' ? 'Perro' : 'Gato'),
-                        if (edadAnios != null)
-                          _chip(context,
-                              '$edadAnios año${edadAnios == 1 ? '' : 's'}'),
-                        if (talla != null && talla.isNotEmpty)
-                          _chip(context, _cap(talla)),
-                        if (temperamento != null && temperamento.isNotEmpty)
-                          _chip(context, _cap(temperamento)),
+                        if (edadAnios != null) _chip(context, '$edadAnios año${edadAnios == 1 ? '' : 's'}'),
+                        if (talla != null && talla.isNotEmpty) _chip(context, _cap(talla)),
+                        if (temperamento != null && temperamento.isNotEmpty) _chip(context, _cap(temperamento)),
                         _statusChipForCard(context, estado),
                       ],
                     ),
@@ -678,7 +631,6 @@ class _PetCard extends StatelessWidget {
     );
   }
 
-  // Chip gris translúcido
   Widget _chip(BuildContext context, String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -689,15 +641,14 @@ class _PetCard extends StatelessWidget {
       ),
       child: Text(
         text,
-        style: Theme.of(context)
-            .textTheme
-            .labelMedium
-            ?.copyWith(color: Colors.white, fontWeight: FontWeight.w600),
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
       ),
     );
   }
 
-  // Chip de estado: Perdido rojo / Adoptado verde
   Widget _statusChipForCard(BuildContext context, String estado) {
     if (estado == 'perdido') {
       return Container(
@@ -713,7 +664,9 @@ class _PetCard extends StatelessWidget {
             const SizedBox(width: 6),
             Text('Perdido',
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: Colors.white, fontWeight: FontWeight.w700)),
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    )),
           ],
         ),
       );
@@ -732,7 +685,9 @@ class _PetCard extends StatelessWidget {
             const SizedBox(width: 6),
             Text('Adoptado',
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: Colors.white, fontWeight: FontWeight.w700)),
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    )),
           ],
         ),
       );
@@ -748,7 +703,7 @@ class _PetCard extends StatelessWidget {
     Color? bg,
   }) {
     return Material(
-      color: (bg ?? Colors.black.withOpacity(0.55)),
+      color: bg ?? Colors.black.withOpacity(0.55),
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         onTap: onTap,
@@ -759,9 +714,13 @@ class _PetCard extends StatelessWidget {
             children: [
               Icon(icon, size: 16, color: Colors.white),
               const SizedBox(width: 6),
-              Text(label,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Colors.white, fontWeight: FontWeight.w700)),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
             ],
           ),
         ),
@@ -769,7 +728,7 @@ class _PetCard extends StatelessWidget {
     );
   }
 
-  String _cap(String s) => s.isEmpty ? s : (s[0].toUpperCase() + s.substring(1));
+  String _cap(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 }
 
 class _ImagePlaceholder extends StatelessWidget {
@@ -786,8 +745,6 @@ class _ImagePlaceholder extends StatelessWidget {
   }
 }
 
-// --------- Bottom sheet para acción "Encontrado" ---------
-
 enum _FoundAction { markAndDeleteIn7Days, deleteNow }
 
 class _FoundSheet extends StatelessWidget {
@@ -795,16 +752,12 @@ class _FoundSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding:
-            const EdgeInsets.only(left: 16, right: 16, bottom: 24, top: 8),
+        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 24, top: 8),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text('Mascota encontrada',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w700)),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
             const Text('¿Qué deseas hacer?', textAlign: TextAlign.center),
             const SizedBox(height: 16),
@@ -812,17 +765,14 @@ class _FoundSheet extends StatelessWidget {
               leading: const Icon(Icons.schedule),
               title: const Text('Marcar como encontrada'),
               subtitle: const Text('Se quitará de “Perdidos”.'),
-              onTap: () => Navigator.pop(
-                  context, _FoundAction.markAndDeleteIn7Days),
+              onTap: () => Navigator.pop(context, _FoundAction.markAndDeleteIn7Days),
             ),
             const SizedBox(height: 6),
             ListTile(
-              leading:
-                  const Icon(Icons.delete_forever, color: Colors.red),
+              leading: const Icon(Icons.delete_forever, color: Colors.red),
               title: const Text('Eliminar ahora'),
               subtitle: const Text('Se eliminará de inmediato.'),
-              onTap: () =>
-                  Navigator.pop(context, _FoundAction.deleteNow),
+              onTap: () => Navigator.pop(context, _FoundAction.deleteNow),
             ),
           ],
         ),
