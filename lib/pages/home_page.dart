@@ -731,7 +731,7 @@ class _PetCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Row(
                     children: [
-                      const Icon(Icons.place, size: 14, color: Colors.grey),
+                      const Icon(Icons.place, size: 14, color: Colors.pink),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
