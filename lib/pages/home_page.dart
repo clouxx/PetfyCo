@@ -1,4 +1,4 @@
-rosimport 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -319,9 +319,9 @@ class _HomePageState extends State<HomePage> {
                               _loadPets();
                             },
                           ),
-                          const SizedBox(width: 11),
+                          const SizedBox(width: 8),
                           _FilterChip(
-                            label: '🐶Perros',
+                            label: '🐶 Perros',
                             selected: _filter == 'perro',
                             onTap: () {
                               setState(() {
@@ -331,9 +331,9 @@ class _HomePageState extends State<HomePage> {
                               _loadPets();
                             },
                           ),
-                          const SizedBox(width: 11),
+                          const SizedBox(width: 8),
                           _FilterChip(
-                            label: '🐱Gatos',
+                            label: '🐱 Gatos',
                             selected: _filter == 'gato',
                             onTap: () {
                               setState(() {
@@ -343,12 +343,12 @@ class _HomePageState extends State<HomePage> {
                               _loadPets();
                             },
                           ),
-                          const SizedBox(width: 11),
+                          const SizedBox(width: 8),
                           _SearchIconChip(onTap: _openSearchSheet),
                         ],
                       ),
 
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 10),
 
                       // fila 2: estados
                       Row(
