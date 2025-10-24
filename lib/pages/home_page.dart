@@ -18,8 +18,8 @@ class _HomePageState extends State<HomePage> {
   bool _loading = true;
 
   // Filtros
-  String _filter = 'todos'; // todos | perro | gato
-  String _statusFilter = 'todos'; // <-- "Publicados" muestra todo
+  String _filter = 'todos';       // todos | perro | gato
+  String _statusFilter = 'todos'; // "Publicados" muestra todo (menos 'encontrado')
 
   @override
   void initState() {
@@ -51,8 +51,13 @@ class _HomePageState extends State<HomePage> {
 
       // Filtro en memoria
       final filtered = allPets.where((pet) {
+        final petEstado = pet['estado'] as String? ?? 'publicado';
+
+        // Ocultamos 'encontrado' del feed general
+        if (petEstado == 'encontrado') return false;
+
         final estadoOk =
-            _statusFilter == 'todos' ? true : (pet['estado'] == _statusFilter);
+            _statusFilter == 'todos' ? true : (petEstado == _statusFilter);
         final especieOk =
             (_filter == 'todos') ? true : (pet['especie'] == _filter);
         return estadoOk && especieOk;
@@ -80,7 +85,6 @@ class _HomePageState extends State<HomePage> {
   // ----- Acciones de dueño -----
 
   void _goEdit(String petId) {
-    // Ruta de edición (ya soportada en tu main/router)
     context.push('/publish?edit=$petId');
   }
 
@@ -97,24 +101,24 @@ class _HomePageState extends State<HomePage> {
     if (res == _FoundAction.deleteNow) {
       await _deletePetNow(petId);
     } else if (res == _FoundAction.markAndDeleteIn7Days) {
-      await _markFound(petId); // estado = adoptado
+      await _markFound(petId); // estado = encontrado
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Marcado como encontrado. Se borrará en 7 días (requiere job en BD).'),
+          content: Text(
+            'Marcada como “Encontrado”. Se borrará en 7 días si el job está activo en la BD.',
+          ),
         ),
       );
-      // Nota: el borrado programado real se hace con un job/trigger en PostgreSQL.
     }
   }
 
   Future<void> _markFound(String petId) async {
     try {
       await _sb.from('pets').update({
-        'estado': 'adoptado',
-        // Si quieres registrar cuándo se encontró para borrado real,
-        // añade una columna en BD (p. ej. found_at timestamp) y setéala aquí.
-        // 'found_at': DateTime.now().toIso8601String(),
+        'estado': 'encontrado',
+        // Si agregaste la columna en BD, descomenta para programar el borrado:
+        'found_at': DateTime.now().toIso8601String(),
       }).eq('id', petId);
       await _loadPets();
     } catch (e) {
@@ -227,7 +231,7 @@ class _HomePageState extends State<HomePage> {
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      // Publicados ahora es "todos"
+                      // Publicados = todos (excepto 'encontrado')
                       _StatusChip(
                         label: 'Publicados',
                         selected: _statusFilter == 'todos',
@@ -310,12 +314,14 @@ class _HomePageState extends State<HomePage> {
                   delegate: SliverChildBuilderDelegate(
                     (context, i) {
                       final pet = _pets[i];
+                      final me = _sb.auth.currentUser?.id;
                       final isOwner = (me != null && me == pet['owner_id']);
                       return _PetCard(
                         pet: pet,
                         isOwner: isOwner,
                         onEdit: () => _goEdit(pet['id'] as String),
-                        onFound: () => _markFoundAndAskDelete(pet['id'] as String),
+                        onFound: () =>
+                            _markFoundAndAskDelete(pet['id'] as String),
                       );
                     },
                     childCount: _pets.length,
@@ -432,9 +438,8 @@ class _StatusChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         decoration: BoxDecoration(
-          color: selected
-              ? AppColors.blue.withOpacity(0.2)
-              : Colors.grey.shade200,
+          color:
+              selected ? AppColors.blue.withOpacity(0.2) : Colors.grey.shade200,
           borderRadius: BorderRadius.circular(12),
           border: selected ? Border.all(color: AppColors.blue, width: 2) : null,
         ),
@@ -482,8 +487,8 @@ class _PetCard extends StatelessWidget {
           .whereType<Map>()
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList();
-      casted.sort((a, b) => (a['position'] as int? ?? 0)
-          .compareTo(b['position'] as int? ?? 0));
+      casted.sort((a, b) =>
+          (a['position'] as int? ?? 0).compareTo(b['position'] as int? ?? 0));
       imageUrl = casted.first['url'] as String?;
     }
 
@@ -591,6 +596,8 @@ class _PetCard extends StatelessWidget {
         return 'Reservado';
       case 'perdido':
         return 'Perdido';
+      case 'encontrado':
+        return 'Encontrado';
       default:
         return estado;
     }
@@ -633,28 +640,27 @@ class _FoundSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding:
-            const EdgeInsets.only(left: 16, right: 16, bottom: 24, top: 8),
+        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 24, top: 8),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Mascota encontrada',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 8),
-            const Text(
-              '¿Qué deseas hacer?',
-              textAlign: TextAlign.center,
+            Text(
+              'Mascota encontrada',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700),
             ),
+            const SizedBox(height: 8),
+            const Text('¿Qué deseas hacer?', textAlign: TextAlign.center),
             const SizedBox(height: 16),
             ListTile(
               leading: const Icon(Icons.schedule),
-              title: const Text('Marcar como encontrada y borrar en 7 días'),
+              title: const Text('Marcar como “Encontrado” y borrar en 7 días'),
               subtitle: const Text(
-                  'Se cambia a "Adoptado". Requiere un job/trigger en BD para el borrado automático.'),
-              onTap: () => Navigator.pop(context, _FoundAction.markAndDeleteIn7Days),
+                  'Se ocultará del feed y se eliminará en 7 días si hay un job en la BD.'),
+              onTap: () =>
+                  Navigator.pop(context, _FoundAction.markAndDeleteIn7Days),
             ),
             const SizedBox(height: 6),
             ListTile(
