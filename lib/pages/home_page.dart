@@ -18,8 +18,9 @@ class _HomePageState extends State<HomePage> {
   bool _loading = true;
 
   // Filtros
-  String _filter = 'todos'; // todos | perro | gato
+  String _filter = 'todos';     // todos | perro | gato
   String _statusFilter = 'todos'; // "Publicados" = todos
+  int _lostCount = 0;           // para el badge de la campana
 
   @override
   void initState() {
@@ -38,24 +39,50 @@ class _HomePageState extends State<HomePage> {
             pet_photos(url, position)
           ''')
           .order('created_at', ascending: false)
-          .limit(200);
+          .limit(300);
 
       final List<Map<String, dynamic>> allPets = [];
       if (data is List) {
         for (final item in data) {
-          if (item is Map) {
-            allPets.add(Map<String, dynamic>.from(item as Map));
-          }
+          if (item is Map) allPets.add(Map<String, dynamic>.from(item as Map));
         }
       }
 
-      final filtered = allPets.where((pet) {
-        final estadoOk =
-            _statusFilter == 'todos' ? true : (pet['estado'] == _statusFilter);
-        final especieOk =
-            (_filter == 'todos') ? true : (pet['especie'] == _filter);
+      // contador para badge
+      _lostCount = allPets.where((p) => p['estado'] == 'perdido').length;
+
+      // Filtro en memoria
+      List<Map<String, dynamic>> filtered = allPets.where((pet) {
+        final estadoOk = _statusFilter == 'todos'
+            ? true
+            : (pet['estado'] == _statusFilter);
+        final especieOk = _filter == 'todos'
+            ? true
+            : (pet['especie'] == _filter);
         return estadoOk && especieOk;
       }).toList();
+
+      // Orden:
+      // - Si estamos en "Publicados" (todos): primero perdidos, luego el resto.
+      // - Siempre por fecha desc dentro de cada grupo.
+      int estadoRank(String e) => (e == 'perdido') ? 0 : 1;
+      int compareDateDesc(a, b) {
+        final da = DateTime.tryParse(a['created_at']?.toString() ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        final db = DateTime.tryParse(b['created_at']?.toString() ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        return db.compareTo(da); // desc
+      }
+
+      if (_statusFilter == 'todos') {
+        filtered.sort((a, b) {
+          final r = estadoRank(a['estado'] ?? '') - estadoRank(b['estado'] ?? '');
+          if (r != 0) return r;
+          return compareDateDesc(a, b);
+        });
+      } else {
+        filtered.sort(compareDateDesc);
+      }
 
       setState(() {
         _pets = filtered;
@@ -76,64 +103,35 @@ class _HomePageState extends State<HomePage> {
     context.go('/login');
   }
 
-  // ----- Acciones de dueño -----
-
-  void _goEdit(String petId) {
-    context.push('/publish?edit=$petId');
-  }
+  void _goEdit(String petId) => context.push('/publish?edit=$petId');
 
   Future<void> _markFoundAndAskDelete(String petId) async {
     final res = await showModalBottomSheet<_FoundAction>(
       context: context,
       showDragHandle: true,
-      isScrollControlled: false,
-      builder: (ctx) => _FoundSheet(),
+      builder: (_) => _FoundSheet(),
     );
-
     if (res == null) return;
 
     if (res == _FoundAction.deleteNow) {
-      await _deletePetNow(petId);
-    } else if (res == _FoundAction.markAndDeleteIn7Days) {
-      await _markFound(petId); // aquí solo marcamos, el borrado es tarea en BD
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-              'Marcada como encontrada. Se borrará en 7 días (requiere job en BD).'),
-        ),
-      );
-    }
-  }
-
-  Future<void> _markFound(String petId) async {
-    try {
-      // Solo un ejemplo: podrías mover a estado que prefieras
-      await _sb.from('pets').update({
-        'estado': 'adoptado',
-      }).eq('id', petId);
-      await _loadPets();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error marcando: $e')),
-      );
-    }
-  }
-
-  Future<void> _deletePetNow(String petId) async {
-    try {
       await _sb.from('pets').delete().eq('id', petId);
       await _loadPets();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mascota eliminada')),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error eliminando: $e')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Mascota eliminada')));
+    } else {
+      try {
+        await _sb.from('pets').update({'estado': 'publicado'}).eq('id', petId);
+        await _loadPets();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Marcado como encontrado.'),
+        ));
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
     }
   }
 
@@ -145,9 +143,38 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: Image.asset('assets/logo/petfyco_logo_full.png', height: 40),
         actions: [
+          // Campana con badge rojo del número de "perdidos"
           IconButton(
-            icon: const Icon(Icons.notifications_outlined),
             onPressed: () => context.push('/lost'),
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.notifications_outlined),
+                if (_lostCount > 0)
+                  Positioned(
+                    right: -2,
+                    top: -2,
+                    child: Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      constraints: const BoxConstraints(minWidth: 18),
+                      child: Text(
+                        _lostCount > 99 ? '99+' : '$_lostCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.person_outline),
@@ -215,7 +242,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
 
-            // Estados (orden nuevo y estilo especial para "Perdidos")
+            // Estados (orden solicitado)
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -233,14 +260,20 @@ class _HomePageState extends State<HomePage> {
                       ),
                       const SizedBox(width: 8),
                       _StatusChip(
-                        label: 'Perdidos',
-                        icon: Icons.campaign,
+                        labelWidget: Row(
+                          children: const [
+                            Icon(Icons.campaign, size: 16, color: Colors.red),
+                            SizedBox(width: 6),
+                            Text('Perdidos',
+                                style: TextStyle(
+                                    color: Colors.red, fontWeight: FontWeight.w700)),
+                          ],
+                        ),
                         selected: _statusFilter == 'perdido',
                         onTap: () {
                           setState(() => _statusFilter = 'perdido');
                           _loadPets();
                         },
-                        color: Colors.red, // rojo llamativo
                       ),
                       const SizedBox(width: 8),
                       _StatusChip(
@@ -307,15 +340,13 @@ class _HomePageState extends State<HomePage> {
                   delegate: SliverChildBuilderDelegate(
                     (context, i) {
                       final pet = _pets[i];
-                      final isOwner =
-                          (_sb.auth.currentUser?.id != null &&
-                              _sb.auth.currentUser!.id == pet['owner_id']);
+                      final meId = me;
+                      final isOwner = meId != null && meId == pet['owner_id'];
                       return _PetCard(
                         pet: pet,
                         isOwner: isOwner,
                         onEdit: () => _goEdit(pet['id'] as String),
-                        onFound: () =>
-                            _markFoundAndAskDelete(pet['id'] as String),
+                        onFound: () => _markFoundAndAskDelete(pet['id'] as String),
                       );
                     },
                     childCount: _pets.length,
@@ -341,10 +372,7 @@ class _HeaderBanner extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            AppColors.blue.withOpacity(0.18),
-            AppColors.orange.withOpacity(0.14)
-          ],
+          colors: [AppColors.blue.withOpacity(0.18), AppColors.orange.withOpacity(0.14)],
         ),
         borderRadius: BorderRadius.circular(18),
       ),
@@ -416,51 +444,36 @@ class _FilterChip extends StatelessWidget {
 
 class _StatusChip extends StatelessWidget {
   const _StatusChip({
-    required this.label,
+    this.label,
+    this.labelWidget,
     required this.selected,
     required this.onTap,
-    this.icon,
-    this.color,
-  });
+  }) : assert(label != null || labelWidget != null);
 
-  final String label;
+  final String? label;
+  final Widget? labelWidget;
   final bool selected;
   final VoidCallback onTap;
-  final IconData? icon;
-  final Color? color;
 
   @override
   Widget build(BuildContext context) {
-    final baseColor = color ?? AppColors.blue;
-    final fg = selected ? (color ?? AppColors.navy) : (color ?? Colors.grey.shade700);
-    final bg = selected
-        ? (color ?? AppColors.blue).withOpacity(0.18)
-        : (color != null ? color!.withOpacity(0.12) : Colors.grey.shade200);
-
+    final child = labelWidget ?? Text(label!);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         decoration: BoxDecoration(
-          color: bg,
+          color: selected ? AppColors.blue.withOpacity(0.2) : Colors.grey.shade200,
           borderRadius: BorderRadius.circular(12),
-          border: selected ? Border.all(color: baseColor, width: 2) : null,
+          border: selected ? Border.all(color: AppColors.blue, width: 2) : null,
         ),
-        child: Row(
-          children: [
-            if (icon != null) ...[
-              Icon(icon, size: 18, color: fg),
-              const SizedBox(width: 6),
-            ],
-            Text(
-              label,
-              style: TextStyle(
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                color: fg,
-              ),
-            ),
-          ],
+        child: DefaultTextStyle.merge(
+          style: TextStyle(
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            color: selected ? AppColors.navy : Colors.grey.shade700,
+          ),
+          child: child,
         ),
       ),
     );
@@ -499,149 +512,130 @@ class _PetCard extends StatelessWidget {
           .whereType<Map>()
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList();
-      casted.sort((a, b) =>
-          (a['position'] as int? ?? 0).compareTo(b['position'] as int? ?? 0));
+      casted.sort((a, b) => (a['position'] as int? ?? 0)
+          .compareTo(b['position'] as int? ?? 0));
       imageUrl = casted.first['url'] as String?;
     }
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => context.push('/pet/${pet['id']}'),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Imagen con degradado + título y ubicación encima (como antes)
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (imageUrl != null)
-                    Image.network(
-                      imageUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const _ImagePlaceholder(),
-                    )
-                  else
-                    const _ImagePlaceholder(),
-                  // Degradado inferior
-                  Positioned.fill(
-                    child: Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Container(
-                        height: 84,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: Material(
+        color: Colors.white,
+        child: InkWell(
+          onTap: () => context.push('/pet/${pet['id']}'),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Imagen grande arriba
+              AspectRatio(
+                aspectRatio: 16 / 10,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    if (imageUrl != null)
+                      Image.network(
+                        imageUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const _ImagePlaceholder(),
+                      )
+                    else
+                      const _ImagePlaceholder(),
+                    // degradado suave solo abajo
+                    Positioned.fill(
+                      child: DecoratedBox(
                         decoration: const BoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.transparent,
-                              Colors.black54,
-                            ],
+                            colors: [Colors.transparent, Colors.black26],
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  // Texto sobre la imagen
-                  Positioned(
-                    left: 12,
-                    right: 12,
-                    bottom: 10,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          nombre,
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                shadows: const [
-                                  Shadow(
-                                      color: Colors.black26,
-                                      blurRadius: 6,
-                                      offset: Offset(0, 1))
-                                ],
-                              ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                    // Título sobre la foto
+                    Positioned(
+                      left: 12,
+                      bottom: 12,
+                      right: 12,
+                      child: Text(
+                        nombre,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          shadows: [Shadow(blurRadius: 6, color: Colors.black54)],
                         ),
-                        const SizedBox(height: 4),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Info
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.place, size: 16, color: AppColors.pink),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              municipio,
+                              style: Theme.of(context).textTheme.bodySmall,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          _buildTag(especie == 'perro' ? 'Perro' : 'Gato'),
+                          if (edadAnios != null)
+                            _buildTag('$edadAnios año${edadAnios == 1 ? '' : 's'}'),
+                          if (talla != null && talla.isNotEmpty) _buildTag(talla),
+                          if (temperamento != null && temperamento.isNotEmpty)
+                            _buildTag(temperamento),
+                          _buildTag(_estadoLabel(estado)),
+                        ],
+                      ),
+                      if (isOwner) ...[
+                        const Spacer(),
                         Row(
                           children: [
-                            const Icon(Icons.place,
-                                size: 16, color: Colors.white),
-                            const SizedBox(width: 4),
                             Expanded(
-                              child: Text(
-                                municipio,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(color: Colors.white),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                              child: OutlinedButton.icon(
+                                onPressed: onEdit,
+                                icon: const Icon(Icons.edit_outlined),
+                                label: const Text('Editar'),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: onFound,
+                                icon: const Icon(Icons.check_circle_outline),
+                                label: const Text('Encontrado'),
                               ),
                             ),
                           ],
                         ),
                       ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Chips (debajo de la imagen)
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
-                    children: [
-                      _buildTag(especie == 'perro' ? 'Perro' : 'Gato'),
-                      if (edadAnios != null)
-                        _buildTag('$edadAnios año${edadAnios == 1 ? '' : 's'}'),
-                      if (talla != null && talla.isNotEmpty) _buildTag(talla),
-                      if (temperamento != null && temperamento.isNotEmpty)
-                        _buildTag(temperamento),
-                      _buildTag(_estadoLabel(estado)),
                     ],
                   ),
-                  if (isOwner) ...[
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: onEdit,
-                            icon: const Icon(Icons.edit_outlined),
-                            label: const Text('Editar'),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: onFound,
-                            icon:
-                                const Icon(Icons.check_circle_outline),
-                            label: const Text('Encontrado'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -699,8 +693,7 @@ class _FoundSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding:
-            const EdgeInsets.only(left: 16, right: 16, bottom: 24, top: 8),
+        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 24, top: 8),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -710,26 +703,20 @@ class _FoundSheet extends StatelessWidget {
                     .titleMedium
                     ?.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
-            const Text(
-              '¿Qué deseas hacer?',
-              textAlign: TextAlign.center,
-            ),
+            const Text('¿Qué deseas hacer?', textAlign: TextAlign.center),
             const SizedBox(height: 16),
             ListTile(
               leading: const Icon(Icons.schedule),
-              title: const Text('Marcar como encontrada y borrar en 7 días'),
-              subtitle: const Text(
-                  'Requiere un job/trigger en BD para el borrado automático.'),
-              onTap: () => Navigator.pop(
-                  context, _FoundAction.markAndDeleteIn7Days),
+              title: const Text('Marcar como encontrada'),
+              subtitle: const Text('Se quitará de “Perdidos”.'),
+              onTap: () => Navigator.pop(context, _FoundAction.markAndDeleteIn7Days),
             ),
             const SizedBox(height: 6),
             ListTile(
               leading: const Icon(Icons.delete_forever, color: Colors.red),
               title: const Text('Eliminar ahora'),
-              subtitle: const Text('Se eliminará de inmediato'),
-              onTap: () =>
-                  Navigator.pop(context, _FoundAction.deleteNow),
+              subtitle: const Text('Se eliminará de inmediato.'),
+              onTap: () => Navigator.pop(context, _FoundAction.deleteNow),
             ),
           ],
         ),
