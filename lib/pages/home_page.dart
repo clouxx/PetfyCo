@@ -135,6 +135,22 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  // Adoptar (solo si NO es dueño y está "publicado")
+Future<void> _adoptPet(String petId) async {
+  try {
+    await _sb.from('pets').update({'estado': 'adoptado'}).eq('id', petId);
+    await _loadPets();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('¡Gracias por adoptar!')),
+    );
+  } catch (e) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('Error: $e')));
+  }
+}
+
   @override
   Widget build(BuildContext context) {
     final me = _sb.auth.currentUser?.id;
@@ -347,6 +363,7 @@ class _HomePageState extends State<HomePage> {
                         isOwner: isOwner,
                         onEdit: () => _goEdit(pet['id'] as String),
                         onFound: () => _markFoundAndAskDelete(pet['id'] as String),
+                        onAdopt: () => _adoptPet(pet['id'] as String), // <-- AÑADIDO
                       );
                     },
                     childCount: _pets.length,
