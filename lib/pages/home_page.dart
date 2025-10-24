@@ -18,9 +18,9 @@ class _HomePageState extends State<HomePage> {
   bool _loading = true;
 
   // Filtros
-  String _filter = 'todos';     // todos | perro | gato
+  String _filter = 'todos';       // todos | perro | gato
   String _statusFilter = 'todos'; // "Publicados" = todos
-  int _lostCount = 0;           // para el badge de la campana
+  int _lostCount = 0;             // para el badge de la campana
 
   @override
   void initState() {
@@ -51,20 +51,20 @@ class _HomePageState extends State<HomePage> {
       // contador para badge
       _lostCount = allPets.where((p) => p['estado'] == 'perdido').length;
 
-      // Filtro en memoria
+      // Filtro en memoria (excluir "reservado")
       List<Map<String, dynamic>> filtered = allPets.where((pet) {
-        final estadoOk = _statusFilter == 'todos'
-            ? true
-            : (pet['estado'] == _statusFilter);
-        final especieOk = _filter == 'todos'
-            ? true
-            : (pet['especie'] == _filter);
-        return estadoOk && especieOk;
+        final estado = (pet['estado'] as String?) ?? '';
+        final notReserved = estado != 'reservado';
+
+        final estadoOk =
+            _statusFilter == 'todos' ? true : (estado == _statusFilter);
+        final especieOk =
+            _filter == 'todos' ? true : (pet['especie'] == _filter);
+
+        return estadoOk && especieOk && notReserved;
       }).toList();
 
-      // Orden:
-      // - Si estamos en "Publicados" (todos): primero perdidos, luego el resto.
-      // - Siempre por fecha desc dentro de cada grupo.
+      // Orden en "Publicados": primero perdidos, luego resto. Siempre por fecha desc.
       int estadoRank(String e) => (e == 'perdido') ? 0 : 1;
       int compareDateDesc(a, b) {
         final da = DateTime.tryParse(a['created_at']?.toString() ?? '') ??
@@ -76,7 +76,8 @@ class _HomePageState extends State<HomePage> {
 
       if (_statusFilter == 'todos') {
         filtered.sort((a, b) {
-          final r = estadoRank(a['estado'] ?? '') - estadoRank(b['estado'] ?? '');
+          final r =
+              estadoRank(a['estado'] ?? '') - estadoRank(b['estado'] ?? '');
           if (r != 0) return r;
           return compareDateDesc(a, b);
         });
@@ -121,12 +122,13 @@ class _HomePageState extends State<HomePage> {
           .showSnackBar(const SnackBar(content: Text('Mascota eliminada')));
     } else {
       try {
+        // Encontrado = ya no está perdido => vuelve a "publicado"
         await _sb.from('pets').update({'estado': 'publicado'}).eq('id', petId);
         await _loadPets();
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Marcado como encontrado.'),
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Marcado como encontrado.')),
+        );
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context)
@@ -136,20 +138,20 @@ class _HomePageState extends State<HomePage> {
   }
 
   // Adoptar (solo si NO es dueño y está "publicado")
-Future<void> _adoptPet(String petId) async {
-  try {
-    await _sb.from('pets').update({'estado': 'adoptado'}).eq('id', petId);
-    await _loadPets();
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('¡Gracias por adoptar!')),
-    );
-  } catch (e) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text('Error: $e')));
+  Future<void> _adoptPet(String petId) async {
+    try {
+      await _sb.from('pets').update({'estado': 'adoptado'}).eq('id', petId);
+      await _loadPets();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('¡Gracias por adoptar!')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -258,7 +260,7 @@ Future<void> _adoptPet(String petId) async {
               ),
             ),
 
-            // Estados (orden solicitado)
+            // Estados (orden solicitado) — SIN "Reservados"
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -297,15 +299,6 @@ Future<void> _adoptPet(String petId) async {
                         selected: _statusFilter == 'adoptado',
                         onTap: () {
                           setState(() => _statusFilter = 'adoptado');
-                          _loadPets();
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                      _StatusChip(
-                        label: 'Reservados',
-                        selected: _statusFilter == 'reservado',
-                        onTap: () {
-                          setState(() => _statusFilter = 'reservado');
                           _loadPets();
                         },
                       ),
@@ -362,8 +355,9 @@ Future<void> _adoptPet(String petId) async {
                         pet: pet,
                         isOwner: isOwner,
                         onEdit: () => _goEdit(pet['id'] as String),
-                        onFound: () => _markFoundAndAskDelete(pet['id'] as String),
-                        onAdopt: () => _adoptPet(pet['id'] as String), // <-- AÑADIDO
+                        onFound: () =>
+                            _markFoundAndAskDelete(pet['id'] as String),
+                        onAdopt: () => _adoptPet(pet['id'] as String),
                       );
                     },
                     childCount: _pets.length,
@@ -389,7 +383,10 @@ class _HeaderBanner extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.blue.withOpacity(0.18), AppColors.orange.withOpacity(0.14)],
+          colors: [
+            AppColors.blue.withOpacity(0.18),
+            AppColors.orange.withOpacity(0.14)
+          ],
         ),
         borderRadius: BorderRadius.circular(18),
       ),
@@ -481,7 +478,8 @@ class _StatusChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         decoration: BoxDecoration(
-          color: selected ? AppColors.blue.withOpacity(0.2) : Colors.grey.shade200,
+          color:
+              selected ? AppColors.blue.withOpacity(0.2) : Colors.grey.shade200,
           borderRadius: BorderRadius.circular(12),
           border: selected ? Border.all(color: AppColors.blue, width: 2) : null,
         ),
@@ -615,7 +613,7 @@ class _PetCard extends StatelessWidget {
 
           const Spacer(),
 
-          // BOTONES (también DEBAJO)
+          // BOTONES DE ACCIÓN ABAJO
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
             child: Row(
@@ -702,7 +700,6 @@ class _PetCard extends StatelessWidget {
   String _cap(String s) => s.isEmpty ? s : (s[0].toUpperCase() + s.substring(1));
 }
 
-
 class _ImagePlaceholder extends StatelessWidget {
   const _ImagePlaceholder();
 
@@ -726,7 +723,8 @@ class _FoundSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 24, top: 8),
+        padding:
+            const EdgeInsets.only(left: 16, right: 16, bottom: 24, top: 8),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -742,14 +740,17 @@ class _FoundSheet extends StatelessWidget {
               leading: const Icon(Icons.schedule),
               title: const Text('Marcar como encontrada'),
               subtitle: const Text('Se quitará de “Perdidos”.'),
-              onTap: () => Navigator.pop(context, _FoundAction.markAndDeleteIn7Days),
+              onTap: () => Navigator.pop(
+                  context, _FoundAction.markAndDeleteIn7Days),
             ),
             const SizedBox(height: 6),
             ListTile(
-              leading: const Icon(Icons.delete_forever, color: Colors.red),
+              leading:
+                  const Icon(Icons.delete_forever, color: Colors.red),
               title: const Text('Eliminar ahora'),
               subtitle: const Text('Se eliminará de inmediato.'),
-              onTap: () => Navigator.pop(context, _FoundAction.deleteNow),
+              onTap: () =>
+                  Navigator.pop(context, _FoundAction.deleteNow),
             ),
           ],
         ),
