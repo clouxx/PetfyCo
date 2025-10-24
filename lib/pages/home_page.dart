@@ -517,12 +517,11 @@ class _PetCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // FOTO + DEGRADADO + CHIPS (solo lo que va dentro)
+            // FOTO + CHIPS
             SizedBox(
-              height: 180, // Altura fija para consistencia
+              height: 180,
               child: Stack(
                 children: [
-                  // Foto
                   Positioned.fill(
                     child: imageUrl != null
                         ? Image.network(
@@ -532,7 +531,7 @@ class _PetCard extends StatelessWidget {
                           )
                         : const _ImagePlaceholder(),
                   ),
-                  // Degradado
+                  // Degradado dentro de la imagen
                   Positioned.fill(
                     child: DecoratedBox(
                       decoration: BoxDecoration(
@@ -550,7 +549,7 @@ class _PetCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Chips (dentro de la imagen, al fondo)
+                  // Chips
                   Positioned(
                     left: 12,
                     right: 12,
@@ -571,9 +570,19 @@ class _PetCard extends StatelessWidget {
               ),
             ),
 
-            // CONTENIDO FUERA DE LA IMAGEN
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+            // SECCIÓN INFERIOR: con degradado suave
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFFF5F7FA), // Muy claro
+                    Color(0xFFE4E9F0), // Gris azulado suave
+                  ],
+                ),
+              ),
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -582,6 +591,7 @@ class _PetCard extends StatelessWidget {
                     nombre,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w700,
+                          color: AppColors.navy,
                         ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -596,7 +606,9 @@ class _PetCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           municipio?.isNotEmpty == true ? municipio! : 'Colombia',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Colors.grey.shade700,
+                              ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -604,38 +616,32 @@ class _PetCard extends StatelessWidget {
                     ],
                   ),
 
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
 
-                  // BOTONES: PEQUEÑOS, A LA DERECHA
+                  // BOTONES
                   Align(
                     alignment: Alignment.centerRight,
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (isOwner) ...[
-                          _smallAction(
-                            context,
-                            icon: Icons.edit_outlined,
-                            label: 'Editar',
-                            onTap: onEdit,
-                          ),
+                          _smallAction(context,
+                              icon: Icons.edit_outlined,
+                              label: 'Editar',
+                              onTap: onEdit),
                           const SizedBox(width: 6),
                           if (estado == 'perdido')
-                            _smallAction(
-                              context,
-                              icon: Icons.campaign_outlined,
-                              label: 'Encontrado',
-                              onTap: onFound,
-                              bg: AppColors.orange,
-                            ),
+                            _smallAction(context,
+                                icon: Icons.campaign_outlined,
+                                label: 'Encontrado',
+                                onTap: onFound,
+                                bg: AppColors.orange),
                         ] else if (estado == 'publicado') ...[
-                          _smallAction(
-                            context,
-                            icon: Icons.volunteer_activism_outlined,
-                            label: 'Adoptar',
-                            onTap: onAdopt,
-                            bg: Colors.green.shade600,
-                          ),
+                          _smallAction(context,
+                              icon: Icons.volunteer_activism_outlined,
+                              label: 'Adoptar',
+                              onTap: onAdopt,
+                              bg: Colors.green.shade600),
                         ],
                       ],
                     ),
@@ -654,7 +660,7 @@ class _PetCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
+        color: Colors.white.withOpacity(0.22),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white24),
       ),
@@ -728,7 +734,7 @@ class _PetCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16127),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           child: Row(
