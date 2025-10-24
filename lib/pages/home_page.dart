@@ -514,79 +514,48 @@ class _PetCard extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: () => context.push('/pet/${pet['id']}'),
-        child: Stack(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // FOTO
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: imageUrl != null
-                  ? Image.network(
-                      imageUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const _ImagePlaceholder(),
-                    )
-                  : const _ImagePlaceholder(),
-            ),
-
-            // DEGRADADO
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withOpacity(0.15),
-                      Colors.black.withOpacity(0.45),
-                      Colors.black.withOpacity(0.65),
-                    ],
-                    stops: const [0.4, 0.65, 0.85, 1.0],
+            // FOTO + DEGRADADO + CHIPS (solo lo que va dentro)
+            SizedBox(
+              height: 180, // Altura fija para consistencia
+              child: Stack(
+                children: [
+                  // Foto
+                  Positioned.fill(
+                    child: imageUrl != null
+                        ? Image.network(
+                            imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const _ImagePlaceholder(),
+                          )
+                        : const _ImagePlaceholder(),
                   ),
-                ),
-              ),
-            ),
-
-            // CONTENIDO: Todo dentro del degradado
-            Positioned.fill(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Spacer(), // Empuja todo hacia abajo
-
-                    // NOMBRE (debajo de la imagen)
-                    Text(
-                      nombre,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                          ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-
-                    // UBICACIÓN
-                    Row(
-                      children: [
-                        const Icon(Icons.place, size: 16, color: Colors.white),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            municipio?.isNotEmpty == true ? municipio! : 'Colombia',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                  // Degradado
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withOpacity(0.15),
+                            Colors.black.withOpacity(0.45),
+                            Colors.black.withOpacity(0.65),
+                          ],
+                          stops: const [0.4, 0.65, 0.85, 1.0],
                         ),
-                      ],
+                      ),
                     ),
-                    const SizedBox(height: 8),
-
-                    // CHIPS
-                    Wrap(
+                  ),
+                  // Chips (dentro de la imagen, al fondo)
+                  Positioned(
+                    left: 12,
+                    right: 12,
+                    bottom: 12,
+                    child: Wrap(
                       spacing: 6,
                       runSpacing: 6,
                       children: [
@@ -597,44 +566,81 @@ class _PetCard extends StatelessWidget {
                         _statusChipForCard(context, estado),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                  ),
+                ],
+              ),
+            ),
 
-                    // BOTONES: MÁS PEQUEÑOS, DEBAJO DE LOS CHIPS
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (isOwner) ...[
-                            _smallAction(
-                              context,
-                              icon: Icons.edit_outlined,
-                              label: 'Editar',
-                              onTap: onEdit,
-                            ),
-                            const SizedBox(width: 4),
-                            if (estado == 'perdido')
-                              _smallAction(
-                                context,
-                                icon: Icons.campaign_outlined,
-                                label: 'Encontrado',
-                                onTap: onFound,
-                                bg: AppColors.orange,
-                              ),
-                          ] else if (estado == 'publicado') ...[
-                            _smallAction(
-                              context,
-                              icon: Icons.volunteer_activism_outlined,
-                              label: 'Adoptar',
-                              onTap: onAdopt,
-                              bg: Colors.green.shade600,
-                            ),
-                          ],
-                        ],
+            // CONTENIDO FUERA DE LA IMAGEN
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // NOMBRE
+                  Text(
+                    nombre,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+
+                  // UBICACIÓN
+                  Row(
+                    children: [
+                      const Icon(Icons.place, size: 14, color: Colors.grey),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          municipio?.isNotEmpty == true ? municipio! : 'Colombia',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  // BOTONES: PEQUEÑOS, A LA DERECHA
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isOwner) ...[
+                          _smallAction(
+                            context,
+                            icon: Icons.edit_outlined,
+                            label: 'Editar',
+                            onTap: onEdit,
+                          ),
+                          const SizedBox(width: 6),
+                          if (estado == 'perdido')
+                            _smallAction(
+                              context,
+                              icon: Icons.campaign_outlined,
+                              label: 'Encontrado',
+                              onTap: onFound,
+                              bg: AppColors.orange,
+                            ),
+                        ] else if (estado == 'publicado') ...[
+                          _smallAction(
+                            context,
+                            icon: Icons.volunteer_activism_outlined,
+                            label: 'Adoptar',
+                            onTap: onAdopt,
+                            bg: Colors.green.shade600,
+                          ),
+                        ],
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -643,18 +649,18 @@ class _PetCard extends StatelessWidget {
     );
   }
 
-  // CHIP NORMAL
+  // Chip normal
   Widget _chip(BuildContext context, String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.18),
+        color: Colors.white.withOpacity(0.2),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white24),
       ),
       child: Text(
         text,
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.w600,
             ),
@@ -662,11 +668,11 @@ class _PetCard extends StatelessWidget {
     );
   }
 
-  // CHIP DE ESTADO
+  // Chip de estado
   Widget _statusChipForCard(BuildContext context, String estado) {
     if (estado == 'perdido') {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: Colors.red.withOpacity(0.9),
           borderRadius: BorderRadius.circular(12),
@@ -674,10 +680,10 @@ class _PetCard extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.campaign, size: 16, color: Colors.white),
-            const SizedBox(width: 6),
+            const Icon(Icons.campaign, size: 14, color: Colors.white),
+            const SizedBox(width: 4),
             Text('Perdido',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
                     )),
@@ -687,7 +693,7 @@ class _PetCard extends StatelessWidget {
     }
     if (estado == 'adoptado') {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: Colors.green.withOpacity(0.9),
           borderRadius: BorderRadius.circular(12),
@@ -695,10 +701,10 @@ class _PetCard extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.check_circle, size: 16, color: Colors.white),
-            const SizedBox(width: 6),
+            const Icon(Icons.check_circle, size: 14, color: Colors.white),
+            const SizedBox(width: 4),
             Text('Adoptado',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
                     )),
@@ -709,7 +715,7 @@ class _PetCard extends StatelessWidget {
     return _chip(context, 'Disponible');
   }
 
-  // BOTONES MÁS PEQUEÑOS
+  // Botones pequeños
   Widget _smallAction(
     BuildContext context, {
     required IconData icon,
@@ -718,25 +724,25 @@ class _PetCard extends StatelessWidget {
     Color? bg,
   }) {
     return Material(
-      color: bg ?? Colors.black.withOpacity(0.6),
+      color: bg ?? Colors.black87,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16127),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), // Más pequeño
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 14, color: Colors.white), // Ícono más pequeño
+              Icon(icon, size: 14, color: Colors.white),
               const SizedBox(width: 4),
               Text(
                 label,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 11, // Texto más pequeño
-                    ),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
