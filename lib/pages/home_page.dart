@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
   @override
   State<HomePage> createState() => _HomePageState();
 }
@@ -17,11 +18,9 @@ class _HomePageState extends State<HomePage> {
   bool _loading = true;
 
   // Filtros
-  String _filter = 'todos'; // todos | perro | gato
-  String _statusFilter = 'todos'; // "Publicados" == todos
-
-  // notificaciones (cuenta de perdidos del conjunto cargado)
-  int get _lostCount => _pets.where((p) => p['estado'] == 'perdido').length;
+  String _filter = 'todos';     // todos | perro | gato
+  String _statusFilter = 'todos'; // "Publicados" = todos
+  int _lostCount = 0;           // para el badge de la campana
 
   @override
   void initState() {
@@ -49,28 +48,40 @@ class _HomePageState extends State<HomePage> {
         }
       }
 
-      // Filtrado en memoria
-      final filtered = allPets.where((pet) {
-        final estadoOk =
-            _statusFilter == 'todos' ? true : (pet['estado'] == _statusFilter);
-        final especieOk =
-            (_filter == 'todos') ? true : (pet['especie'] == _filter);
+      // contador para badge
+      _lostCount = allPets.where((p) => p['estado'] == 'perdido').length;
+
+      // Filtro en memoria
+      List<Map<String, dynamic>> filtered = allPets.where((pet) {
+        final estadoOk = _statusFilter == 'todos'
+            ? true
+            : (pet['estado'] == _statusFilter);
+        final especieOk = _filter == 'todos'
+            ? true
+            : (pet['especie'] == _filter);
         return estadoOk && especieOk;
       }).toList();
 
-      // Orden especial: En "Publicados" (todos) primero perdidos y luego por fecha
+      // Orden:
+      // - Si estamos en "Publicados" (todos): primero perdidos, luego el resto.
+      // - Siempre por fecha desc dentro de cada grupo.
+      int estadoRank(String e) => (e == 'perdido') ? 0 : 1;
+      int compareDateDesc(a, b) {
+        final da = DateTime.tryParse(a['created_at']?.toString() ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        final db = DateTime.tryParse(b['created_at']?.toString() ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        return db.compareTo(da); // desc
+      }
+
       if (_statusFilter == 'todos') {
         filtered.sort((a, b) {
-          final aLost = a['estado'] == 'perdido';
-          final bLost = b['estado'] == 'perdido';
-          if (aLost != bLost) return aLost ? -1 : 1;
-
-          final da = DateTime.tryParse(a['created_at']?.toString() ?? '') ??
-              DateTime.fromMillisecondsSinceEpoch(0);
-          final db = DateTime.tryParse(b['created_at']?.toString() ?? '') ??
-              DateTime.fromMillisecondsSinceEpoch(0);
-          return db.compareTo(da); // desc
+          final r = estadoRank(a['estado'] ?? '') - estadoRank(b['estado'] ?? '');
+          if (r != 0) return r;
+          return compareDateDesc(a, b);
         });
+      } else {
+        filtered.sort(compareDateDesc);
       }
 
       setState(() {
@@ -92,45 +103,35 @@ class _HomePageState extends State<HomePage> {
     context.go('/login');
   }
 
-  // ----- Acciones -----
+  void _goEdit(String petId) => context.push('/publish?edit=$petId');
 
-  void _goEdit(String petId) {
-    context.push('/publish?edit=$petId');
-  }
+  Future<void> _markFoundAndAskDelete(String petId) async {
+    final res = await showModalBottomSheet<_FoundAction>(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => _FoundSheet(),
+    );
+    if (res == null) return;
 
-  Future<void> _markFound(String petId) async {
-    try {
-      await _sb.from('pets').update({
-        'estado': 'adoptado',
-        // Si quieras borrado automático: agrega columna found_at y crea job en BD.
-      }).eq('id', petId);
+    if (res == _FoundAction.deleteNow) {
+      await _sb.from('pets').delete().eq('id', petId);
       await _loadPets();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Marcada como encontrada')),
-      );
-    } catch (e) {
-      if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error: $e')));
-    }
-  }
-
-  Future<void> _markAdopted(String petId) async {
-    try {
-      await _sb.from('pets').update({
-        'estado': 'adoptado',
-        // Para borrado a 7 días, igual: columna adopted_at + job en BD
-      }).eq('id', petId);
-      await _loadPets();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gracias por adoptar 🧡')),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error: $e')));
+          .showSnackBar(const SnackBar(content: Text('Mascota eliminada')));
+    } else {
+      try {
+        await _sb.from('pets').update({'estado': 'publicado'}).eq('id', petId);
+        await _loadPets();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Marcado como encontrado.'),
+        ));
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
     }
   }
 
@@ -142,31 +143,38 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: Image.asset('assets/logo/petfyco_logo_full.png', height: 40),
         actions: [
-          // Campana con badge rojo a la derecha
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.notifications_outlined),
-                onPressed: () => context.push('/lost'),
-              ),
-              if (_lostCount > 0)
-                Positioned(
-                  right: 8,
-                  top: 10,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.redAccent,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text('$_lostCount',
+          // Campana con badge rojo del número de "perdidos"
+          IconButton(
+            onPressed: () => context.push('/lost'),
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.notifications_outlined),
+                if (_lostCount > 0)
+                  Positioned(
+                    right: -2,
+                    top: -2,
+                    child: Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      constraints: const BoxConstraints(minWidth: 18),
+                      child: Text(
+                        _lostCount > 99 ? '99+' : '$_lostCount',
                         style: const TextStyle(
-                            fontSize: 11, color: Colors.white)),
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.person_outline),
@@ -234,7 +242,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
 
-            // Estados (Publicados, Perdidos, Adoptados)
+            // Estados (orden solicitado)
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -252,16 +260,20 @@ class _HomePageState extends State<HomePage> {
                       ),
                       const SizedBox(width: 8),
                       _StatusChip(
-                        // rojo + bocina como pediste
-                        label: '📢 Perdidos',
+                        labelWidget: Row(
+                          children: const [
+                            Icon(Icons.campaign, size: 16, color: Colors.red),
+                            SizedBox(width: 6),
+                            Text('Perdidos',
+                                style: TextStyle(
+                                    color: Colors.red, fontWeight: FontWeight.w700)),
+                          ],
+                        ),
                         selected: _statusFilter == 'perdido',
                         onTap: () {
                           setState(() => _statusFilter = 'perdido');
                           _loadPets();
                         },
-                        selectedColor: Colors.red.shade50,
-                        textColor: Colors.red.shade600,
-                        borderColor: Colors.red.shade300,
                       ),
                       const SizedBox(width: 8),
                       _StatusChip(
@@ -269,6 +281,15 @@ class _HomePageState extends State<HomePage> {
                         selected: _statusFilter == 'adoptado',
                         onTap: () {
                           setState(() => _statusFilter = 'adoptado');
+                          _loadPets();
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      _StatusChip(
+                        label: 'Reservados',
+                        selected: _statusFilter == 'reservado',
+                        onTap: () {
+                          setState(() => _statusFilter = 'reservado');
                           _loadPets();
                         },
                       ),
@@ -293,7 +314,7 @@ class _HomePageState extends State<HomePage> {
                       Text(
                         _statusFilter == 'perdido'
                             ? 'No hay reportes de mascotas perdidas'
-                            : 'No hay mascotas para mostrar',
+                            : 'No hay mascotas disponibles',
                         style: const TextStyle(fontSize: 18, color: Colors.grey),
                       ),
                       const SizedBox(height: 24),
@@ -314,20 +335,18 @@ class _HomePageState extends State<HomePage> {
                     crossAxisCount: 2,
                     mainAxisSpacing: 14,
                     crossAxisSpacing: 14,
-                    mainAxisExtent: 340,
+                    mainAxisExtent: 360,
                   ),
                   delegate: SliverChildBuilderDelegate(
                     (context, i) {
                       final pet = _pets[i];
-                      final meId = _sb.auth.currentUser?.id;
-                      final bool isOwner =
-                          meId != null && meId == (pet['owner_id'] as String?);
+                      final meId = me;
+                      final isOwner = meId != null && meId == pet['owner_id'];
                       return _PetCard(
                         pet: pet,
                         isOwner: isOwner,
                         onEdit: () => _goEdit(pet['id'] as String),
-                        onFound: () => _markFound(pet['id'] as String),
-                        onAdopt: () => _markAdopted(pet['id'] as String),
+                        onFound: () => _markFoundAndAskDelete(pet['id'] as String),
                       );
                     },
                     childCount: _pets.length,
@@ -353,10 +372,7 @@ class _HeaderBanner extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            AppColors.blue.withOpacity(0.18),
-            AppColors.orange.withOpacity(0.14),
-          ],
+          colors: [AppColors.blue.withOpacity(0.18), AppColors.orange.withOpacity(0.14)],
         ),
         borderRadius: BorderRadius.circular(18),
       ),
@@ -428,42 +444,36 @@ class _FilterChip extends StatelessWidget {
 
 class _StatusChip extends StatelessWidget {
   const _StatusChip({
-    required this.label,
+    this.label,
+    this.labelWidget,
     required this.selected,
     required this.onTap,
-    this.selectedColor,
-    this.textColor,
-    this.borderColor,
-  });
+  }) : assert(label != null || labelWidget != null);
 
-  final String label;
+  final String? label;
+  final Widget? labelWidget;
   final bool selected;
   final VoidCallback onTap;
-  final Color? selectedColor;
-  final Color? textColor;
-  final Color? borderColor;
 
   @override
   Widget build(BuildContext context) {
-    final baseSelectedColor = selectedColor ?? AppColors.blue.withOpacity(0.2);
+    final child = labelWidget ?? Text(label!);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         decoration: BoxDecoration(
-          color: selected ? baseSelectedColor : Colors.grey.shade200,
+          color: selected ? AppColors.blue.withOpacity(0.2) : Colors.grey.shade200,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-              color: selected ? (borderColor ?? AppColors.blue) : Colors.transparent,
-              width: selected ? 2 : 0),
+          border: selected ? Border.all(color: AppColors.blue, width: 2) : null,
         ),
-        child: Text(
-          label,
+        child: DefaultTextStyle.merge(
           style: TextStyle(
             fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-            color: selected ? (textColor ?? AppColors.navy) : Colors.grey.shade700,
+            color: selected ? AppColors.navy : Colors.grey.shade700,
           ),
+          child: child,
         ),
       ),
     );
@@ -476,20 +486,18 @@ class _PetCard extends StatelessWidget {
     required this.isOwner,
     required this.onEdit,
     required this.onFound,
-    required this.onAdopt,
   });
 
   final Map<String, dynamic> pet;
   final bool isOwner;
   final VoidCallback onEdit;
   final VoidCallback onFound;
-  final VoidCallback onAdopt;
 
   @override
   Widget build(BuildContext context) {
     final nombre = pet['nombre'] as String? ?? 'Sin nombre';
     final especie = pet['especie'] as String? ?? 'desconocido';
-    final municipio = pet['municipio'] as String? ?? 'Colombia';
+    final municipio = (pet['municipio'] as String?)?.trim();
     final estado = pet['estado'] as String? ?? 'publicado';
     final talla = pet['talla'] as String?;
     final temperamento = pet['temperamento'] as String?;
@@ -503,187 +511,224 @@ class _PetCard extends StatelessWidget {
       final casted = petPhotosRaw
           .whereType<Map>()
           .map((e) => Map<String, dynamic>.from(e as Map))
-          .toList();
-      casted.sort((a, b) => (a['position'] as int? ?? 0)
-          .compareTo((b['position'] as int? ?? 0)));
+          .toList()
+        ..sort((a, b) =>
+            (a['position'] as int? ?? 0).compareTo(b['position'] as int? ?? 0));
       imageUrl = casted.first['url'] as String?;
     }
 
+    // ——— Card estilo “imagen 3”: foto con degradado + texto encima ———
     return Card(
+      elevation: 1.5,
       clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Imagen arriba (sin overlay de texto para que el título sea negro)
-          AspectRatio(
-            aspectRatio: 16 / 9,
-            child: imageUrl != null
-                ? Image.network(
-                    imageUrl!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const _ImagePlaceholder(),
-                  )
-                : const _ImagePlaceholder(),
-          ),
-
-          // Texto en negro
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  nombre,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium!
-                      .copyWith(fontWeight: FontWeight.w700, color: Colors.black87),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.place, size: 16, color: AppColors.pink),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        municipio,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall!
-                            .copyWith(color: Colors.black54),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: InkWell(
+        onTap: () => context.push('/pet/${pet['id']}'),
+        child: Stack(
+          children: [
+            // Foto
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: imageUrl != null
+                  ? Image.network(
+                      imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const _ImagePlaceholder(),
+                    )
+                  : const _ImagePlaceholder(),
             ),
-          ),
 
-          // Gradiente suave + chips de info
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.only(top: 10),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black12.withOpacity(0.06),
-                    Colors.black26.withOpacity(0.08),
-                  ],
-                ),
-              ),
-              padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
-              child: Align(
-                alignment: Alignment.bottomLeft,
-                child: Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    _chip(especie == 'perro' ? 'Perro' : 'Gato'),
-                    if (edadAnios != null)
-                      _chip('$edadAnios año${edadAnios == 1 ? '' : 's'}'),
-                    if (talla != null && talla.isNotEmpty) _chip(talla),
-                    if (temperamento != null && temperamento.isNotEmpty)
-                      _chip(temperamento),
-                    _chipEstado(estado),
-                  ],
+            // Degradado oscuro en la parte inferior
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.15),
+                      Colors.black.withOpacity(0.45),
+                      Colors.black.withOpacity(0.65),
+                    ],
+                    stops: const [0.4, 0.65, 0.85, 1.0],
+                  ),
                 ),
               ),
             ),
-          ),
 
-          // Botones por estado/rol
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            child: Row(
-              children: [
-                if (isOwner)
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: onEdit,
-                      icon: const Icon(Icons.edit_outlined),
-                      label: const Text('Editar'),
+            // Contenido sobre la foto (nombre, ubicación y chips)
+            Positioned.fill(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Nombre
+                    Text(
+                      nombre,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                if (isOwner && estado == 'perdido') ...[
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: onFound,
-                      icon: const Icon(Icons.campaign_rounded),
-                      label: const Text('Encontrado'),
+                    const SizedBox(height: 2),
+                    // Ubicación
+                    Row(
+                      children: [
+                        const Icon(Icons.place, size: 16, color: Colors.white),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            municipio?.isNotEmpty == true ? municipio! : 'Colombia',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(color: Colors.white),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-                if (!isOwner && estado == 'publicado') ...[
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: onAdopt,
-                      icon: const Icon(Icons.volunteer_activism_outlined),
-                      label: const Text('Adoptar'),
+                    const Spacer(),
+                    // Chips (sobre el degradado)
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        _chip(context, especie == 'perro' ? 'Perro' : 'Gato'),
+                        if (edadAnios != null)
+                          _chip(context, '$edadAnios año${edadAnios == 1 ? '' : 's'}'),
+                        if (talla != null && talla.isNotEmpty) _chip(context, _cap(talla)),
+                        if (temperamento != null && temperamento.isNotEmpty)
+                          _chip(context, _cap(temperamento)),
+                        _statusChipForCard(context, estado),
+                      ],
                     ),
-                  ),
-                ],
-              ],
+                  ],
+                ),
+              ),
             ),
-          ),
-        ],
+
+            // Botones de dueño (editar / encontrado)
+            if (isOwner)
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Row(
+                  children: [
+                    _ownerAction(
+                      context,
+                      icon: Icons.edit_outlined,
+                      label: 'Editar',
+                      onTap: onEdit,
+                    ),
+                    const SizedBox(width: 6),
+                    _ownerAction(
+                      context,
+                      icon: Icons.campaign_outlined, // más visible para “Encontrado”
+                      label: 'Encontrado',
+                      onTap: onFound,
+                      bg: AppColors.orange,
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _chip(String text) {
-    return Chip(
-      label: Text(text, style: const TextStyle(fontSize: 11, color: Colors.black87)),
-      backgroundColor: Colors.blue.withOpacity(0.10),
-      padding: EdgeInsets.zero,
-      labelPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  // Chip gris translúcido para usar sobre la foto
+  Widget _chip(BuildContext context, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.18),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Text(
+        text,
+        style: Theme.of(context)
+            .textTheme
+            .labelMedium
+            ?.copyWith(color: Colors.white, fontWeight: FontWeight.w600),
+      ),
     );
   }
 
-  Widget _chipEstado(String estado) {
-    Color bg;
-    Color fg;
-    String label;
+  // Chip de ESTADO con estilo especial para “perdido” (rojo + megáfono)
+  Widget _statusChipForCard(BuildContext context, String estado) {
     switch (estado) {
       case 'perdido':
-        bg = Colors.red.withOpacity(0.10);
-        fg = Colors.red.shade700;
-        label = 'Perdido';
-        break;
-      case 'adoptado':
-        bg = Colors.green.withOpacity(0.10);
-        fg = Colors.green.shade700;
-        label = 'Adoptado';
-        break;
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.red.withOpacity(0.9),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.campaign, size: 16, color: Colors.white),
+              const SizedBox(width: 6),
+              Text('Perdido',
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelMedium
+                      ?.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+            ],
+          ),
+        );
       case 'reservado':
-        bg = Colors.orange.withOpacity(0.10);
-        fg = Colors.orange.shade700;
-        label = 'Reservado';
-        break;
+        return _chip(context, 'Reservado');
+      case 'adoptado':
+        return _chip(context, 'Adoptado');
       default:
-        bg = Colors.blue.withOpacity(0.10);
-        fg = Colors.blueGrey.shade700;
-        label = 'Disponible';
+        return _chip(context, 'Disponible');
     }
-    return Chip(
-      label: Text(label, style: TextStyle(fontSize: 11, color: fg)),
-      backgroundColor: bg,
-      padding: EdgeInsets.zero,
-      labelPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  }
+
+  Widget _ownerAction(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    Color? bg,
+  }) {
+    return Material(
+      color: (bg ?? Colors.black.withOpacity(0.55)),
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          child: Row(
+            children: [
+              Icon(icon, size: 16, color: Colors.white),
+              const SizedBox(width: 6),
+              Text(label,
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelSmall
+                      ?.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+            ],
+          ),
+        ),
+      ),
     );
   }
+
+  String _cap(String s) =>
+      s.isEmpty ? s : (s[0].toUpperCase() + s.substring(1));
 }
+
 
 class _ImagePlaceholder extends StatelessWidget {
   const _ImagePlaceholder();
@@ -694,6 +739,47 @@ class _ImagePlaceholder extends StatelessWidget {
       color: AppColors.blue.withOpacity(0.12),
       child: const Center(
         child: Icon(Icons.pets, size: 40, color: AppColors.navy),
+      ),
+    );
+  }
+}
+
+// --------- Bottom sheet para acción "Encontrado" ---------
+
+enum _FoundAction { markAndDeleteIn7Days, deleteNow }
+
+class _FoundSheet extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 24, top: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Mascota encontrada',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            const Text('¿Qué deseas hacer?', textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.schedule),
+              title: const Text('Marcar como encontrada'),
+              subtitle: const Text('Se quitará de “Perdidos”.'),
+              onTap: () => Navigator.pop(context, _FoundAction.markAndDeleteIn7Days),
+            ),
+            const SizedBox(height: 6),
+            ListTile(
+              leading: const Icon(Icons.delete_forever, color: Colors.red),
+              title: const Text('Eliminar ahora'),
+              subtitle: const Text('Se eliminará de inmediato.'),
+              onTap: () => Navigator.pop(context, _FoundAction.deleteNow),
+            ),
+          ],
+        ),
       ),
     );
   }
