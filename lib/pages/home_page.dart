@@ -138,7 +138,7 @@ class _HomePageState extends State<HomePage> {
     context.go('/login');
   }
 
-  void _goEdit(String petId) => context.push('/publish?edit=$petId');
+  void _goEdit(String petId) => context.push('/publish?editId=$petId');
 
   Future<void> _markFoundAndAskDelete(String petId) async {
     final res = await showModalBottomSheet<_FoundAction>(
