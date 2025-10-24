@@ -575,48 +575,119 @@ class _PetCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Nombre
                     Text(
                       nombre,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                  
                     const SizedBox(height: 2),
+                  
+                    // Ubicación
                     Row(
-                      children: [
-                        const Icon(Icons.place, size: 16, color: Colors.white),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            municipio?.isNotEmpty == true
-                                ? municipio!
-                                : 'Colombia',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(color: Colors.white),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
+                      children: const [
+                        Icon(Icons.place, size: 16, color: Colors.white),
+                        SizedBox(width: 4),
                       ],
                     ),
+                    Expanded(
+                      child: Text(
+                        municipio?.isNotEmpty == true ? municipio! : 'Colombia',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: Colors.white),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  
+                    const SizedBox(height: 10),
+                  
+                                // Acciones:
+                    // - Dueño: Editar (siempre) + Encontrado (si estado == perdido)
+                    // - No dueño: Adoptar (si estado == publicado)
+                    // DESPUÉS: acciones abajo (sobre el degradado)
+                    Positioned(
+                      left: 8,
+                      right: 8,
+                      bottom: 8,
+                      child: Row(
+                        children: [
+                          if (isOwner) ...[
+                            _ownerAction(
+                              context,
+                              icon: Icons.edit_outlined,
+                              label: 'Editar',
+                              onTap: onEdit,
+                            ),
+                            const SizedBox(width: 6),
+                            if (estado == 'perdido')
+                              _ownerAction(
+                                context,
+                                icon: Icons.campaign_outlined,
+                                label: 'Encontrado',
+                                onTap: onFound,
+                                bg: AppColors.orange,
+                              ),
+                          ] else if (estado == 'publicado') ...[
+                            _ownerAction(
+                              context,
+                              icon: Icons.volunteer_activism_outlined,
+                              label: 'Adoptar',
+                              onTap: onAdopt,
+                              bg: Colors.green.shade600,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        if (isOwner) ...[
+                          _ownerAction(
+                            context,
+                            icon: Icons.edit_outlined,
+                            label: 'Editar',
+                            onTap: onEdit,
+                          ),
+                          const SizedBox(width: 6),
+                          if (estado == 'perdido')
+                            _ownerAction(
+                              context,
+                              icon: Icons.campaign_outlined,
+                              label: 'Encontrado',
+                              onTap: onFound,
+                              bg: AppColors.orange,
+                            ),
+                        ] else if (estado == 'publicado') ...[
+                          _ownerAction(
+                            context,
+                            icon: Icons.volunteer_activism_outlined,
+                            label: 'Adoptar',
+                            onTap: onAdopt,
+                            bg: Colors.green.shade600,
+                          ),
+                        ],
+                      ],
+                    ),
+                  
                     const Spacer(),
+                  
+                    // Chips
                     Wrap(
                       spacing: 6,
                       runSpacing: 6,
                       children: [
                         _chip(context, especie == 'perro' ? 'Perro' : 'Gato'),
                         if (edadAnios != null)
-                          _chip(context,
-                              '$edadAnios año${edadAnios == 1 ? '' : 's'}'),
-                        if (talla != null && talla.isNotEmpty)
-                          _chip(context, _cap(talla)),
+                          _chip(context, '$edadAnios año${edadAnios == 1 ? '' : 's'}'),
+                        if (talla != null && talla.isNotEmpty) _chip(context, _cap(talla)),
                         if (temperamento != null && temperamento.isNotEmpty)
                           _chip(context, _cap(temperamento)),
                         _statusChipForCard(context, estado),
@@ -624,45 +695,6 @@ class _PetCard extends StatelessWidget {
                     ),
                   ],
                 ),
-              ),
-            ),
-
-            // Acciones:
-            // - Dueño: Editar (siempre) + Encontrado (si estado == perdido)
-            // - No dueño: Adoptar (si estado == publicado)
-            // DESPUÉS: acciones abajo (sobre el degradado)
-            Positioned(
-              left: 8,
-              right: 8,
-              bottom: 8,
-              child: Row(
-                children: [
-                  if (isOwner) ...[
-                    _ownerAction(
-                      context,
-                      icon: Icons.edit_outlined,
-                      label: 'Editar',
-                      onTap: onEdit,
-                    ),
-                    const SizedBox(width: 6),
-                    if (estado == 'perdido')
-                      _ownerAction(
-                        context,
-                        icon: Icons.campaign_outlined,
-                        label: 'Encontrado',
-                        onTap: onFound,
-                        bg: AppColors.orange,
-                      ),
-                  ] else if (estado == 'publicado') ...[
-                    _ownerAction(
-                      context,
-                      icon: Icons.volunteer_activism_outlined,
-                      label: 'Adoptar',
-                      onTap: onAdopt,
-                      bg: Colors.green.shade600,
-                    ),
-                  ],
-                ],
               ),
             ),
           ],
