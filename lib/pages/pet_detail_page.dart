@@ -75,7 +75,7 @@ class _PetDetailPageState extends State<PetDetailPage> {
     final imageUrl = photos.isNotEmpty ? photos.first['url'] as String? : null;
 
     final owner = pet['profiles'] as Map<String, dynamic>?;
-    final ownerName = (owner?['full_name'] as String?) ?? 'Sin nombre';
+    final ownerName = (owner?['display_name'] as String?) ?? 'Sin nombre';
     final ownerPhone = (owner?['phone'] as String?) ?? 'Sin teléfono';
 
     final edadMeses = pet['edad_meses'] as int?;
