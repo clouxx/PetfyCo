@@ -319,7 +319,7 @@ class _HomePageState extends State<HomePage> {
                               _loadPets();
                             },
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 11),
                           _FilterChip(
                             label: '🐶 Perros',
                             selected: _filter == 'perro',
@@ -331,7 +331,7 @@ class _HomePageState extends State<HomePage> {
                               _loadPets();
                             },
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 11),
                           _FilterChip(
                             label: '🐱 Gatos',
                             selected: _filter == 'gato',
@@ -348,7 +348,7 @@ class _HomePageState extends State<HomePage> {
                         ],
                       ),
 
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 16),
 
                       // fila 2: estados
                       Row(
