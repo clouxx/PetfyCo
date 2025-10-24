@@ -321,7 +321,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                           const SizedBox(width: 11),
                           _FilterChip(
-                            label: '🐶 Perros',
+                            label: ' 🐶 ',
                             selected: _filter == 'perro',
                             onTap: () {
                               setState(() {
@@ -333,7 +333,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                           const SizedBox(width: 11),
                           _FilterChip(
-                            label: '🐱 Gatos',
+                            label: ' 🐱 ',
                             selected: _filter == 'gato',
                             onTap: () {
                               setState(() {
@@ -343,7 +343,7 @@ class _HomePageState extends State<HomePage> {
                               _loadPets();
                             },
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 11),
                           _SearchIconChip(onTap: _openSearchSheet),
                         ],
                       ),
