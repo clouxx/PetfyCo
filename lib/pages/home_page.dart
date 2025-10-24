@@ -304,46 +304,36 @@ class _HomePageState extends State<HomePage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // fila 1: especie + lupa
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      // --- fila 1: especie + lupa
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 8,
+                        runSpacing: 8,
                         children: [
                           _FilterChip(
                             label: '🐾 Todos',
                             selected: _filter == 'todos',
                             onTap: () {
-                              setState(() {
-                                _filter = 'todos';
-                                _typeFilter = null;
-                              });
+                              setState(() { _filter = 'todos'; _typeFilter = null; });
                               _loadPets();
                             },
                           ),
-                          const SizedBox(width: 8),
                           _FilterChip(
                             label: '🐶 Perros',
                             selected: _filter == 'perro',
                             onTap: () {
-                              setState(() {
-                                _filter = 'perro';
-                                _typeFilter = null;
-                              });
+                              setState(() { _filter = 'perro'; _typeFilter = null; });
                               _loadPets();
                             },
                           ),
-                          const SizedBox(width: 8),
                           _FilterChip(
                             label: '🐱 Gatos',
                             selected: _filter == 'gato',
                             onTap: () {
-                              setState(() {
-                                _filter = 'gato';
-                                _typeFilter = null;
-                              });
+                              setState(() { _filter = 'gato'; _typeFilter = null; });
                               _loadPets();
                             },
                           ),
-                          const SizedBox(width: 8),
                           _SearchIconChip(onTap: _openSearchSheet),
                         ],
                       ),
@@ -540,15 +530,18 @@ class _FilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FilterChip(
-      label: Text(label),
+      label: Text(label), // sin maxLines ni overflow
       selected: selected,
       onSelected: (_) => onTap(),
       backgroundColor: Colors.grey.shade200,
       selectedColor: AppColors.blue.withOpacity(0.2),
       checkmarkColor: AppColors.navy,
-      shape: StadiumBorder(
-        side: BorderSide(color: Colors.black12),
-      ),
+      shape: const StadiumBorder(side: BorderSide(color: Colors.black12)),
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: VisualDensity.compact,
+      // estos dos ayudan a que el texto respire
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      labelPadding: const EdgeInsets.symmetric(horizontal: 4),
     );
   }
 }
