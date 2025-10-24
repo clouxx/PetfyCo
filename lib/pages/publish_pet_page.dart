@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -127,21 +126,34 @@ class _PublishPetPageState extends State<PublishPetPage> {
       String petId;
 
       if (_editingPetId == null) {
+        // INSERT
         final inserted =
             await _sb.from('pets').insert(payload).select('id').single();
         petId = inserted['id'] as String;
       } else {
-        await _sb.from('pets').update(payload).eq('id', _editingPetId);
-        petId = _editingPetId!;
+        // UPDATE (aseguramos no-nulo para eq)
+        final id = _editingPetId!;
+        await _sb.from('pets').update(payload).eq('id', id);
+        petId = id;
       }
 
+      // Subir imágenes nuevas (compatible web y móvil)
       if (_pickedImages.isNotEmpty) {
         int pos = 0;
         for (final x in _pickedImages) {
           final path =
               '$userId/${DateTime.now().millisecondsSinceEpoch}_${pos}.jpg';
-          await _sb.storage.from('pet-images').upload(path, File(x.path));
+
+          // Leer bytes del XFile y subir como binario (web-friendly)
+          final bytes = await x.readAsBytes();
+          await _sb.storage.from('pet-images').uploadBinary(
+                path,
+                bytes,
+                fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
+              );
+
           final publicUrl = _sb.storage.from('pet-images').getPublicUrl(path);
+
           await _sb.from('pet_photos').insert({
             'pet_id': petId,
             'url': publicUrl,
