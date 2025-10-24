@@ -529,16 +529,11 @@ class _PetCard extends StatelessWidget {
                     children: [
                       Positioned.fill(
                         child: imageUrl != null
-                            ? FittedBox(
+                            ? Image.network(
+                                imageUrl!,
                                 fit: BoxFit.cover,
-                                alignment: Alignment.topCenter, // ← MANTIENE LA CABEZA ARRIBA
-                                child: Image.network(
-                                  imageUrl!,
-                                  width: 600, // Ancho fijo para mantener calidad
-                                  height: 600, // Alto fijo (cuadrado)
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => const _ImagePlaceholder(),
-                                ),
+                                alignment: Alignment.center,
+                                errorBuilder: (_, __, ___) => const _ImagePlaceholder(),
                               )
                             : const _ImagePlaceholder(),
                       ),
