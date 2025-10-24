@@ -523,8 +523,10 @@ class _PetCard extends StatelessWidget {
               borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
               child: SizedBox(
                 height: 180,
-                child: Stack(
-                  children: [
+                child: ClipRRect(  // ← ¡AÑADIDO!
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  child: Stack(
+                    children: [
                     Positioned.fill(
                       child: imageUrl != null
                           ? Image.network(
