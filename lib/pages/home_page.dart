@@ -110,8 +110,7 @@ class _HomePageState extends State<HomePage> {
 
       if (_statusFilter == 'todos') {
         filtered.sort((a, b) {
-          final r =
-              estadoRank((a['estado'] ?? '').toString()) -
+          final r = estadoRank((a['estado'] ?? '').toString()) -
               estadoRank((b['estado'] ?? '').toString());
           if (r != 0) return r;
           return compareDateDesc(a, b);
@@ -234,8 +233,8 @@ class _HomePageState extends State<HomePage> {
                     right: -2,
                     top: -2,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 5, vertical: 2),
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                       decoration: BoxDecoration(
                         color: Colors.red,
                         borderRadius: BorderRadius.circular(10),
@@ -273,6 +272,7 @@ class _HomePageState extends State<HomePage> {
         onRefresh: _loadPets,
         child: CustomScrollView(
           slivers: [
+            // Banner
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -283,99 +283,117 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
 
-            // Chips: Todos / Perros / Gatos + Lupa
+            // Panel centrado de filtros (dos filas) bajo el banner
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    _FilterChip(
-                      label: '🐾 Todos',
-                      selected: _filter == 'todos',
-                      onTap: () {
-                        setState(() {
-                          _filter = 'todos';
-                          _typeFilter = null;
-                        });
-                        _loadPets();
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    _FilterChip(
-                      label: '🐶 Perros',
-                      selected: _filter == 'perro',
-                      onTap: () {
-                        setState(() {
-                          _filter = 'perro';
-                          _typeFilter = null;
-                        });
-                        _loadPets();
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    _FilterChip(
-                      label: '🐱 Gatos',
-                      selected: _filter == 'gato',
-                      onTap: () {
-                        setState(() {
-                          _filter = 'gato';
-                          _typeFilter = null;
-                        });
-                        _loadPets();
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    _SearchIconChip(onTap: _openSearchSheet),
-                  ],
-                ),
-              ),
-            ),
-
-            // Estados
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.black12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.03),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      _StatusChip(
-                        label: 'Publicados',
-                        selected: _statusFilter == 'todos',
-                        onTap: () {
-                          setState(() => _statusFilter = 'todos');
-                          _loadPets();
-                        },
+                      // fila 1: especie + lupa
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _FilterChip(
+                            label: '🐾 Todos',
+                            selected: _filter == 'todos',
+                            onTap: () {
+                              setState(() {
+                                _filter = 'todos';
+                                _typeFilter = null;
+                              });
+                              _loadPets();
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          _FilterChip(
+                            label: '🐶 Perros',
+                            selected: _filter == 'perro',
+                            onTap: () {
+                              setState(() {
+                                _filter = 'perro';
+                                _typeFilter = null;
+                              });
+                              _loadPets();
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          _FilterChip(
+                            label: '🐱 Gatos',
+                            selected: _filter == 'gato',
+                            onTap: () {
+                              setState(() {
+                                _filter = 'gato';
+                                _typeFilter = null;
+                              });
+                              _loadPets();
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          _SearchIconChip(onTap: _openSearchSheet),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      _StatusChip(
-                        labelWidget: Row(
-                          children: const [
-                            Icon(Icons.campaign, size: 16, color: Colors.red),
-                            SizedBox(width: 6),
-                            Text(
-                              'Perdidos',
-                              style: TextStyle(
-                                color: Colors.red,
-                                fontWeight: FontWeight.w700,
-                              ),
+
+                      const SizedBox(height: 10),
+
+                      // fila 2: estados
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _StatusChip(
+                            label: 'Publicados',
+                            selected: _statusFilter == 'todos',
+                            onTap: () {
+                              setState(() => _statusFilter = 'todos');
+                              _loadPets();
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          _StatusChip(
+                            labelWidget: Row(
+                              children: const [
+                                Icon(Icons.campaign,
+                                    size: 16, color: Colors.red),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Perdidos',
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                        selected: _statusFilter == 'perdido',
-                        onTap: () {
-                          setState(() => _statusFilter = 'perdido');
-                          _loadPets();
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                      _StatusChip(
-                        label: 'Adoptados',
-                        selected: _statusFilter == 'adoptado',
-                        onTap: () {
-                          setState(() => _statusFilter = 'adoptado');
-                          _loadPets();
-                        },
+                            selected: _statusFilter == 'perdido',
+                            onTap: () {
+                              setState(() => _statusFilter = 'perdido');
+                              _loadPets();
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          _StatusChip(
+                            label: 'Adoptados',
+                            selected: _statusFilter == 'adoptado',
+                            onTap: () {
+                              setState(() => _statusFilter = 'adoptado');
+                              _loadPets();
+                            },
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -383,6 +401,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
 
+            // Grid / estados
             if (_loading)
               const SliverFillRemaining(
                 child: Center(child: CircularProgressIndicator()),
@@ -399,8 +418,7 @@ class _HomePageState extends State<HomePage> {
                         _statusFilter == 'perdido'
                             ? 'No hay reportes de mascotas perdidas'
                             : 'No hay mascotas disponibles',
-                        style: const TextStyle(
-                            fontSize: 18, color: Colors.grey),
+                        style: const TextStyle(fontSize: 18, color: Colors.grey),
                       ),
                       const SizedBox(height: 24),
                       ElevatedButton.icon(
@@ -416,8 +434,7 @@ class _HomePageState extends State<HomePage> {
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
                 sliver: SliverGrid(
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     mainAxisSpacing: 14,
                     crossAxisSpacing: 14,
@@ -427,14 +444,12 @@ class _HomePageState extends State<HomePage> {
                     (context, i) {
                       final pet = _pets[i];
                       final meId = me;
-                      final isOwner =
-                          meId != null && meId == pet['owner_id'];
+                      final isOwner = meId != null && meId == pet['owner_id'];
                       return _PetCard(
                         pet: pet,
                         isOwner: isOwner,
                         onEdit: () => _goEdit(pet['id'] as String),
-                        onFound: () =>
-                            _markFoundAndAskDelete(pet['id'] as String),
+                        onFound: () => _markFoundAndAskDelete(pet['id'] as String),
                         onAdopt: () => _adoptPet(pet['id'] as String),
                       );
                     },
@@ -530,6 +545,10 @@ class _FilterChip extends StatelessWidget {
       onSelected: (_) => onTap(),
       backgroundColor: Colors.grey.shade200,
       selectedColor: AppColors.blue.withOpacity(0.2),
+      checkmarkColor: AppColors.navy,
+      shape: StadiumBorder(
+        side: BorderSide(color: Colors.black12),
+      ),
     );
   }
 }
@@ -556,12 +575,10 @@ class _StatusChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         decoration: BoxDecoration(
-          color: selected
-              ? AppColors.blue.withOpacity(0.2)
-              : Colors.grey.shade200,
+          color:
+              selected ? AppColors.blue.withOpacity(0.2) : Colors.grey.shade200,
           borderRadius: BorderRadius.circular(12),
-          border:
-              selected ? Border.all(color: AppColors.blue, width: 2) : null,
+          border: selected ? Border.all(color: AppColors.blue, width: 2) : Border.all(color: Colors.black12),
         ),
         child: DefaultTextStyle.merge(
           style: TextStyle(
@@ -575,7 +592,7 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
-// Chip de búsqueda (lupa)
+// Chip de búsqueda (lupa) — mismo tamaño visual que los chips
 class _SearchIconChip extends StatelessWidget {
   const _SearchIconChip({required this.onTap});
   final VoidCallback onTap;
@@ -621,6 +638,7 @@ class _PetCard extends StatelessWidget {
     final nombre = pet['nombre'] as String? ?? 'Sin nombre';
     final especie = pet['especie'] as String? ?? 'desconocido';
     final municipio = (pet['municipio'] as String?)?.trim();
+    final depto = (pet['depto'] as String?)?.trim(); // <- NUEVO
     final estado = pet['estado'] as String? ?? 'publicado';
     final talla = pet['talla'] as String?;
     final temperamento = pet['temperamento'] as String?;
@@ -634,8 +652,8 @@ class _PetCard extends StatelessWidget {
           .whereType<Map>()
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList()
-        ..sort((a, b) => (a['position'] as int? ?? 0)
-            .compareTo(b['position'] as int? ?? 0));
+        ..sort((a, b) =>
+            (a['position'] as int? ?? 0).compareTo(b['position'] as int? ?? 0));
       imageUrl = casted.first['url'] as String?;
     }
 
@@ -650,13 +668,11 @@ class _PetCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipRRect(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
               child: SizedBox(
                 height: 180,
                 child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(16)),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                   child: Stack(
                     children: [
                       Positioned.fill(
@@ -665,8 +681,7 @@ class _PetCard extends StatelessWidget {
                                 imageUrl!,
                                 fit: BoxFit.cover,
                                 alignment: Alignment.center,
-                                errorBuilder: (_, __, ___) =>
-                                    const _ImagePlaceholder(),
+                                errorBuilder: (_, __, ___) => const _ImagePlaceholder(),
                               )
                             : const _ImagePlaceholder(),
                       ),
@@ -695,15 +710,12 @@ class _PetCard extends StatelessWidget {
                           spacing: 6,
                           runSpacing: 6,
                           children: [
-                            _chip(context,
-                                especie == 'perro' ? 'Perro' : 'Gato'),
+                            _chip(context, especie == 'perro' ? 'Perro' : 'Gato'),
                             if (edadAnios != null)
-                              _chip(context,
-                                  '$edadAnios año${edadAnios == 1 ? '' : 's'}'),
+                              _chip(context, '$edadAnios año${edadAnios == 1 ? '' : 's'}'),
                             if (talla != null && talla.isNotEmpty)
                               _chip(context, _cap(talla)),
-                            if (temperamento != null &&
-                                temperamento.isNotEmpty)
+                            if (temperamento != null && temperamento.isNotEmpty)
                               _chip(context, _cap(temperamento)),
                             _statusChipForCard(context, estado),
                           ],
@@ -731,13 +743,13 @@ class _PetCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Row(
                     children: [
-                      const Icon(Icons.place, size: 14, color: Colors.pink),
+                      Icon(Icons.place, size: 14, color: Colors.grey.shade700),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          municipio?.isNotEmpty == true
-                              ? municipio!
-                              : 'COLOMBIA',
+                          (municipio != null && municipio.isNotEmpty)
+                              ? municipio
+                              : (depto != null && depto.isNotEmpty ? depto : 'Colombia'),
                           style: Theme.of(context)
                               .textTheme
                               .bodySmall
@@ -884,9 +896,7 @@ class _PetCard extends StatelessWidget {
     );
   }
 
-  String _cap(String s) => s.isEmpty
-      ? s
-      : (s[0].toUpperCase() + s.substring(1));
+  String _cap(String s) => s.isEmpty ? s : (s[0].toUpperCase() + s.substring(1));
 }
 
 class _ImagePlaceholder extends StatelessWidget {
@@ -929,17 +939,15 @@ class _FoundSheet extends StatelessWidget {
               leading: const Icon(Icons.schedule),
               title: const Text('Marcar como encontrada'),
               subtitle: const Text('Se quitará de “Perdidos”.'),
-              onTap: () => Navigator.pop(
-                  context, _FoundAction.markAndDeleteIn7Days),
+              onTap: () =>
+                  Navigator.pop(context, _FoundAction.markAndDeleteIn7Days),
             ),
             const SizedBox(height: 6),
             ListTile(
-              leading:
-                  const Icon(Icons.delete_forever, color: Colors.red),
+              leading: const Icon(Icons.delete_forever, color: Colors.red),
               title: const Text('Eliminar ahora'),
               subtitle: const Text('Se eliminará de inmediato.'),
-              onTap: () =>
-                  Navigator.pop(context, _FoundAction.deleteNow),
+              onTap: () => Navigator.pop(context, _FoundAction.deleteNow),
             ),
           ],
         ),
@@ -1012,14 +1020,11 @@ class _SearchFiltersSheetState extends State<_SearchFiltersSheet> {
     });
   }
 
-  // Carga TODOS los departamentos desde public.departments
+  // Carga TODOS los departamentos desde public.departments; si falla, hace fallback a pets
   Future<void> _loadDeptos() async {
     setState(() => _loadingDeptos = true);
     try {
-      final res = await widget.sb
-          .from('departments')
-          .select('name')
-          .order('name');
+      final res = await widget.sb.from('departments').select('name').order('name');
       final set = <String>{};
       if (res is List) {
         for (final row in res) {
@@ -1027,17 +1032,14 @@ class _SearchFiltersSheetState extends State<_SearchFiltersSheet> {
           if (v != null && v.isNotEmpty) set.add(v);
         }
       }
-      final list = set.toList()
-        ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+      final list = set.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
       setState(() {
         _deptos = list;
         _loadingDeptos = false;
       });
     } catch (_) {
-      // Fallback (si por algo falla la tabla maestra)
       try {
-        final res2 =
-            await widget.sb.from('pets').select('depto').order('depto');
+        final res2 = await widget.sb.from('pets').select('depto').order('depto');
         final set = <String>{};
         if (res2 is List) {
           for (final row in res2) {
@@ -1045,8 +1047,7 @@ class _SearchFiltersSheetState extends State<_SearchFiltersSheet> {
             if (v != null && v.isNotEmpty) set.add(v);
           }
         }
-        final list = set.toList()
-          ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+        final list = set.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
         setState(() {
           _deptos = list;
         });
@@ -1056,13 +1057,13 @@ class _SearchFiltersSheetState extends State<_SearchFiltersSheet> {
     }
   }
 
-  // Carga ciudades del depto: intenta tabla cities/municipalities; si no, cae a pets
+  // Carga ciudades del depto (si tienes tabla cities usa esa; si no, cae a pets)
   Future<void> _loadCities(String depto) async {
     if (_citiesCache.containsKey(depto)) return;
     setState(() => _loadingCities = true);
     List<String> list = [];
     try {
-      // 1) Si tienes cities con FK al department
+      // Intentar cities (si existe)
       try {
         final res = await widget.sb
             .from('cities')
@@ -1075,21 +1076,14 @@ class _SearchFiltersSheetState extends State<_SearchFiltersSheet> {
             final v = (row['name'] as String?)?.trim();
             if (v != null && v.isNotEmpty) set.add(v);
           }
-          list = set.toList()
-            ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+          list = set.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
         }
-      } catch (_) {
-        // ignoramos y seguimos al fallback
-      }
+      } catch (_) { /* ignore */ }
 
-      // 2) Fallback por pets (si no hay cities o vino vacío)
+      // Fallback por pets
       if (list.isEmpty) {
-        final resPets = await widget.sb
-            .from('pets')
-            .select('municipio')
-            .eq('depto', depto)
-            .order('municipio');
-
+        final resPets =
+            await widget.sb.from('pets').select('municipio').eq('depto', depto).order('municipio');
         final set = <String>{};
         if (resPets is List) {
           for (final row in resPets) {
@@ -1097,8 +1091,7 @@ class _SearchFiltersSheetState extends State<_SearchFiltersSheet> {
             if (v != null && v.isNotEmpty) set.add(v);
           }
         }
-        list = set.toList()
-          ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+        list = set.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
       }
 
       setState(() {
@@ -1175,8 +1168,8 @@ class _SearchFiltersSheetState extends State<_SearchFiltersSheet> {
                 icon: Icons.location_city_outlined,
                 hint: _loadingCities ? 'Cargando...' : 'Ciudad / Municipio',
                 items: cityItems,
-                enabled: !_loadingCities &&
-                    (_depto != null && _depto!.isNotEmpty),
+                enabled:
+                    !_loadingCities && (_depto != null && _depto!.isNotEmpty),
                 onChanged: (v) => setState(() => _city = v),
               ),
 
@@ -1226,8 +1219,7 @@ class _SearchFiltersSheetState extends State<_SearchFiltersSheet> {
                       style: OutlinedButton.styleFrom(
                         shape: const StadiumBorder(),
                         side: BorderSide(color: AppColors.blue),
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 14),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       child: const Text('Restablecer'),
                     ),
@@ -1250,8 +1242,7 @@ class _SearchFiltersSheetState extends State<_SearchFiltersSheet> {
                         shape: const StadiumBorder(),
                         backgroundColor: AppColors.blue,
                         foregroundColor: AppColors.white,
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 14),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       child: const Text('Buscar'),
                     ),
@@ -1288,13 +1279,11 @@ class _DropdownField<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     return InputDecorator(
       decoration: InputDecoration(
-        prefixIcon:
-            icon != null ? Icon(icon, color: Colors.grey.shade700) : null,
+        prefixIcon: icon != null ? Icon(icon, color: Colors.grey.shade700) : null,
         hintText: hint,
         filled: true,
         fillColor: Colors.white,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: Colors.black12),
