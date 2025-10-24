@@ -510,78 +510,72 @@ class _PetCard extends StatelessWidget {
 
     return Card(
       elevation: 1.5,
-      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      clipBehavior: Clip.antiAlias, // ¡CLAVE! Recorta la imagen al borde
       child: InkWell(
         onTap: () => context.push('/pet/${pet['id']}'),
+        borderRadius: BorderRadius.circular(16), // Ripple redondeado
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // FOTO + CHIPS
-            SizedBox(
-              height: 180,
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: imageUrl != null
-                        ? Image.network(
-                            imageUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const _ImagePlaceholder(),
-                          )
-                        : const _ImagePlaceholder(),
-                  ),
-                  // Degradado dentro de la imagen
-                  Positioned.fill(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withOpacity(0.15),
-                            Colors.black.withOpacity(0.45),
-                            Colors.black.withOpacity(0.65),
-                          ],
-                          stops: const [0.4, 0.65, 0.85, 1.0],
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              child: SizedBox(
+                height: 180,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: imageUrl != null
+                          ? Image.network(
+                              imageUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const _ImagePlaceholder(),
+                            )
+                          : const _ImagePlaceholder(),
+                    ),
+                    // Degradado
+                    Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withOpacity(0.15),
+                              Colors.black.withOpacity(0.45),
+                              Colors.black.withOpacity(0.65),
+                            ],
+                            stops: const [0.4, 0.65, 0.85, 1.0],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  // Chips
-                  Positioned(
-                    left: 12,
-                    right: 12,
-                    bottom: 12,
-                    child: Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        _chip(context, especie == 'perro' ? 'Perro' : 'Gato'),
-                        if (edadAnios != null) _chip(context, '$edadAnios año${edadAnios == 1 ? '' : 's'}'),
-                        if (talla != null && talla.isNotEmpty) _chip(context, _cap(talla)),
-                        if (temperamento != null && temperamento.isNotEmpty) _chip(context, _cap(temperamento)),
-                        _statusChipForCard(context, estado),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // SECCIÓN INFERIOR: con degradado suave
-            Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFFF5F7FA), // Muy claro
-                    Color(0xFFE4E9F0), // Gris azulado suave
+                    // Chips
+                    Positioned(
+          left: 12,
+          right: 12,
+          bottom: 12,
+          child: Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              _chip(context, especie == 'perro' ? 'Perro' : 'Gato'),
+              if (edadAnios != null) _chip(context, '$edadAnios año${edadAnios == 1 ? '' : 's'}'),
+              if (talla != null && talla.isNotEmpty) _chip(context, _cap(talla)),
+              if (temperamento != null && temperamento.isNotEmpty) _chip(context, _cap(temperamento)),
+              _statusChipForCard(context, estado),
+            ],
+          ),
+        ),
                   ],
                 ),
               ),
+            ),
+
+            // SECCIÓN INFERIOR: sin Container extra → sin espacio blanco
+            Padding(
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -655,7 +649,7 @@ class _PetCard extends StatelessWidget {
     );
   }
 
-  // Chip normal
+  // === CHIPS Y BOTONES (sin cambios) ===
   Widget _chip(BuildContext context, String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -674,7 +668,6 @@ class _PetCard extends StatelessWidget {
     );
   }
 
-  // Chip de estado
   Widget _statusChipForCard(BuildContext context, String estado) {
     if (estado == 'perdido') {
       return Container(
@@ -721,6 +714,43 @@ class _PetCard extends StatelessWidget {
     return _chip(context, 'Disponible');
   }
 
+  Widget _smallAction(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    Color? bg,
+  }) {
+    return Material(
+      color: bg ?? Colors.black87,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: Colors.white),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _cap(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+}
   // Botones pequeños
   Widget _smallAction(
     BuildContext context, {
