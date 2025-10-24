@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+rosimport 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -321,7 +321,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                           const SizedBox(width: 11),
                           _FilterChip(
-                            label: '🐶',
+                            label: '🐶Perros',
                             selected: _filter == 'perro',
                             onTap: () {
                               setState(() {
@@ -333,7 +333,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                           const SizedBox(width: 11),
                           _FilterChip(
-                            label: '🐱',
+                            label: '🐱Gatos',
                             selected: _filter == 'gato',
                             onTap: () {
                               setState(() {
