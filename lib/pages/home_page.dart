@@ -527,15 +527,16 @@ class _PetCard extends StatelessWidget {
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                   child: Stack(
                     children: [
-                    Positioned.fill(
-                      child: imageUrl != null
-                          ? Image.network(
-                              imageUrl!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const _ImagePlaceholder(),
-                            )
-                          : const _ImagePlaceholder(),
-                    ),
+                      Positioned.fill(
+                        child: imageUrl != null
+                            ? Image.network(
+                                imageUrl!,
+                                fit: BoxFit.cover,
+                                alignment: Alignment.center, // ← CLAVE: centra verticalmente
+                                errorBuilder: (_, __, ___) => const _ImagePlaceholder(),
+                              )
+                            : const _ImagePlaceholder(),
+                      ),
                     // Degradado
                     Positioned.fill(
                       child: DecoratedBox(
