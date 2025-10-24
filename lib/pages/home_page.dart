@@ -497,7 +497,7 @@ class _PetCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final nombre = pet['nombre'] as String? ?? 'Sin nombre';
     final especie = pet['especie'] as String? ?? 'desconocido';
-    final municipio = pet['municipio'] as String? ?? 'Colombia';
+    final municipio = (pet['municipio'] as String?)?.trim();
     final estado = pet['estado'] as String? ?? 'publicado';
     final talla = pet['talla'] as String?;
     final temperamento = pet['temperamento'] as String?;
@@ -511,129 +511,213 @@ class _PetCard extends StatelessWidget {
       final casted = petPhotosRaw
           .whereType<Map>()
           .map((e) => Map<String, dynamic>.from(e as Map))
-          .toList();
-      casted.sort((a, b) => (a['position'] as int? ?? 0)
-          .compareTo(b['position'] as int? ?? 0));
+          .toList()
+        ..sort((a, b) =>
+            (a['position'] as int? ?? 0).compareTo(b['position'] as int? ?? 0));
       imageUrl = casted.first['url'] as String?;
     }
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: Material(
-        color: Colors.white,
-        child: InkWell(
-          onTap: () => context.push('/pet/${pet['id']}'),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Imagen grande arriba
-              AspectRatio(
-                aspectRatio: 16 / 10,
-                child: Stack(
-                  fit: StackFit.expand,
+    // ——— Card estilo “imagen 3”: foto con degradado + texto encima ———
+    return Card(
+      elevation: 1.5,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: InkWell(
+        onTap: () => context.push('/pet/${pet['id']}'),
+        child: Stack(
+          children: [
+            // Foto
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: imageUrl != null
+                  ? Image.network(
+                      imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const _ImagePlaceholder(),
+                    )
+                  : const _ImagePlaceholder(),
+            ),
+
+            // Degradado oscuro en la parte inferior
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.15),
+                      Colors.black.withOpacity(0.45),
+                      Colors.black.withOpacity(0.65),
+                    ],
+                    stops: const [0.4, 0.65, 0.85, 1.0],
+                  ),
+                ),
+              ),
+            ),
+
+            // Contenido sobre la foto (nombre, ubicación y chips)
+            Positioned.fill(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (imageUrl != null)
-                      Image.network(
-                        imageUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const _ImagePlaceholder(),
-                      )
-                    else
-                      const _ImagePlaceholder(),
-                    // degradado suave solo abajo
-                    Positioned.fill(
-                      child: DecoratedBox(
-                        decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Colors.transparent, Colors.black26],
+                    // Nombre
+                    Text(
+                      nombre,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    // Ubicación
+                    Row(
+                      children: [
+                        const Icon(Icons.place, size: 16, color: Colors.white),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            municipio?.isNotEmpty == true ? municipio! : 'Colombia',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(color: Colors.white),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                      ),
+                      ],
                     ),
-                    // Título sobre la foto
-                    Positioned(
-                      left: 12,
-                      bottom: 12,
-                      right: 12,
-                      child: Text(
-                        nombre,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          shadows: [Shadow(blurRadius: 6, color: Colors.black54)],
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                    const Spacer(),
+                    // Chips (sobre el degradado)
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        _chip(context, especie == 'perro' ? 'Perro' : 'Gato'),
+                        if (edadAnios != null)
+                          _chip(context, '$edadAnios año${edadAnios == 1 ? '' : 's'}'),
+                        if (talla != null && talla.isNotEmpty) _chip(context, _cap(talla)),
+                        if (temperamento != null && temperamento.isNotEmpty)
+                          _chip(context, _cap(temperamento)),
+                        _statusChipForCard(context, estado),
+                      ],
                     ),
                   ],
                 ),
               ),
+            ),
 
-              // Info
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.place, size: 16, color: AppColors.pink),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              municipio,
-                              style: Theme.of(context).textTheme.bodySmall,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 4,
-                        children: [
-                          _buildTag(especie == 'perro' ? 'Perro' : 'Gato'),
-                          if (edadAnios != null)
-                            _buildTag('$edadAnios año${edadAnios == 1 ? '' : 's'}'),
-                          if (talla != null && talla.isNotEmpty) _buildTag(talla),
-                          if (temperamento != null && temperamento.isNotEmpty)
-                            _buildTag(temperamento),
-                          _buildTag(_estadoLabel(estado)),
-                        ],
-                      ),
-                      if (isOwner) ...[
-                        const Spacer(),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: onEdit,
-                                icon: const Icon(Icons.edit_outlined),
-                                label: const Text('Editar'),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: onFound,
-                                icon: const Icon(Icons.check_circle_outline),
-                                label: const Text('Encontrado'),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ],
-                  ),
+            // Botones de dueño (editar / encontrado)
+            if (isOwner)
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Row(
+                  children: [
+                    _ownerAction(
+                      context,
+                      icon: Icons.edit_outlined,
+                      label: 'Editar',
+                      onTap: onEdit,
+                    ),
+                    const SizedBox(width: 6),
+                    _ownerAction(
+                      context,
+                      icon: Icons.campaign_outlined, // más visible para “Encontrado”
+                      label: 'Encontrado',
+                      onTap: onFound,
+                      bg: AppColors.orange,
+                    ),
+                  ],
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Chip gris translúcido para usar sobre la foto
+  Widget _chip(BuildContext context, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.18),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Text(
+        text,
+        style: Theme.of(context)
+            .textTheme
+            .labelMedium
+            ?.copyWith(color: Colors.white, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+
+  // Chip de ESTADO con estilo especial para “perdido” (rojo + megáfono)
+  Widget _statusChipForCard(BuildContext context, String estado) {
+    switch (estado) {
+      case 'perdido':
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.red.withOpacity(0.9),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.campaign, size: 16, color: Colors.white),
+              const SizedBox(width: 6),
+              Text('Perdido',
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelMedium
+                      ?.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+            ],
+          ),
+        );
+      case 'reservado':
+        return _chip(context, 'Reservado');
+      case 'adoptado':
+        return _chip(context, 'Adoptado');
+      default:
+        return _chip(context, 'Disponible');
+    }
+  }
+
+  Widget _ownerAction(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    Color? bg,
+  }) {
+    return Material(
+      color: (bg ?? Colors.black.withOpacity(0.55)),
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          child: Row(
+            children: [
+              Icon(icon, size: 16, color: Colors.white),
+              const SizedBox(width: 6),
+              Text(label,
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelSmall
+                      ?.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
             ],
           ),
         ),
@@ -641,34 +725,10 @@ class _PetCard extends StatelessWidget {
     );
   }
 
-  String _estadoLabel(String estado) {
-    switch (estado) {
-      case 'publicado':
-        return 'Disponible';
-      case 'adoptado':
-        return 'Adoptado';
-      case 'reservado':
-        return 'Reservado';
-      case 'perdido':
-        return 'Perdido';
-      default:
-        return estado;
-    }
-  }
-
-  Widget _buildTag(String text) {
-    return Chip(
-      label: Text(text, style: const TextStyle(fontSize: 11)),
-      backgroundColor: Colors.blue.withOpacity(0.1),
-      padding: EdgeInsets.zero,
-      labelPadding: const EdgeInsets.symmetric(horizontal: 8),
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-    );
-  }
+  String _cap(String s) =>
+      s.isEmpty ? s : (s[0].toUpperCase() + s.substring(1));
 }
+
 
 class _ImagePlaceholder extends StatelessWidget {
   const _ImagePlaceholder();
