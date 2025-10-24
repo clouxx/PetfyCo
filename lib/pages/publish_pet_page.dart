@@ -136,15 +136,19 @@ class _PublishPetPageState extends State<PublishPetPage> {
 
       String petId;
 
-      if (_editingPetId == null) {
-        // insert
-        final inserted = await _sb.from('pets').insert(payload).select('id').single();
+      // ====== FIX DE NULL-SAFETY AQUÍ ======
+      final editingId = _editingPetId; // copia local para promoción de tipo
+      if (editingId == null) {
+        // INSERT
+        final inserted =
+            await _sb.from('pets').insert(payload).select('id').single();
         petId = inserted['id'] as String;
       } else {
-        // update
-        await _sb.from('pets').update(payload).eq('id', _editingPetId);
-        petId = _editingPetId!;
+        // UPDATE
+        await _sb.from('pets').update(payload).eq('id', editingId);
+        petId = editingId;
       }
+      // ====== FIN DEL FIX ======
 
       // Subir imágenes nuevas (si se eligieron)
       if (_pickedImages.isNotEmpty) {
@@ -166,9 +170,9 @@ class _PublishPetPageState extends State<PublishPetPage> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_editingPetId == null
-            ? 'Mascota publicada'
-            : 'Mascota actualizada')),
+        SnackBar(
+          content: Text(editingId == null ? 'Mascota publicada' : 'Mascota actualizada'),
+        ),
       );
       context.go('/home');
     } catch (e) {
