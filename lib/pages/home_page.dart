@@ -586,7 +586,23 @@ class _PetCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 2),
+                    const Spacer(),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        _chip(context, especie == 'perro' ? 'Perro' : 'Gato'),
+                        if (edadAnios != null)
+                          _chip(context,
+                              '$edadAnios año${edadAnios == 1 ? '' : 's'}'),
+                        if (talla != null && talla.isNotEmpty)
+                          _chip(context, _cap(talla)),
+                        if (temperamento != null && temperamento.isNotEmpty)
+                          _chip(context, _cap(temperamento)),
+                        _statusChipForCard(context, estado),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
                     Row(
                       children: [
                         const Icon(Icons.place, size: 16, color: Colors.white),
@@ -604,22 +620,6 @@ class _PetCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                      ],
-                    ),
-                    const Spacer(),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        _chip(context, especie == 'perro' ? 'Perro' : 'Gato'),
-                        if (edadAnios != null)
-                          _chip(context,
-                              '$edadAnios año${edadAnios == 1 ? '' : 's'}'),
-                        if (talla != null && talla.isNotEmpty)
-                          _chip(context, _cap(talla)),
-                        if (temperamento != null && temperamento.isNotEmpty)
-                          _chip(context, _cap(temperamento)),
-                        _statusChipForCard(context, estado),
                       ],
                     ),
                   ],
@@ -803,7 +803,7 @@ class _FoundSheet extends StatelessWidget {
             ListTile(
               leading: const Icon(Icons.schedule),
               title: const Text('Marcar como encontrada'),
-              subtitle: const Text('Se quitará de “Perdidos”.'),
+              subtitle: const Text('Se quitará de "Perdidos".'),
               onTap: () => Navigator.pop(
                   context, _FoundAction.markAndDeleteIn7Days),
             ),
