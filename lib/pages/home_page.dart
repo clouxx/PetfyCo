@@ -51,15 +51,13 @@ class _HomePageState extends State<HomePage> {
       // contador para badge
       _lostCount = allPets.where((p) => p['estado'] == 'perdido').length;
 
-      // Filtro en memoria (excluir reservados)
+      // Filtro en memoria
       List<Map<String, dynamic>> filtered = allPets.where((pet) {
-        final estado = (pet['estado'] as String?) ?? '';
         final estadoOk =
-            _statusFilter == 'todos' ? true : (estado == _statusFilter);
+            _statusFilter == 'todos' ? true : (pet['estado'] == _statusFilter);
         final especieOk =
             _filter == 'todos' ? true : (pet['especie'] == _filter);
-        final notReserved = estado != 'reservado';
-        return estadoOk && especieOk && notReserved;
+        return estadoOk && especieOk;
       }).toList();
 
       // Orden en "Publicados": primero perdidos, luego resto. Siempre por fecha desc.
@@ -171,8 +169,8 @@ class _HomePageState extends State<HomePage> {
                     right: -2,
                     top: -2,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 5, vertical: 2),
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                       decoration: BoxDecoration(
                         color: Colors.red,
                         borderRadius: BorderRadius.circular(10),
@@ -282,8 +280,7 @@ class _HomePageState extends State<HomePage> {
                             SizedBox(width: 6),
                             Text('Perdidos',
                                 style: TextStyle(
-                                    color: Colors.red,
-                                    fontWeight: FontWeight.w700)),
+                                    color: Colors.red, fontWeight: FontWeight.w700)),
                           ],
                         ),
                         selected: _statusFilter == 'perdido',
@@ -323,8 +320,7 @@ class _HomePageState extends State<HomePage> {
                         _statusFilter == 'perdido'
                             ? 'No hay reportes de mascotas perdidas'
                             : 'No hay mascotas disponibles',
-                        style:
-                            const TextStyle(fontSize: 18, color: Colors.grey),
+                        style: const TextStyle(fontSize: 18, color: Colors.grey),
                       ),
                       const SizedBox(height: 24),
                       ElevatedButton.icon(
@@ -534,7 +530,6 @@ class _PetCard extends StatelessWidget {
       imageUrl = casted.first['url'] as String?;
     }
 
-    // Card con IMAGEN arriba + (Título/Ubicación NEGRO) + Chips + BOTONES abajo
     return Card(
       elevation: 1.5,
       clipBehavior: Clip.antiAlias,
@@ -570,8 +565,7 @@ class _PetCard extends StatelessWidget {
                   style: Theme.of(context)
                       .textTheme
                       .titleMedium
-                      ?.copyWith(
-                          color: Colors.black87, fontWeight: FontWeight.w700),
+                      ?.copyWith(color: Colors.black87, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 2),
                 Row(
@@ -595,19 +589,19 @@ class _PetCard extends StatelessWidget {
             ),
           ),
 
-          // CHIPS INFO
+          // CHIPS INFO (debajo)
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
             child: Wrap(
               spacing: 6,
               runSpacing: 6,
               children: [
-                _chip(' ${especie == "perro" ? "Perro" : "Gato"} '),
+                _chipBelow(' ${especie == "perro" ? "Perro" : "Gato"} '),
                 if (edadAnios != null)
-                  _chip(' $edadAnios año${edadAnios == 1 ? "" : "s"} '),
-                if (talla != null && talla.isNotEmpty) _chip(' ${_cap(talla)} '),
+                  _chipBelow(' $edadAnios año${edadAnios == 1 ? "" : "s"} '),
+                if (talla != null && talla.isNotEmpty) _chipBelow(' ${_cap(talla)} '),
                 if (temperamento != null && temperamento.isNotEmpty)
-                  _chip(' ${_cap(temperamento)} '),
+                  _chipBelow(' ${_cap(temperamento)} '),
                 _estadoChip(estado),
               ],
             ),
@@ -654,8 +648,8 @@ class _PetCard extends StatelessWidget {
     );
   }
 
-  // Chip gris
-  Widget _chip(String text) {
+  // Chip gris para info
+  Widget _chipBelow(String text) {
     return Chip(
       label: Text(text.trim(), style: const TextStyle(fontSize: 11)),
       backgroundColor: Colors.blue.withOpacity(0.10),
@@ -666,7 +660,7 @@ class _PetCard extends StatelessWidget {
     );
   }
 
-  // Chip de estado (rojo/verde) – sin “Reservado”
+  // Chip de estado (Perdido/Adoptado/Disponible) – sin “Reservado”
   Widget _estadoChip(String estado) {
     late final Color bg;
     late final Color fg;
@@ -701,6 +695,7 @@ class _PetCard extends StatelessWidget {
 
   String _cap(String s) => s.isEmpty ? s : (s[0].toUpperCase() + s.substring(1));
 }
+
 
 class _ImagePlaceholder extends StatelessWidget {
   const _ImagePlaceholder();
@@ -742,15 +737,17 @@ class _FoundSheet extends StatelessWidget {
               leading: const Icon(Icons.schedule),
               title: const Text('Marcar como encontrada'),
               subtitle: const Text('Se quitará de “Perdidos”.'),
-              onTap: () =>
-                  Navigator.pop(context, _FoundAction.markAndDeleteIn7Days),
+              onTap: () => Navigator.pop(
+                  context, _FoundAction.markAndDeleteIn7Days),
             ),
             const SizedBox(height: 6),
             ListTile(
-              leading: const Icon(Icons.delete_forever, color: Colors.red),
+              leading:
+                  const Icon(Icons.delete_forever, color: Colors.red),
               title: const Text('Eliminar ahora'),
               subtitle: const Text('Se eliminará de inmediato.'),
-              onTap: () => Navigator.pop(context, _FoundAction.deleteNow),
+              onTap: () =>
+                  Navigator.pop(context, _FoundAction.deleteNow),
             ),
           ],
         ),
