@@ -7,10 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/app_theme.dart';
 
 class PublishPetPage extends StatefulWidget {
-  /// NUEVO: puedes pasar un estado por defecto desde la URL (?estado=perdido, etc.)
   final String? presetEstado;
-
-  /// NUEVO: si vienes en modo edición, pasa el id de la mascota (?edit=<uuid>)
   final String? editPetId;
 
   const PublishPetPage({
@@ -26,37 +23,30 @@ class PublishPetPage extends StatefulWidget {
 class _PublishPetPageState extends State<PublishPetPage> {
   final _sb = Supabase.instance.client;
 
-  // Form controllers / estado
   final _formKey = GlobalKey<FormState>();
   final _nombreCtrl = TextEditingController();
   final _razaCtrl = TextEditingController();
   final _descripcionCtrl = TextEditingController();
 
-  String _especie = 'perro'; // perro | gato
-  String _sexo = 'macho';    // macho | hembra
-  String _estado = 'publicado'; // publicado | adoptado | reservado | perdido
-  String? _talla; // pequeño | mediano | grande
+  String _especie = 'perro';
+  String _sexo = 'macho';
+  String _estado = 'publicado'; // publicado | perdido | adoptado
+  String? _talla;
   String? _temperamento;
   int? _edadAnios;
 
-  // edición
   bool _loading = false;
   String? _editingPetId;
 
-  // imágenes locales seleccionadas
   final List<XFile> _pickedImages = [];
   final picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
-
-    // Si viene ?estado=... lo usamos como valor inicial
     if (widget.presetEstado != null && widget.presetEstado!.isNotEmpty) {
       _estado = widget.presetEstado!;
     }
-
-    // Si viene ?edit=<uuid> cargamos datos para edición
     if (widget.editPetId != null && widget.editPetId!.isNotEmpty) {
       _editingPetId = widget.editPetId!;
       _loadPetForEdit(_editingPetId!);
@@ -90,9 +80,8 @@ class _PublishPetPageState extends State<PublishPetPage> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error cargando mascota: $e')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error cargando mascota: $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -125,40 +114,34 @@ class _PublishPetPageState extends State<PublishPetPage> {
         'especie': _especie,
         'nombre': _nombreCtrl.text.trim(),
         'sexo': _sexo,
-        'estado': _estado,
+        'estado': _estado, // sin "reservado"
         'raza': _razaCtrl.text.trim().isEmpty ? null : _razaCtrl.text.trim(),
         'edad_meses': _edadAnios == null ? null : _edadAnios! * 12,
         'talla': _talla,
         'temperamento': _temperamento,
-        'descripcion':
-            _descripcionCtrl.text.trim().isEmpty ? null : _descripcionCtrl.text.trim(),
+        'descripcion': _descripcionCtrl.text.trim().isEmpty
+            ? null
+            : _descripcionCtrl.text.trim(),
       };
 
       String petId;
 
-      // ====== FIX DE NULL-SAFETY AQUÍ ======
-      final editingId = _editingPetId; // copia local para promoción de tipo
-      if (editingId == null) {
-        // INSERT
+      if (_editingPetId == null) {
         final inserted =
             await _sb.from('pets').insert(payload).select('id').single();
         petId = inserted['id'] as String;
       } else {
-        // UPDATE
-        await _sb.from('pets').update(payload).eq('id', editingId);
-        petId = editingId;
+        await _sb.from('pets').update(payload).eq('id', _editingPetId);
+        petId = _editingPetId!;
       }
-      // ====== FIN DEL FIX ======
 
-      // Subir imágenes nuevas (si se eligieron)
       if (_pickedImages.isNotEmpty) {
-        // bucket recomendado: pet-images; carpeta por userId
         int pos = 0;
         for (final x in _pickedImages) {
-          final path = '$userId/${DateTime.now().millisecondsSinceEpoch}_${pos}.jpg';
+          final path =
+              '$userId/${DateTime.now().millisecondsSinceEpoch}_${pos}.jpg';
           await _sb.storage.from('pet-images').upload(path, File(x.path));
           final publicUrl = _sb.storage.from('pet-images').getPublicUrl(path);
-
           await _sb.from('pet_photos').insert({
             'pet_id': petId,
             'url': publicUrl,
@@ -169,17 +152,15 @@ class _PublishPetPageState extends State<PublishPetPage> {
       }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(editingId == null ? 'Mascota publicada' : 'Mascota actualizada'),
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(_editingPetId == null
+              ? '¡Mascota publicada!'
+              : 'Mascota actualizada')));
       context.go('/home');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error guardando: $e')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error guardando: $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -187,13 +168,15 @@ class _PublishPetPageState extends State<PublishPetPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
           onPressed: () => context.pop(),
           icon: const Icon(Icons.arrow_back),
         ),
-        title: Text(_editingPetId == null ? 'Publicar mascota' : 'Editar mascota'),
+        title:
+            Text(_editingPetId == null ? 'Publicar mascota' : 'Editar mascota'),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -204,19 +187,47 @@ class _PublishPetPageState extends State<PublishPetPage> {
                   key: _formKey,
                   child: Column(
                     children: [
-                      TextFormField(
-                        controller: _nombreCtrl,
-                        decoration: const InputDecoration(
-                          labelText: 'Nombre',
-                          prefixIcon: Icon(Icons.pets),
+                      // Encabezado amigable
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          gradient: LinearGradient(colors: [
+                            AppColors.blue.withOpacity(0.15),
+                            AppColors.orange.withOpacity(0.12),
+                          ]),
                         ),
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+                        child: Row(
+                          children: [
+                            const Icon(Icons.pets, color: AppColors.navy),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Cuéntanos sobre tu mascota 🐾',
+                                style: theme.textTheme.titleMedium!.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.navy,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Campos (estilo "filled")
+                      _filledText(
+                        controller: _nombreCtrl,
+                        label: 'Nombre',
+                        icon: Icons.pets,
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Requerido'
+                            : null,
                       ),
                       const SizedBox(height: 12),
 
-                      // especie
-                      _Dropdown<String>(
+                      _dropdown<String>(
                         label: 'Especie',
                         icon: Icons.category_outlined,
                         value: _especie,
@@ -228,8 +239,7 @@ class _PublishPetPageState extends State<PublishPetPage> {
                       ),
                       const SizedBox(height: 12),
 
-                      // sexo
-                      _Dropdown<String>(
+                      _dropdown<String>(
                         label: 'Sexo',
                         icon: Icons.people_alt_outlined,
                         value: _sexo,
@@ -241,85 +251,84 @@ class _PublishPetPageState extends State<PublishPetPage> {
                       ),
                       const SizedBox(height: 12),
 
-                      // estado
-                      _Dropdown<String>(
+                      // SIN "reservado"
+                      _dropdown<String>(
                         label: 'Estado',
                         icon: Icons.flag_outlined,
                         value: _estado,
                         items: const [
-                          DropdownMenuItem(value: 'publicado', child: Text('Publicado')),
-                          DropdownMenuItem(value: 'perdido', child: Text('Perdido')),
-                          DropdownMenuItem(value: 'reservado', child: Text('Reservado')),
-                          DropdownMenuItem(value: 'adoptado', child: Text('Adoptado')),
+                          DropdownMenuItem(
+                              value: 'publicado', child: Text('Publicado')),
+                          DropdownMenuItem(
+                              value: 'perdido', child: Text('Perdido')),
+                          DropdownMenuItem(
+                              value: 'adoptado', child: Text('Adoptado')),
                         ],
                         onChanged: (v) => setState(() => _estado = v!),
                       ),
                       const SizedBox(height: 12),
 
-                      // raza
-                      TextFormField(
+                      _filledText(
                         controller: _razaCtrl,
-                        decoration: const InputDecoration(
-                          labelText: 'Raza (opcional)',
-                          prefixIcon: Icon(Icons.badge_outlined),
-                        ),
+                        label: 'Raza (opcional)',
+                        icon: Icons.badge_outlined,
                       ),
                       const SizedBox(height: 12),
 
-                      // edad
-                      _Dropdown<int>(
+                      _dropdown<int>(
                         label: 'Edad (años)',
                         icon: Icons.cake_outlined,
                         value: _edadAnios,
                         items: List.generate(
                           21,
-                          (i) => DropdownMenuItem(value: i, child: Text('$i')),
+                          (i) =>
+                              DropdownMenuItem(value: i, child: Text('$i')),
                         ),
                         onChanged: (v) => setState(() => _edadAnios = v),
                       ),
                       const SizedBox(height: 12),
 
-                      // talla
-                      _Dropdown<String>(
+                      _dropdown<String>(
                         label: 'Talla',
                         icon: Icons.straighten,
                         value: _talla,
                         items: const [
-                          DropdownMenuItem(value: 'pequeño', child: Text('Pequeño')),
-                          DropdownMenuItem(value: 'mediano', child: Text('Mediano')),
-                          DropdownMenuItem(value: 'grande', child: Text('Grande')),
+                          DropdownMenuItem(
+                              value: 'pequeño', child: Text('Pequeño')),
+                          DropdownMenuItem(
+                              value: 'mediano', child: Text('Mediano')),
+                          DropdownMenuItem(
+                              value: 'grande', child: Text('Grande')),
                         ],
                         onChanged: (v) => setState(() => _talla = v),
                       ),
                       const SizedBox(height: 12),
 
-                      // temperamento
-                      _Dropdown<String>(
+                      _dropdown<String>(
                         label: 'Temperamento',
                         icon: Icons.mood_outlined,
                         value: _temperamento,
                         items: const [
-                          DropdownMenuItem(value: 'juguetón', child: Text('Juguetón')),
-                          DropdownMenuItem(value: 'tranquilo', child: Text('Tranquilo')),
-                          DropdownMenuItem(value: 'activo', child: Text('Activo')),
+                          DropdownMenuItem(
+                              value: 'juguetón', child: Text('Juguetón')),
+                          DropdownMenuItem(
+                              value: 'tranquilo', child: Text('Tranquilo')),
+                          DropdownMenuItem(
+                              value: 'activo', child: Text('Activo')),
                         ],
                         onChanged: (v) => setState(() => _temperamento = v),
                       ),
                       const SizedBox(height: 12),
 
-                      // descripción
-                      TextFormField(
+                      _filledText(
                         controller: _descripcionCtrl,
+                        label: 'Descripción',
+                        icon: Icons.notes_outlined,
                         maxLines: 4,
-                        decoration: const InputDecoration(
-                          labelText: 'Descripción',
-                          alignLabelWithHint: true,
-                          prefixIcon: Icon(Icons.notes_outlined),
-                        ),
                       ),
                       const SizedBox(height: 16),
 
-                      // imágenes
+                      // Fotos
                       Row(
                         children: [
                           ElevatedButton.icon(
@@ -339,7 +348,8 @@ class _PublishPetPageState extends State<PublishPetPage> {
                         child: ElevatedButton.icon(
                           onPressed: _loading ? null : _onSubmit,
                           icon: const Icon(Icons.save_outlined),
-                          label: Text(_editingPetId == null ? 'Publicar' : 'Guardar'),
+                          label: Text(
+                              _editingPetId == null ? 'Publicar' : 'Guardar'),
                         ),
                       ),
                     ],
@@ -349,31 +359,43 @@ class _PublishPetPageState extends State<PublishPetPage> {
             ),
     );
   }
-}
 
-class _Dropdown<T> extends StatelessWidget {
-  const _Dropdown({
-    required this.label,
-    required this.icon,
-    required this.items,
-    required this.onChanged,
-    this.value,
-    super.key,
-  });
+  // --- Helpers UI "coloridos" pero sin cambiar la lógica ---
+  Widget _filledText({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    String? Function(String?)? validator,
+    int maxLines = 1,
+  }) {
+    return TextFormField(
+      controller: controller,
+      validator: validator,
+      maxLines: maxLines,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon),
+        filled: true,
+        fillColor: Colors.blueGrey.withOpacity(0.06),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
 
-  final String label;
-  final IconData icon;
-  final List<DropdownMenuItem<T>> items;
-  final ValueChanged<T?> onChanged;
-  final T? value;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _dropdown<T>({
+    required String label,
+    required IconData icon,
+    required List<DropdownMenuItem<T>> items,
+    required ValueChanged<T?> onChanged,
+    T? value,
+  }) {
     return InputDecorator(
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon),
-        border: const OutlineInputBorder(),
+        filled: true,
+        fillColor: Colors.blueGrey.withOpacity(0.06),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<T>(
