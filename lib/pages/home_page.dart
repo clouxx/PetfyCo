@@ -206,7 +206,7 @@ class _HomePageState extends State<HomePage> {
                 child: Row(
                   children: [
                     _FilterChip(
-                      label: 'Todos',
+                      label: '🐾 Todos',
                       selected: _filter == 'todos',
                       onTap: () {
                         setState(() => _filter = 'todos');
@@ -215,7 +215,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(width: 8),
                     _FilterChip(
-                      label: 'Perros',
+                      label: '🐶 Perros',
                       selected: _filter == 'perro',
                       onTap: () {
                         setState(() => _filter = 'perro');
@@ -224,7 +224,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(width: 8),
                     _FilterChip(
-                      label: 'Gatos',
+                      label: '🐱 Gatos',
                       selected: _filter == 'gato',
                       onTap: () {
                         setState(() => _filter = 'gato');
