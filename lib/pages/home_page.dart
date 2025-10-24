@@ -321,7 +321,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                           const SizedBox(width: 11),
                           _FilterChip(
-                            label: ' 🐶 ',
+                            label: '🐶',
                             selected: _filter == 'perro',
                             onTap: () {
                               setState(() {
@@ -333,7 +333,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                           const SizedBox(width: 11),
                           _FilterChip(
-                            label: ' 🐱 ',
+                            label: '🐱',
                             selected: _filter == 'gato',
                             onTap: () {
                               setState(() {
