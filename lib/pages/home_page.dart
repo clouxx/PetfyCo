@@ -556,25 +556,26 @@ class _PetCard extends StatelessWidget {
                     ),
                     // Chips
                     Positioned(
-          left: 12,
-          right: 12,
-          bottom: 12,
-          child: Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              _chip(context, especie == 'perro' ? 'Perro' : 'Gato'),
-              if (edadAnios != null) _chip(context, '$edadAnios año${edadAnios == 1 ? '' : 's'}'),
-              if (talla != null && talla.isNotEmpty) _chip(context, _cap(talla)),
-              if (temperamento != null && temperamento.isNotEmpty) _chip(context, _cap(temperamento)),
-              _statusChipForCard(context, estado),
-            ],
-          ),
-        ),
+                      left: 12,
+                      right: 12,
+                      bottom: 12,
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          _chip(context, especie == 'perro' ? 'Perro' : 'Gato'),
+                          if (edadAnios != null) _chip(context, '$edadAnios año${edadAnios == 1 ? '' : 's'}'),
+                          if (talla != null && talla.isNotEmpty) _chip(context, _cap(talla)),
+                          if (temperamento != null && temperamento.isNotEmpty) _chip(context, _cap(temperamento)),
+                          _statusChipForCard(context, estado),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
+          ),
 
             // SECCIÓN INFERIOR: sin Container extra → sin espacio blanco
             Padding(
