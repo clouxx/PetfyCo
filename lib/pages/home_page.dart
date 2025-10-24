@@ -18,9 +18,9 @@ class _HomePageState extends State<HomePage> {
   bool _loading = true;
 
   // Filtros
-  String _filter = 'todos';     // todos | perro | gato
+  String _filter = 'todos';       // todos | perro | gato
   String _statusFilter = 'todos'; // "Publicados" = todos
-  int _lostCount = 0;           // para el badge de la campana
+  int _lostCount = 0;             // para el badge de la campana
 
   @override
   void initState() {
@@ -53,18 +53,14 @@ class _HomePageState extends State<HomePage> {
 
       // Filtro en memoria
       List<Map<String, dynamic>> filtered = allPets.where((pet) {
-        final estadoOk = _statusFilter == 'todos'
-            ? true
-            : (pet['estado'] == _statusFilter);
-        final especieOk = _filter == 'todos'
-            ? true
-            : (pet['especie'] == _filter);
+        final estadoOk =
+            _statusFilter == 'todos' ? true : (pet['estado'] == _statusFilter);
+        final especieOk =
+            _filter == 'todos' ? true : (pet['especie'] == _filter);
         return estadoOk && especieOk;
       }).toList();
 
-      // Orden:
-      // - Si estamos en "Publicados" (todos): primero perdidos, luego el resto.
-      // - Siempre por fecha desc dentro de cada grupo.
+      // Orden en "Publicados": primero perdidos, luego resto. Siempre por fecha desc.
       int estadoRank(String e) => (e == 'perdido') ? 0 : 1;
       int compareDateDesc(a, b) {
         final da = DateTime.tryParse(a['created_at']?.toString() ?? '') ??
@@ -76,7 +72,8 @@ class _HomePageState extends State<HomePage> {
 
       if (_statusFilter == 'todos') {
         filtered.sort((a, b) {
-          final r = estadoRank(a['estado'] ?? '') - estadoRank(b['estado'] ?? '');
+          final r =
+              estadoRank(a['estado'] ?? '') - estadoRank(b['estado'] ?? '');
           if (r != 0) return r;
           return compareDateDesc(a, b);
         });
@@ -125,9 +122,9 @@ class _HomePageState extends State<HomePage> {
         await _sb.from('pets').update({'estado': 'publicado'}).eq('id', petId);
         await _loadPets();
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Marcado como encontrado.'),
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Marcado como encontrado.')),
+        );
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context)
@@ -136,7 +133,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // NUEVO: Adoptar (solo si NO es dueño y está "publicado")
+  // Adoptar (solo si NO es dueño y está "publicado")
   Future<void> _adoptPet(String petId) async {
     try {
       await _sb.from('pets').update({'estado': 'adoptado'}).eq('id', petId);
@@ -259,7 +256,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
 
-            // Estados (orden solicitado)
+            // Estados (orden solicitado) — SIN "Reservados"
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -298,15 +295,6 @@ class _HomePageState extends State<HomePage> {
                         selected: _statusFilter == 'adoptado',
                         onTap: () {
                           setState(() => _statusFilter = 'adoptado');
-                          _loadPets();
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                      _StatusChip(
-                        label: 'Reservados',
-                        selected: _statusFilter == 'reservado',
-                        onTap: () {
-                          setState(() => _statusFilter = 'reservado');
                           _loadPets();
                         },
                       ),
@@ -352,7 +340,7 @@ class _HomePageState extends State<HomePage> {
                     crossAxisCount: 2,
                     mainAxisSpacing: 14,
                     crossAxisSpacing: 14,
-                    mainAxisExtent: 380,
+                    mainAxisExtent: 360,
                   ),
                   delegate: SliverChildBuilderDelegate(
                     (context, i) {
@@ -363,7 +351,8 @@ class _HomePageState extends State<HomePage> {
                         pet: pet,
                         isOwner: isOwner,
                         onEdit: () => _goEdit(pet['id'] as String),
-                        onFound: () => _markFoundAndAskDelete(pet['id'] as String),
+                        onFound: () =>
+                            _markFoundAndAskDelete(pet['id'] as String),
                         onAdopt: () => _adoptPet(pet['id'] as String),
                       );
                     },
@@ -390,7 +379,10 @@ class _HeaderBanner extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.blue.withOpacity(0.18), AppColors.orange.withOpacity(0.14)],
+          colors: [
+            AppColors.blue.withOpacity(0.18),
+            AppColors.orange.withOpacity(0.14)
+          ],
         ),
         borderRadius: BorderRadius.circular(18),
       ),
@@ -482,7 +474,8 @@ class _StatusChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         decoration: BoxDecoration(
-          color: selected ? AppColors.blue.withOpacity(0.2) : Colors.grey.shade200,
+          color:
+              selected ? AppColors.blue.withOpacity(0.2) : Colors.grey.shade200,
           borderRadius: BorderRadius.circular(12),
           border: selected ? Border.all(color: AppColors.blue, width: 2) : null,
         ),
@@ -537,168 +530,234 @@ class _PetCard extends StatelessWidget {
       imageUrl = casted.first['url'] as String?;
     }
 
+    // Card con imagen + degradado + texto encima (tap abre detalle)
     return Card(
       elevation: 1.5,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // IMAGEN ARRIBA
-          AspectRatio(
-            aspectRatio: 16 / 9,
-            child: imageUrl != null
-                ? Image.network(
-                    imageUrl!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const _ImagePlaceholder(),
-                  )
-                : const _ImagePlaceholder(),
-          ),
-
-          // TÍTULO Y UBICACIÓN EN NEGRO (debajo de la imagen)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  nombre,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(color: Colors.black87, fontWeight: FontWeight.w700),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+      child: InkWell(
+        onTap: () => context.push('/pet/${pet['id']}'),
+        child: Stack(
+          children: [
+            // Foto
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: imageUrl != null
+                  ? Image.network(
+                      imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const _ImagePlaceholder(),
+                    )
+                  : const _ImagePlaceholder(),
+            ),
+            // Degradado inferior
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.15),
+                      Colors.black.withOpacity(0.45),
+                      Colors.black.withOpacity(0.65),
+                    ],
+                    stops: const [0.4, 0.65, 0.85, 1.0],
+                  ),
                 ),
-                const SizedBox(height: 2),
-                Row(
+              ),
+            ),
+            // Texto + chips sobre la foto
+            Positioned.fill(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.place, size: 16, color: AppColors.pink),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        municipio?.isNotEmpty == true ? municipio! : 'Colombia',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(color: Colors.black54),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                    Text(
+                      nombre,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        const Icon(Icons.place, size: 16, color: Colors.white),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            municipio?.isNotEmpty == true
+                                ? municipio!
+                                : 'Colombia',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(color: Colors.white),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        _chip(context, especie == 'perro' ? 'Perro' : 'Gato'),
+                        if (edadAnios != null)
+                          _chip(context,
+                              '$edadAnios año${edadAnios == 1 ? '' : 's'}'),
+                        if (talla != null && talla.isNotEmpty)
+                          _chip(context, _cap(talla)),
+                        if (temperamento != null && temperamento.isNotEmpty)
+                          _chip(context, _cap(temperamento)),
+                        _statusChipForCard(context, estado),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
-          ),
 
-          // CHIPS DE INFO
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-            child: Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                _chip(' ${especie == "perro" ? "Perro" : "Gato"} '),
-                if (edadAnios != null)
-                  _chip(' $edadAnios año${edadAnios == 1 ? "" : "s"} '),
-                if (talla != null && talla.isNotEmpty) _chip(' ${_cap(talla)} '),
-                if (temperamento != null && temperamento.isNotEmpty)
-                  _chip(' ${_cap(temperamento)} '),
-                _estadoChip(estado),
-              ],
-            ),
-          ),
-
-          const Spacer(),
-
-          // BOTONES (debajo de los chips)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-            child: Row(
-              children: [
-                if (isOwner) ...[
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: onEdit,
-                      icon: const Icon(Icons.edit_outlined),
-                      label: const Text('Editar'),
+            // Acciones:
+            // - Dueño: Editar (siempre) + Encontrado (si estado == perdido)
+            // - No dueño: Adoptar (si estado == publicado)
+            Positioned(
+              right: 8,
+              top: 8,
+              child: Row(
+                children: [
+                  if (isOwner) ...[
+                    _ownerAction(
+                      context,
+                      icon: Icons.edit_outlined,
+                      label: 'Editar',
+                      onTap: onEdit,
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  if (estado == 'perdido')
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: onFound,
-                        icon: const Icon(Icons.campaign_outlined),
-                        label: const Text('Encontrado'),
+                    const SizedBox(width: 6),
+                    if (estado == 'perdido')
+                      _ownerAction(
+                        context,
+                        icon: Icons.campaign_outlined,
+                        label: 'Encontrado',
+                        onTap: onFound,
+                        bg: AppColors.orange,
                       ),
+                  ] else if (estado == 'publicado') ...[
+                    _ownerAction(
+                      context,
+                      icon: Icons.volunteer_activism_outlined,
+                      label: 'Adoptar',
+                      onTap: onAdopt,
+                      bg: Colors.green.shade600,
                     ),
-                ] else if (estado == 'publicado') ...[
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: onAdopt,
-                      icon: const Icon(Icons.volunteer_activism_outlined),
-                      label: const Text('Adoptar'),
-                    ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  // chip gris
-  Widget _chip(String text) {
-    return Chip(
-      label: Text(text.trim(), style: const TextStyle(fontSize: 11)),
-      backgroundColor: Colors.blue.withOpacity(0.10),
-      padding: EdgeInsets.zero,
-      labelPadding: const EdgeInsets.symmetric(horizontal: 10),
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  // Chip gris translúcido
+  Widget _chip(BuildContext context, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.18),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Text(
+        text,
+        style: Theme.of(context)
+            .textTheme
+            .labelMedium
+            ?.copyWith(color: Colors.white, fontWeight: FontWeight.w600),
+      ),
     );
   }
 
-  // chip de ESTADO: perdido/adoptado (rojo/verde) deshabilitados
-  Widget _estadoChip(String estado) {
-    late final Color bg;
-    late final Color fg;
-    late final String label;
-
-    switch (estado) {
-      case 'perdido':
-        bg = Colors.red.withOpacity(0.12);
-        fg = Colors.red.shade700;
-        label = 'Perdido';
-        break;
-      case 'adoptado':
-        bg = Colors.green.withOpacity(0.12);
-        fg = Colors.green.shade700;
-        label = 'Adoptado';
-        break;
-      case 'reservado':
-        bg = Colors.orange.withOpacity(0.12);
-        fg = Colors.orange.shade700;
-        label = 'Reservado';
-        break;
-      default:
-        bg = Colors.blueGrey.withOpacity(0.10);
-        fg = Colors.blueGrey.shade700;
-        label = 'Disponible';
+  // Chip de estado: Perdido rojo / Adoptado verde / (sin Reservado)
+  Widget _statusChipForCard(BuildContext context, String estado) {
+    if (estado == 'perdido') {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.red.withOpacity(0.9),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.campaign, size: 16, color: Colors.white),
+            const SizedBox(width: 6),
+            Text('Perdido',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: Colors.white, fontWeight: FontWeight.w700)),
+          ],
+        ),
+      );
     }
+    if (estado == 'adoptado') {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.green.withOpacity(0.9),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.check_circle, size: 16, color: Colors.white),
+            const SizedBox(width: 6),
+            Text('Adoptado',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: Colors.white, fontWeight: FontWeight.w700)),
+          ],
+        ),
+      );
+    }
+    // Default: disponible
+    return _chip(context, 'Disponible');
+  }
 
-    return Chip(
-      label: Text(label, style: TextStyle(fontSize: 11, color: fg)),
-      backgroundColor: bg,
-      padding: EdgeInsets.zero,
-      labelPadding: const EdgeInsets.symmetric(horizontal: 10),
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  Widget _ownerAction(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    Color? bg,
+  }) {
+    return Material(
+      color: (bg ?? Colors.black.withOpacity(0.55)),
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          child: Row(
+            children: [
+              Icon(icon, size: 16, color: Colors.white),
+              const SizedBox(width: 6),
+              Text(label,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Colors.white, fontWeight: FontWeight.w700)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -728,7 +787,8 @@ class _FoundSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 24, top: 8),
+        padding:
+            const EdgeInsets.only(left: 16, right: 16, bottom: 24, top: 8),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -744,14 +804,17 @@ class _FoundSheet extends StatelessWidget {
               leading: const Icon(Icons.schedule),
               title: const Text('Marcar como encontrada'),
               subtitle: const Text('Se quitará de “Perdidos”.'),
-              onTap: () => Navigator.pop(context, _FoundAction.markAndDeleteIn7Days),
+              onTap: () => Navigator.pop(
+                  context, _FoundAction.markAndDeleteIn7Days),
             ),
             const SizedBox(height: 6),
             ListTile(
-              leading: const Icon(Icons.delete_forever, color: Colors.red),
+              leading:
+                  const Icon(Icons.delete_forever, color: Colors.red),
               title: const Text('Eliminar ahora'),
               subtitle: const Text('Se eliminará de inmediato.'),
-              onTap: () => Navigator.pop(context, _FoundAction.deleteNow),
+              onTap: () =>
+                  Navigator.pop(context, _FoundAction.deleteNow),
             ),
           ],
         ),
