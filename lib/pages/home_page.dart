@@ -17,16 +17,16 @@ class _HomePageState extends State<HomePage> {
   List<Map<String, dynamic>> _pets = [];
   bool _loading = true;
 
-  // Filtros superiores
-  String _filter = 'todos';     // todos | perro | gato
+  // Filtros visibles arriba
+  String _filter = 'todos';
   String _statusFilter = 'todos';
   int _lostCount = 0;
 
-  // Filtros del modal (desde BD)
+  // Filtros del modal (opcionales)
   String? _selDepto;
   String? _selCiudad;
-  String? _typeFilter;          // perro | gato (opcional, además de _filter de los chips)
-  String? _sizeFilter;          // pequeño | mediano | grande
+  String? _sizeFilter; // pequeño | mediano | grande
+  String? _typeFilter; // perro | gato (si lo quieres independiente de los chips)
 
   @override
   void initState() {
@@ -40,9 +40,9 @@ class _HomePageState extends State<HomePage> {
       final data = await _sb
           .from('pets')
           .select('''
-            id, owner_id, nombre, especie, municipio, depto, estado, talla,
+            id, owner_id, nombre, especie, municipio, estado, talla,
             temperamento, edad_meses, created_at,
-            pet_photos(url, position)
+            pet_photos(url, position), depto
           ''')
           .order('created_at', ascending: false)
           .limit(300);
@@ -59,26 +59,23 @@ class _HomePageState extends State<HomePage> {
       // Filtro en memoria (incluye filtros del modal)
       List<Map<String, dynamic>> filtered = allPets.where((pet) {
         final estadoOk   = _statusFilter == 'todos' ? true : (pet['estado'] == _statusFilter);
-        final especieOk1 = _filter == 'todos'       ? true : (pet['especie'] == _filter);
-        final especieOk2 = _typeFilter == null      ? true : (pet['especie'] == _typeFilter);
-        final tallaOk    = _sizeFilter == null      ? true : ((pet['talla']?.toString().toLowerCase()) == _sizeFilter);
 
-        // depto (opcional)
-        final deptoOk = (_selDepto == null || _selDepto!.isEmpty)
+        final especieOkChip = _filter == 'todos' ? true : (pet['especie'] == _filter);
+        final especieOkModal = _typeFilter == null ? true : (pet['especie'] == _typeFilter);
+
+        final tallaOk   = _sizeFilter == null ? true : (pet['talla'] == _sizeFilter);
+        final deptoOk   = (_selDepto == null || _selDepto!.isEmpty)
             ? true
-            : (pet['depto']?.toString().trim().toLowerCase() ==
+            : ((pet['depto'] ?? '').toString().trim().toLowerCase() ==
                _selDepto!.trim().toLowerCase());
-
-        // municipio (opcional)
-        final ciudadOk = (_selCiudad == null || _selCiudad!.isEmpty)
+        final ciudadOk  = (_selCiudad == null || _selCiudad!.isEmpty)
             ? true
-            : (pet['municipio']?.toString().trim().toLowerCase() ==
+            : ((pet['municipio'] ?? '').toString().trim().toLowerCase() ==
                _selCiudad!.trim().toLowerCase());
 
-        return estadoOk && especieOk1 && especieOk2 && tallaOk && deptoOk && ciudadOk;
+        return estadoOk && especieOkChip && especieOkModal && tallaOk && deptoOk && ciudadOk;
       }).toList();
 
-      // Orden: perdidos primero dentro de "Publicados", luego fecha desc
       int estadoRank(String e) => (e == 'perdido') ? 0 : 1;
       int compareDateDesc(a, b) {
         final da = DateTime.tryParse(a['created_at']?.toString() ?? '') ??
@@ -131,20 +128,16 @@ class _HomePageState extends State<HomePage> {
       await _sb.from('pets').delete().eq('id', petId);
       await _loadPets();
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Mascota eliminada')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mascota eliminada')));
     } else {
       try {
         await _sb.from('pets').update({'estado': 'publicado'}).eq('id', petId);
         await _loadPets();
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Marcado como encontrado.')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Marcado como encontrado.')));
       } catch (e) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -154,42 +147,38 @@ class _HomePageState extends State<HomePage> {
       await _sb.from('pets').update({'estado': 'adoptado'}).eq('id', petId);
       await _loadPets();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('¡Gracias por adoptar!')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('¡Gracias por adoptar!')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
-  // -------- LUPA: abre el modal y aplica filtros --------
+  // ---------- Abrir hoja de búsqueda/filtros (carga depto/ciudad desde BD)
   Future<void> _openSearchSheet() async {
     final result = await showModalBottomSheet<_SearchResult>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       showDragHandle: true,
-      builder: (context) => _SearchFiltersSheet(
+      builder: (_) => _SearchFiltersSheet(
+        sb: _sb,
         initialDepto: _selDepto,
         initialCity: _selCiudad,
         initialType: _typeFilter ?? (_filter == 'todos' ? null : _filter),
         initialSize: _sizeFilter,
       ),
     );
-
     if (result == null) return;
 
     setState(() {
       _selDepto   = result.depto;
       _selCiudad  = result.city;
       _typeFilter = result.type;
-      _sizeFilter = result.size?.toLowerCase();
-      if (result.type != null) {
-        // si quieres que el chip superior refleje el tipo elegido en el modal
-        _filter = result.type!;
-      }
+      _sizeFilter = result.size;
+
+      // Si quieres sincronizar el tipo con los chips superiores:
+      if (result.type != null) _filter = result.type!;
     });
 
     await _loadPets();
@@ -214,8 +203,7 @@ class _HomePageState extends State<HomePage> {
                     right: -2,
                     top: -2,
                     child: Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                       decoration: BoxDecoration(
                         color: Colors.red,
                         borderRadius: BorderRadius.circular(10),
@@ -263,7 +251,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
 
-            // Filtros especie + LUPA
+            // Chips: Todos / Perros / Gatos + Lupa
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -274,6 +262,7 @@ class _HomePageState extends State<HomePage> {
                       selected: _filter == 'todos',
                       onTap: () {
                         setState(() => _filter = 'todos');
+                        _typeFilter = null; // si estabas usando el del modal
                         _loadPets();
                       },
                     ),
@@ -283,6 +272,7 @@ class _HomePageState extends State<HomePage> {
                       selected: _filter == 'perro',
                       onTap: () {
                         setState(() => _filter = 'perro');
+                        _typeFilter = null;
                         _loadPets();
                       },
                     ),
@@ -292,17 +282,18 @@ class _HomePageState extends State<HomePage> {
                       selected: _filter == 'gato',
                       onTap: () {
                         setState(() => _filter = 'gato');
+                        _typeFilter = null;
                         _loadPets();
                       },
                     ),
                     const SizedBox(width: 8),
-                    _SearchIconChip(onTap: _openSearchSheet), // ← NUEVO
+                    _SearchIconChip(onTap: _openSearchSheet), // <- NUEVO
                   ],
                 ),
               ),
             ),
 
-            // Estados
+            // Estados (Publicados/Perdidos/Adoptados)
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -325,8 +316,7 @@ class _HomePageState extends State<HomePage> {
                             Icon(Icons.campaign, size: 16, color: Colors.red),
                             SizedBox(width: 6),
                             Text('Perdidos',
-                                style: TextStyle(
-                                    color: Colors.red, fontWeight: FontWeight.w700)),
+                                style: TextStyle(color: Colors.red, fontWeight: FontWeight.w700)),
                           ],
                         ),
                         selected: _statusFilter == 'perdido',
@@ -558,7 +548,7 @@ class _SearchIconChip extends StatelessWidget {
 }
 
 // ==================================================
-// _PetCard (tu diseño con degradado, sin cambios de color)
+// _PetCard: DISEÑO NUEVO (como en la imagen)
 // ==================================================
 
 class _PetCard extends StatelessWidget {
@@ -594,8 +584,7 @@ class _PetCard extends StatelessWidget {
           .whereType<Map>()
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList()
-        ..sort((a, b) =>
-            (a['position'] as int? ?? 0).compareTo(b['position'] as int? ?? 0));
+        ..sort((a, b) => (a['position'] as int? ?? 0).compareTo(b['position'] as int? ?? 0));
       imageUrl = casted.first['url'] as String?;
     }
 
@@ -609,7 +598,6 @@ class _PetCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // FOTO + degradado + chips encima
             ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
               child: SizedBox(
@@ -654,12 +642,9 @@ class _PetCard extends StatelessWidget {
                           runSpacing: 6,
                           children: [
                             _chip(context, especie == 'perro' ? 'Perro' : 'Gato'),
-                            if (edadAnios != null)
-                              _chip(context, '$edadAnios año${edadAnios == 1 ? '' : 's'}'),
-                            if (talla != null && talla.isNotEmpty)
-                              _chip(context, _cap(talla)),
-                            if (temperamento != null && temperamento.isNotEmpty)
-                              _chip(context, _cap(temperamento)),
+                            if (edadAnios != null) _chip(context, '$edadAnios año${edadAnios == 1 ? '' : 's'}'),
+                            if (talla != null && talla.isNotEmpty) _chip(context, _cap(talla)),
+                            if (temperamento != null && temperamento.isNotEmpty) _chip(context, _cap(temperamento)),
                             _statusChipForCard(context, estado),
                           ],
                         ),
@@ -669,8 +654,6 @@ class _PetCard extends StatelessWidget {
                 ),
               ),
             ),
-
-            // SECCIÓN INFERIOR
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
               child: Column(
@@ -703,36 +686,29 @@ class _PetCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 10),
-
                   Align(
                     alignment: Alignment.centerRight,
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (isOwner) ...[
-                          _smallAction(
-                            context,
-                            icon: Icons.edit_outlined,
-                            label: 'Editar',
-                            onTap: onEdit,
-                          ),
+                          _smallAction(context,
+                              icon: Icons.edit_outlined,
+                              label: 'Editar',
+                              onTap: onEdit),
                           const SizedBox(width: 6),
                           if (estado == 'perdido')
-                            _smallAction(
-                              context,
-                              icon: Icons.campaign_outlined,
-                              label: 'Encontrado',
-                              onTap: onFound,
-                              bg: AppColors.orange,
-                            ),
+                            _smallAction(context,
+                                icon: Icons.campaign_outlined,
+                                label: 'Encontrado',
+                                onTap: onFound,
+                                bg: AppColors.orange),
                         ] else if (estado == 'publicado') ...[
-                          _smallAction(
-                            context,
-                            icon: Icons.volunteer_activism_outlined,
-                            label: 'Adoptar',
-                            onTap: onAdopt,
-                            bg: Colors.green.shade600,
-                          ),
+                          _smallAction(context,
+                              icon: Icons.volunteer_activism_outlined,
+                              label: 'Adoptar',
+                              onTap: onAdopt,
+                              bg: Colors.green.shade600),
                         ],
                       ],
                     ),
@@ -746,7 +722,6 @@ class _PetCard extends StatelessWidget {
     );
   }
 
-  // Chips y botones auxiliares
   Widget _chip(BuildContext context, String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -872,16 +847,12 @@ class _FoundSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding:
-            const EdgeInsets.only(left: 16, right: 16, bottom: 24, top: 8),
+        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 24, top: 8),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text('Mascota encontrada',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w700)),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
             const Text('¿Qué deseas hacer?', textAlign: TextAlign.center),
             const SizedBox(height: 16),
@@ -889,13 +860,11 @@ class _FoundSheet extends StatelessWidget {
               leading: const Icon(Icons.schedule),
               title: const Text('Marcar como encontrada'),
               subtitle: const Text('Se quitará de “Perdidos”.'),
-              onTap: () =>
-                  Navigator.pop(context, _FoundAction.markAndDeleteIn7Days),
+              onTap: () => Navigator.pop(context, _FoundAction.markAndDeleteIn7Days),
             ),
             const SizedBox(height: 6),
             ListTile(
-              leading:
-                  const Icon(Icons.delete_forever, color: Colors.red),
+              leading: const Icon(Icons.delete_forever, color: Colors.red),
               title: const Text('Eliminar ahora'),
               subtitle: const Text('Se eliminará de inmediato.'),
               onTap: () => Navigator.pop(context, _FoundAction.deleteNow),
@@ -907,9 +876,9 @@ class _FoundSheet extends StatelessWidget {
   }
 }
 
-/// ===============================
-/// Modal de Búsqueda (carga desde BD)
-/// ===============================
+/// ----------------------
+/// Búsqueda y Filtros (modal) CON datos de BD
+/// ----------------------
 
 class _SearchResult {
   final String? depto;
@@ -921,12 +890,14 @@ class _SearchResult {
 
 class _SearchFiltersSheet extends StatefulWidget {
   const _SearchFiltersSheet({
+    required this.sb,
     this.initialDepto,
     this.initialCity,
     this.initialType,
     this.initialSize,
   });
 
+  final SupabaseClient sb;
   final String? initialDepto;
   final String? initialCity;
   final String? initialType;
@@ -937,20 +908,22 @@ class _SearchFiltersSheet extends StatefulWidget {
 }
 
 class _SearchFiltersSheetState extends State<_SearchFiltersSheet> {
-  final _sb = Supabase.instance.client;
+  // Datos desde BD
+  List<String> _deptos = const [];
+  final Map<String, List<String>> _citiesCache = {};
 
+  // Selecciones
   String? _depto;
   String? _city;
   String? _type;
   String? _size;
 
-  bool _loadingDeptos = true;
-  bool _loadingCities = false;
-  List<String> _deptos = [];
-  List<String> _cities = [];
-
+  // Catálogos fijos
   final List<String> _tipos = const ['perro', 'gato'];
   final List<String> _tallas = const ['pequeño', 'mediano', 'grande'];
+
+  bool _loadingDeptos = true;
+  bool _loadingCities = false;
 
   @override
   void initState() {
@@ -959,72 +932,58 @@ class _SearchFiltersSheetState extends State<_SearchFiltersSheet> {
     _city  = widget.initialCity;
     _type  = widget.initialType;
     _size  = widget.initialSize;
-    _fetchDeptos().then((_) {
-      if (_depto != null) {
-        _fetchCities(_depto!);
+
+    _loadDeptos().then((_) {
+      if (_depto != null && _depto!.isNotEmpty) {
+        _loadCities(_depto!);
       }
     });
   }
 
-  Future<void> _fetchDeptos() async {
-    setState(() {
-      _loadingDeptos = true;
-      _deptos = [];
-    });
+  Future<void> _loadDeptos() async {
+    setState(() => _loadingDeptos = true);
     try {
-      final data = await _sb
-          .from('pets')
-          .select('depto', const FetchOptions(head: false))
-          .not('depto', 'is', null)
-          .neq('depto', '')
-          .order('depto', ascending: true)
-          .limit(1000);
-
+      final res = await widget.sb.from('pets').select('depto').order('depto');
       final set = <String>{};
-      if (data is List) {
-        for (final r in data) {
-          final v = (r['depto'] ?? '').toString().trim();
-          if (v.isNotEmpty) set.add(v);
+      if (res is List) {
+        for (final row in res) {
+          final v = (row['depto'] as String?)?.trim();
+          if (v != null && v.isNotEmpty) set.add(v);
         }
       }
+      final list = set.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
       setState(() {
-        _deptos = set.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+        _deptos = list;
+        _loadingDeptos = false;
       });
     } catch (_) {
-      // Silencioso; podrías mostrar un SnackBar si quieres
-    } finally {
       setState(() => _loadingDeptos = false);
     }
   }
 
-  Future<void> _fetchCities(String depto) async {
-    setState(() {
-      _loadingCities = true;
-      _cities = [];
-    });
+  Future<void> _loadCities(String depto) async {
+    if (_citiesCache.containsKey(depto)) return;
+    setState(() => _loadingCities = true);
     try {
-      final data = await _sb
+      final res = await widget.sb
           .from('pets')
-          .select('municipio', const FetchOptions(head: false))
+          .select('municipio')
           .eq('depto', depto)
-          .not('municipio', 'is', null)
-          .neq('municipio', '')
-          .order('municipio', ascending: true)
-          .limit(2000);
+          .order('municipio');
 
       final set = <String>{};
-      if (data is List) {
-        for (final r in data) {
-          final v = (r['municipio'] ?? '').toString().trim();
-          if (v.isNotEmpty) set.add(v);
+      if (res is List) {
+        for (final row in res) {
+          final v = (row['municipio'] as String?)?.trim();
+          if (v != null && v.isNotEmpty) set.add(v);
         }
       }
+      final list = set.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
       setState(() {
-        _cities = set.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+        _citiesCache[depto] = list;
+        _loadingCities = false;
       });
     } catch (_) {
-      //
-    } finally {
       setState(() => _loadingCities = false);
     }
   }
@@ -1032,6 +991,10 @@ class _SearchFiltersSheetState extends State<_SearchFiltersSheet> {
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
+    final cityItems = (_depto != null && _citiesCache[_depto!] != null)
+        ? _citiesCache[_depto!]!
+        : const <String>[];
+
     return Padding(
       padding: EdgeInsets.only(bottom: bottom),
       child: Container(
@@ -1043,7 +1006,6 @@ class _SearchFiltersSheetState extends State<_SearchFiltersSheet> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Título + cerrar
               Row(
                 children: [
                   Text('Búsqueda y Filtros',
@@ -1070,16 +1032,16 @@ class _SearchFiltersSheetState extends State<_SearchFiltersSheet> {
               _DropdownField<String>(
                 value: _depto,
                 icon: Icons.place_outlined,
-                hint: _loadingDeptos ? 'Cargando...' : 'Departamento / Provincia',
-                loading: _loadingDeptos,
+                hint: _loadingDeptos ? 'Cargando...' : 'Departamento/Provincia',
                 items: _deptos,
+                enabled: !_loadingDeptos,
                 onChanged: (v) {
                   setState(() {
                     _depto = v;
                     _city = null;
                   });
-                  if (v != null) {
-                    _fetchCities(v);
+                  if (v != null && v.isNotEmpty) {
+                    _loadCities(v);
                   }
                 },
               ),
@@ -1089,11 +1051,9 @@ class _SearchFiltersSheetState extends State<_SearchFiltersSheet> {
               _DropdownField<String>(
                 value: _city,
                 icon: Icons.location_city_outlined,
-                hint: _depto == null
-                    ? 'Selecciona un departamento'
-                    : (_loadingCities ? 'Cargando...' : 'Ciudad / Municipio'),
-                loading: _depto != null && _loadingCities,
-                items: _cities,
+                hint: _loadingCities ? 'Cargando...' : 'Ciudad / Municipio',
+                items: cityItems,
+                enabled: !_loadingCities && (_depto != null && _depto!.isNotEmpty),
                 onChanged: (v) => setState(() => _city = v),
               ),
 
@@ -1138,7 +1098,6 @@ class _SearchFiltersSheetState extends State<_SearchFiltersSheet> {
                       onPressed: () {
                         setState(() {
                           _depto = _city = _type = _size = null;
-                          _cities = [];
                         });
                       },
                       style: OutlinedButton.styleFrom(
@@ -1181,6 +1140,7 @@ class _SearchFiltersSheetState extends State<_SearchFiltersSheet> {
   }
 }
 
+// Dropdown estilizado reutilizable
 class _DropdownField<T> extends StatelessWidget {
   const _DropdownField({
     required this.value,
@@ -1188,7 +1148,7 @@ class _DropdownField<T> extends StatelessWidget {
     required this.items,
     required this.onChanged,
     this.icon,
-    this.loading = false,
+    this.enabled = true,
   });
 
   final T? value;
@@ -1196,7 +1156,7 @@ class _DropdownField<T> extends StatelessWidget {
   final List<T> items;
   final ValueChanged<T?> onChanged;
   final IconData? icon;
-  final bool loading;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -1216,31 +1176,22 @@ class _DropdownField<T> extends StatelessWidget {
           borderSide: const BorderSide(color: Colors.black12),
         ),
       ),
-      child: loading
-          ? Row(
-              children: [
-                const SizedBox(
-                  height: 20, width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-                const SizedBox(width: 12),
-                Text(hint, style: Theme.of(context).textTheme.bodySmall),
-              ],
-            )
-          : DropdownButtonHideUnderline(
-              child: DropdownButton<T>(
-                isExpanded: true,
-                value: value,
-                hint: Text(hint),
-                items: items
-                    .map((e) => DropdownMenuItem<T>(
-                          value: e,
-                          child: Text(e.toString()[0].toUpperCase() + e.toString().substring(1)),
-                        ))
-                    .toList(),
-                onChanged: onChanged,
-              ),
-            ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<T>(
+          isExpanded: true,
+          value: value,
+          hint: Text(hint),
+          items: items
+              .map((e) => DropdownMenuItem<T>(
+                    value: e,
+                    child: Text(
+                      e.toString()[0].toUpperCase() + e.toString().substring(1),
+                    ),
+                  ))
+              .toList(),
+          onChanged: enabled ? onChanged : null,
+        ),
+      ),
     );
   }
 }
