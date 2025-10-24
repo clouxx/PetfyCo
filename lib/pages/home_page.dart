@@ -516,6 +516,7 @@ class _PetCard extends StatelessWidget {
         onTap: () => context.push('/pet/${pet['id']}'),
         child: Stack(
           children: [
+            // FOTO
             AspectRatio(
               aspectRatio: 16 / 9,
               child: imageUrl != null
@@ -526,6 +527,8 @@ class _PetCard extends StatelessWidget {
                     )
                   : const _ImagePlaceholder(),
             ),
+
+            // DEGRADADO
             Positioned.fill(
               child: DecoratedBox(
                 decoration: BoxDecoration(
@@ -543,13 +546,17 @@ class _PetCard extends StatelessWidget {
                 ),
               ),
             ),
+
+            // CONTENIDO: Todo dentro del degradado
             Positioned.fill(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // NOMBRE
+                    const Spacer(), // Empuja todo hacia abajo
+
+                    // NOMBRE (debajo de la imagen)
                     Text(
                       nombre,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -559,38 +566,7 @@ class _PetCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 6),
-
-                    // BOTONES (Editar / Encontrado / Adoptar)
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (isOwner) ...[
-                            _ownerAction(context,
-                                icon: Icons.edit_outlined,
-                                label: 'Editar',
-                                onTap: onEdit),
-                            const SizedBox(width: 6),
-                            if (estado == 'perdido')
-                              _ownerAction(context,
-                                  icon: Icons.campaign_outlined,
-                                  label: 'Encontrado',
-                                  onTap: onFound,
-                                  bg: AppColors.orange),
-                          ] else if (estado == 'publicado') ...[
-                            _ownerAction(context,
-                                icon: Icons.volunteer_activism_outlined,
-                                label: 'Adoptar',
-                                onTap: onAdopt,
-                                bg: Colors.green.shade600),
-                          ],
-                        ],
-                      ),
-                    ),
-
-                    const Spacer(),
+                    const SizedBox(height: 4),
 
                     // UBICACIÓN
                     Row(
@@ -607,7 +583,7 @@ class _PetCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
 
                     // CHIPS
                     Wrap(
@@ -621,6 +597,42 @@ class _PetCard extends StatelessWidget {
                         _statusChipForCard(context, estado),
                       ],
                     ),
+                    const SizedBox(height: 8),
+
+                    // BOTONES: MÁS PEQUEÑOS, DEBAJO DE LOS CHIPS
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (isOwner) ...[
+                            _smallAction(
+                              context,
+                              icon: Icons.edit_outlined,
+                              label: 'Editar',
+                              onTap: onEdit,
+                            ),
+                            const SizedBox(width: 4),
+                            if (estado == 'perdido')
+                              _smallAction(
+                                context,
+                                icon: Icons.campaign_outlined,
+                                label: 'Encontrado',
+                                onTap: onFound,
+                                bg: AppColors.orange,
+                              ),
+                          ] else if (estado == 'publicado') ...[
+                            _smallAction(
+                              context,
+                              icon: Icons.volunteer_activism_outlined,
+                              label: 'Adoptar',
+                              onTap: onAdopt,
+                              bg: Colors.green.shade600,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -631,6 +643,7 @@ class _PetCard extends StatelessWidget {
     );
   }
 
+  // CHIP NORMAL
   Widget _chip(BuildContext context, String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -649,6 +662,7 @@ class _PetCard extends StatelessWidget {
     );
   }
 
+  // CHIP DE ESTADO
   Widget _statusChipForCard(BuildContext context, String estado) {
     if (estado == 'perdido') {
       return Container(
@@ -695,7 +709,8 @@ class _PetCard extends StatelessWidget {
     return _chip(context, 'Disponible');
   }
 
-  Widget _ownerAction(
+  // BOTONES MÁS PEQUEÑOS
+  Widget _smallAction(
     BuildContext context, {
     required IconData icon,
     required String label,
@@ -703,22 +718,24 @@ class _PetCard extends StatelessWidget {
     Color? bg,
   }) {
     return Material(
-      color: bg ?? Colors.black.withOpacity(0.55),
-      borderRadius: BorderRadius.circular(20),
+      color: bg ?? Colors.black.withOpacity(0.6),
+      borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), // Más pequeño
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 16, color: Colors.white),
-              const SizedBox(width: 6),
+              Icon(icon, size: 14, color: Colors.white), // Ícono más pequeño
+              const SizedBox(width: 4),
               Text(
                 label,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: Colors.white,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11, // Texto más pequeño
                     ),
               ),
             ],
