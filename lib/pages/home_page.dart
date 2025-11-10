@@ -20,7 +20,7 @@ class _HomePageState extends State<HomePage> {
 
   // Filtros visibles arriba
   String _filter = 'todos';
-  String _statusFilter = 'todos'; // todos | perdido | adoptado | reservado
+  String _statusFilter = 'todos';
   int _lostCount = 0;
 
   // Filtros del modal
@@ -43,7 +43,6 @@ class _HomePageState extends State<HomePage> {
           .select('''
             id, owner_id, nombre, especie, municipio, estado, talla,
             temperamento, edad_meses, created_at, depto,
-            reserved_by, reserved_until,
             pet_photos(url, position)
           ''')
           .order('created_at', ascending: false)
@@ -56,39 +55,36 @@ class _HomePageState extends State<HomePage> {
         }
       }
 
-      _lostCount =
-          allPets.where((p) => (p['estado'] ?? '') == 'perdido').length;
+      _lostCount = allPets.where((p) => (p['estado'] ?? '') == 'perdido').length;
 
       // ----- FILTROS EN MEMORIA -----
       List<Map<String, dynamic>> filtered = allPets.where((pet) {
-        bool estadoOk = _statusFilter == 'todos'
-            ? true
-            : ((pet['estado'] ?? '').toString().toLowerCase() ==
-                _statusFilter.toLowerCase());
+        final estado = (pet['estado'] ?? '').toString().toLowerCase();
+        final especie = (pet['especie'] ?? '').toString().toLowerCase();
+        final talla = (pet['talla'] ?? '').toString().toLowerCase();
+        final depto = (pet['depto'] ?? '').toString().trim().toLowerCase();
+        final muni = (pet['municipio'] ?? '').toString().trim().toLowerCase();
 
-        bool especieChipOk = _filter == 'todos'
+        final estadoOk = _statusFilter == 'todos'
             ? true
-            : ((pet['especie'] ?? '').toString().toLowerCase() ==
-                _filter.toLowerCase());
-        bool especieModalOk = _typeFilter == null
-            ? true
-            : ((pet['especie'] ?? '').toString().toLowerCase() ==
-                _typeFilter!.toLowerCase());
+            : estado == _statusFilter.toLowerCase();
 
-        bool tallaOk = _sizeFilter == null
-            ? true
-            : ((pet['talla'] ?? '').toString().toLowerCase() ==
-                _sizeFilter!.toLowerCase());
+        final especieChipOk =
+            _filter == 'todos' ? true : especie == _filter.toLowerCase();
 
-        bool deptoOk = (_selDepto == null || _selDepto!.isEmpty)
-            ? true
-            : ((pet['depto'] ?? '').toString().trim().toLowerCase() ==
-                _selDepto!.trim().toLowerCase());
+        final especieModalOk =
+            _typeFilter == null ? true : especie == _typeFilter!.toLowerCase();
 
-        bool ciudadOk = (_selCiudad == null || _selCiudad!.isEmpty)
+        final tallaOk =
+            _sizeFilter == null ? true : talla == _sizeFilter!.toLowerCase();
+
+        final deptoOk = (_selDepto == null || _selDepto!.isEmpty)
             ? true
-            : ((pet['municipio'] ?? '').toString().trim().toLowerCase() ==
-                _selCiudad!.trim().toLowerCase());
+            : depto == _selDepto!.trim().toLowerCase();
+
+        final ciudadOk = (_selCiudad == null || _selCiudad!.isEmpty)
+            ? true
+            : muni == _selCiudad!.trim().toLowerCase();
 
         return estadoOk &&
             especieChipOk &&
@@ -170,41 +166,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // --- Reservar 24h si está "publicado"
-  Future<bool> _tryReservePet(Map<String, dynamic> pet) async {
-    try {
-      final petId = pet['id'] as String;
-      final userId = _sb.auth.currentUser?.id;
-      if (userId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Inicia sesión para continuar.')),
-        );
-        return false;
-      }
-      final now = DateTime.now().toUtc();
-      final until = now.add(const Duration(hours: 24));
-      final res = await _sb
-          .from('pets')
-          .update({
-            'estado': 'reservado',
-            'reserved_by': userId,
-            'reserved_until': until.toIso8601String(),
-          })
-          .eq('id', petId)
-          .eq('estado', 'publicado')
-          .is_('reserved_by', null)
-          .is_('reserved_until', null)
-          .select('id')
-          .single();
-
-      // Si no devolvió fila, no se aplicó (ya estaba reservado/adoptado)
-      return res is Map && res['id'] != null;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  // --- Abre modal “Gracias” y si confirman, intenta reservar 24h y lanza WhatsApp
+  // --- Abre modal “Gracias” y si confirman, lanza WhatsApp al dueño
   Future<void> _intentAdopt(Map<String, dynamic> pet) async {
     final ok = await showDialog<bool>(
       context: context,
@@ -212,18 +174,6 @@ class _HomePageState extends State<HomePage> {
           _AdoptConfirmDialog(petName: pet['nombre'] ?? 'tu mascota'),
     );
     if (ok != true) return;
-
-    // Primero, intentar reservar (si ya está reservado/adoptado, se informará)
-    final reserved = await _tryReservePet(pet);
-    if (!reserved) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text(
-                'No fue posible reservar. Puede que ya esté reservada o adoptada.')),
-      );
-      await _loadPets();
-      return;
-    }
 
     try {
       final ownerId = pet['owner_id'] as String?;
@@ -234,6 +184,7 @@ class _HomePageState extends State<HomePage> {
         return;
       }
 
+      // Ajusta los campos según tu tabla profiles
       final profile = await _sb
           .from('profiles')
           .select('whatsapp, phone, full_name')
@@ -250,7 +201,7 @@ class _HomePageState extends State<HomePage> {
       }
 
       final msg =
-          '¡Hola! Reservé a *${pet['nombre']}* en PetfyCo y me gustaría adoptar. ¿Podemos hablar?';
+          '¡Hola! Vi a *${pet['nombre']}* en PetfyCo y me gustaría adoptar. ¿Podemos hablar?';
       final uri =
           Uri.parse('https://wa.me/$rawPhone?text=${Uri.encodeComponent(msg)}');
 
@@ -264,42 +215,17 @@ class _HomePageState extends State<HomePage> {
     } catch (e) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('Error: $e')));
-    } finally {
-      await _loadPets();
     }
   }
 
   // — Marca adoptado (solo dueño)
   Future<void> _markAdopted(String petId) async {
     try {
-      await _sb.from('pets').update({
-        'estado': 'adoptado',
-        'reserved_by': null,
-        'reserved_until': null,
-      }).eq('id', petId);
+      await _sb.from('pets').update({'estado': 'adoptado'}).eq('id', petId);
       await _loadPets();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Marcado como adoptado.')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error: $e')));
-    }
-  }
-
-  // — Liberar reserva (solo dueño)
-  Future<void> _ownerRelease(String petId) async {
-    try {
-      await _sb.from('pets').update({
-        'estado': 'publicado',
-        'reserved_by': null,
-        'reserved_until': null,
-      }).eq('id', petId);
-      await _loadPets();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Reserva liberada.')),
       );
     } catch (e) {
       ScaffoldMessenger.of(context)
@@ -329,7 +255,6 @@ class _HomePageState extends State<HomePage> {
       _selCiudad = result.city;
       _typeFilter = result.type;
       _sizeFilter = result.size;
-
       if (result.type != null) _filter = result.type!;
     });
 
@@ -426,7 +351,6 @@ class _HomePageState extends State<HomePage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // fila 1
                       Wrap(
                         alignment: WrapAlignment.center,
                         spacing: 8,
@@ -469,11 +393,8 @@ class _HomePageState extends State<HomePage> {
                         ],
                       ),
                       const SizedBox(height: 10),
-                      // fila 2
-                      Wrap(
-                        alignment: WrapAlignment.center,
-                        spacing: 8,
-                        runSpacing: 8,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           _StatusChip(
                             label: 'Publicados',
@@ -483,9 +404,9 @@ class _HomePageState extends State<HomePage> {
                               _loadPets();
                             },
                           ),
+                          const SizedBox(width: 8),
                           _StatusChip(
                             labelWidget: Row(
-                              mainAxisSize: MainAxisSize.min,
                               children: const [
                                 Icon(Icons.campaign,
                                     size: 16, color: Colors.red),
@@ -505,14 +426,7 @@ class _HomePageState extends State<HomePage> {
                               _loadPets();
                             },
                           ),
-                          _StatusChip(
-                            label: 'Reservados',
-                            selected: _statusFilter == 'reservado',
-                            onTap: () {
-                              setState(() => _statusFilter = 'reservado');
-                              _loadPets();
-                            },
-                          ),
+                          const SizedBox(width: 8),
                           _StatusChip(
                             label: 'Adoptados',
                             selected: _statusFilter == 'adoptado',
@@ -581,9 +495,10 @@ class _HomePageState extends State<HomePage> {
                         onEdit: () => _goEdit(pet['id'] as String),
                         onFound: () =>
                             _markFoundAndAskDelete(pet['id'] as String),
-                        onAdopt: () => _intentAdopt(pet), // no-dueño
-                        onOwnerAdopted: () =>
-                            _markAdopted(pet['id'] as String), // dueño
+                        // — no dueño → intención de adopción (WhatsApp)
+                        onAdopt: () => _intentAdopt(pet),
+                        // — dueño → marcar adoptado
+                        onOwnerAdopted: () => _markAdopted(pet['id'] as String),
                         onOwnerDelete: () async {
                           await _sb
                               .from('pets')
@@ -591,8 +506,6 @@ class _HomePageState extends State<HomePage> {
                               .eq('id', pet['id'] as String);
                           _loadPets();
                         },
-                        onOwnerRelease: () =>
-                            _ownerRelease(pet['id'] as String), // dueño
                       );
                     },
                     childCount: _pets.length,
@@ -738,6 +651,7 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
+// Chip de búsqueda (lupa)
 class _SearchIconChip extends StatelessWidget {
   const _SearchIconChip({required this.onTap});
   final VoidCallback onTap;
@@ -772,17 +686,15 @@ class _PetCard extends StatelessWidget {
     required this.onAdopt,
     required this.onOwnerAdopted,
     required this.onOwnerDelete,
-    required this.onOwnerRelease,
   });
 
   final Map<String, dynamic> pet;
   final bool isOwner;
   final VoidCallback onEdit;
   final VoidCallback onFound;
-  final VoidCallback onAdopt; // no-dueño (WhatsApp + reserva)
+  final VoidCallback onAdopt; // no-dueño (WhatsApp)
   final VoidCallback onOwnerAdopted; // dueño marca adoptado
   final VoidCallback onOwnerDelete; // dueño elimina
-  final VoidCallback onOwnerRelease; // dueño libera reserva
 
   @override
   Widget build(BuildContext context) {
@@ -937,22 +849,11 @@ class _PetCard extends StatelessWidget {
                                 bg: AppColors.orange),
                           const SizedBox(width: 6),
                           if (estado == 'publicado' || estado == 'reservado')
-                            _smallAction(
-                              context,
-                              icon: Icons.check_circle_outline,
-                              label: 'Adoptado',
-                              onTap: onOwnerAdopted,
-                              bg: Colors.green.shade700,
-                            ),
-                          const SizedBox(width: 6),
-                          if (estado == 'reservado')
-                            _smallAction(
-                              context,
-                              icon: Icons.lock_open,
-                              label: 'Liberar',
-                              onTap: onOwnerRelease,
-                              bg: Colors.blueGrey,
-                            ),
+                            _smallAction(context,
+                                icon: Icons.check_circle_outline,
+                                label: 'Adoptado',
+                                onTap: onOwnerAdopted,
+                                bg: Colors.green.shade700),
                           const SizedBox(width: 6),
                           if (estado == 'adoptado')
                             _smallAction(context,
@@ -1040,27 +941,6 @@ class _PetCard extends StatelessWidget {
         ),
       );
     }
-    if (estado == 'reservado') {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.amber.shade800.withOpacity(0.95),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.lock_clock, size: 14, color: Colors.white),
-            const SizedBox(width: 4),
-            Text('Reservado',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                    )),
-          ],
-        ),
-      );
-    }
     return _chip(context, 'Disponible');
   }
 
@@ -1126,8 +1006,7 @@ class _FoundSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding:
-            const EdgeInsets.only(left: 16, right: 16, bottom: 24, top: 8),
+        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 24, top: 8),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1205,7 +1084,7 @@ class _AdoptConfirmDialog extends StatelessWidget {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () => Navigator.pop(context, true),
-                    icon: const Icon(Icons.whatsapp),
+                    icon: const Icon(Icons.chat), // <- reemplazo de whatsapp
                     label: const Text('Continuar'),
                     style: ElevatedButton.styleFrom(
                       shape: const StadiumBorder(),
@@ -1330,7 +1209,7 @@ class _SearchFiltersSheetState extends State<_SearchFiltersSheet> {
     setState(() => _loadingCities = true);
     List<String> list = [];
     try {
-      // cities (si existe)
+      // Intentar cities (si existe)
       try {
         final res = await widget.sb
             .from('cities')
@@ -1346,9 +1225,11 @@ class _SearchFiltersSheetState extends State<_SearchFiltersSheet> {
           list = set.toList()
             ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
         }
-      } catch (_) {}
+      } catch (_) {
+        // ignore
+      }
 
-      // Fallback pets
+      // Fallback por pets
       if (list.isEmpty) {
         final resPets = await widget.sb
             .from('pets')
