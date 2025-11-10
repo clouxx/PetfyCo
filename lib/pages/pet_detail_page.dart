@@ -27,7 +27,7 @@ class _PetDetailPageState extends State<PetDetailPage> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      // No traemos datos sensibles del dueño aquí
+      // No traemos datos sensibles del dueño
       final data = await _sb
           .from('pets')
           .select('''
@@ -52,14 +52,17 @@ class _PetDetailPageState extends State<PetDetailPage> {
     }
   }
 
-  Future<void> _contactOwner() async {
+  Future<void> _contactOwner({required bool isLost}) async {
     final pet = _pet;
     if (pet == null) return;
 
-    // 1) Diálogo de confirmación (igual a adoptar)
+    // 1) Confirmación
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => _AdoptConfirmDialog(petName: pet['nombre'] ?? 'la mascota'),
+      builder: (_) => _ContactConfirmDialog(
+        petName: pet['nombre'] ?? 'la mascota',
+        isLostFlow: isLost,
+      ),
     );
     if (ok != true) return;
 
@@ -89,8 +92,11 @@ class _PetDetailPageState extends State<PetDetailPage> {
         return;
       }
 
-      final msg =
-          '¡Hola! Vi a *${pet['nombre']}* en PetfyCo y me gustaría adoptar. ¿Podemos hablar?';
+      final msg = isLost
+          ? '¡Hola! Encontré a *${pet['nombre']}* reportado como perdido en PetfyCo. '
+            'Puedo compartir ubicación y coordinar la entrega. Gracias.'
+          : '¡Hola! Vi a *${pet['nombre']}* en PetfyCo y me gustaría adoptar. '
+            '¿Podemos hablar?';
 
       // Preferimos WhatsApp; si falla intentamos tel:
       final wa = Uri.parse('https://wa.me/$number?text=${Uri.encodeComponent(msg)}');
@@ -114,6 +120,59 @@ class _PetDetailPageState extends State<PetDetailPage> {
     }
   }
 
+  Future<void> _markFoundAndAskDelete() async {
+    final sel = await showModalBottomSheet<_FoundAction>(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => const _FoundSheet(),
+    );
+    if (sel == null || _pet == null) return;
+
+    try {
+      if (sel == _FoundAction.deleteNow) {
+        await _sb.from('pets').delete().eq('id', _pet!['id'] as String);
+        if (!mounted) return;
+        Navigator.of(context).maybePop(); // salir del detalle
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Mascota eliminada')),
+        );
+      } else {
+        await _sb
+            .from('pets')
+            .update({'estado': 'publicado'})
+            .eq('id', _pet!['id'] as String);
+        await _load();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Marcado como encontrado.')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+  }
+
+  Future<void> _markAdopted() async {
+    if (_pet == null) return;
+    try {
+      await _sb
+          .from('pets')
+          .update({'estado': 'adoptado'})
+          .eq('id', _pet!['id'] as String);
+      await _load();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Marcado como adoptado.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -124,6 +183,13 @@ class _PetDetailPageState extends State<PetDetailPage> {
     }
 
     final pet = _pet!;
+    final estado = (pet['estado'] as String?)?.toLowerCase() ?? 'publicado';
+    final isLost = estado == 'perdido';
+    final isPublishOrReserved =
+        estado == 'publicado' || estado == 'reservado';
+    final meId = _sb.auth.currentUser?.id;
+    final isOwner = meId != null && meId == pet['owner_id'];
+
     final photos = (pet['pet_photos'] as List?)
             ?.map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e))
             .toList() ??
@@ -194,6 +260,17 @@ class _PetDetailPageState extends State<PetDetailPage> {
                   _chip(' ${pet['talla']} '),
                 if ((pet['temperamento'] as String?)?.isNotEmpty == true)
                   _chip(' ${pet['temperamento']} '),
+                if (isLost)
+                  Chip(
+                    label: const Text(' Perdido ',
+                        style: TextStyle(fontSize: 12, color: Colors.white)),
+                    backgroundColor: Colors.red.withOpacity(0.9),
+                    labelPadding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
               ],
             ),
 
@@ -218,9 +295,11 @@ class _PetDetailPageState extends State<PetDetailPage> {
                     .titleMedium
                     ?.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 6),
-            const Text(
-              'Para cuidar la privacidad, no mostramos los datos del dueño. '
-              'Usa los botones para enviar tu intención de adopción.',
+            Text(
+              isLost
+                  ? 'Si encontraste a ${pet['nombre'] ?? 'la mascota'}, por favor contacta al dueño para coordinar la entrega.'
+                  : 'Para cuidar la privacidad, no mostramos los datos del dueño. '
+                    'Usa los botones para enviar tu intención de adopción.',
             ),
 
             const SizedBox(height: 16),
@@ -228,21 +307,62 @@ class _PetDetailPageState extends State<PetDetailPage> {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: _contactOwner, // hace lo mismo que adoptar
+                    onPressed: () => _contactOwner(isLost: isLost),
                     icon: const Icon(Icons.call),
-                    label: const Text('Llamar'),
+                    label: Text(isLost ? 'Llamar dueño' : 'Llamar'),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: _contactOwner, // hace lo mismo que adoptar
+                    onPressed: () => _contactOwner(isLost: isLost),
                     icon: const Icon(Icons.chat_outlined),
-                    label: const Text('WhatsApp'),
+                    label: Text(isLost ? 'WhatsApp dueño' : 'WhatsApp'),
                   ),
                 ),
               ],
             ),
+
+            // ----- Acciones del dueño -----
+            if (isOwner && (isLost || isPublishOrReserved)) ...[
+              const SizedBox(height: 24),
+              Text('Acciones del dueño',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+
+              if (isLost)
+                ElevatedButton.icon(
+                  onPressed: _markFoundAndAskDelete,
+                  icon: const Icon(Icons.campaign_outlined),
+                  label: const Text('Marcar encontrado'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.orange,
+                    foregroundColor: Colors.white,
+                    shape: const StadiumBorder(),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  ),
+                ),
+
+              if (isPublishOrReserved) ...[
+                if (isLost) const SizedBox(height: 8),
+                ElevatedButton.icon(
+                  onPressed: _markAdopted,
+                  icon: const Icon(Icons.check_circle_outline),
+                  label: const Text('Marcar adoptado'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.shade700,
+                    foregroundColor: Colors.white,
+                    shape: const StadiumBorder(),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  ),
+                ),
+              ],
+            ],
           ],
         ),
       ),
@@ -260,12 +380,24 @@ class _PetDetailPageState extends State<PetDetailPage> {
   }
 }
 
-class _AdoptConfirmDialog extends StatelessWidget {
-  const _AdoptConfirmDialog({required this.petName});
+class _ContactConfirmDialog extends StatelessWidget {
+  const _ContactConfirmDialog({
+    required this.petName,
+    required this.isLostFlow,
+  });
+
   final String petName;
+  final bool isLostFlow;
 
   @override
   Widget build(BuildContext context) {
+    final title = isLostFlow ? '¡Gracias por ayudar!' : '¡Muchas gracias!';
+    final body = isLostFlow
+        ? 'Vas a contactar al dueño para informar que encontraste a $petName. '
+          'Por seguridad, coordinen la entrega en un lugar público.'
+        : 'La adopción es un acto de amor y responsabilidad. '
+          'Si deseas continuar, te llevaré a contactar sobre $petName.';
+
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -276,14 +408,13 @@ class _AdoptConfirmDialog extends StatelessWidget {
           children: [
             Image.asset('assets/logo/petfyco_icon.png', height: 64),
             const SizedBox(height: 8),
-            Text('¡Muchas gracias!',
+            Text(title,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                     )),
             const SizedBox(height: 8),
             Text(
-              'La adopción es un acto de amor y responsabilidad. '
-              'Si deseas continuar, te llevaré a contactar sobre ${'' + petName}.',
+              body,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium,
             ),
@@ -315,6 +446,49 @@ class _AdoptConfirmDialog extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// ----- Hoja para "Encontrado" (solo dueño) -----
+enum _FoundAction { markAndDeleteIn7Days, deleteNow }
+
+class _FoundSheet extends StatelessWidget {
+  const _FoundSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 24, top: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Mascota encontrada',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            const Text('¿Qué deseas hacer?', textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.schedule),
+              title: const Text('Marcar como encontrada'),
+              subtitle: const Text('Se quitará de “Perdidos”.'),
+              onTap: () =>
+                  Navigator.pop(context, _FoundAction.markAndDeleteIn7Days),
+            ),
+            const SizedBox(height: 6),
+            ListTile(
+              leading: const Icon(Icons.delete_forever, color: Colors.red),
+              title: const Text('Eliminar ahora'),
+              subtitle: const Text('Se eliminará de inmediato.'),
+              onTap: () => Navigator.pop(context, _FoundAction.deleteNow),
             ),
           ],
         ),
