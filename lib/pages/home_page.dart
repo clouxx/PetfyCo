@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../theme/app_theme.dart';
 
@@ -19,7 +20,7 @@ class _HomePageState extends State<HomePage> {
 
   // Filtros visibles arriba
   String _filter = 'todos';
-  String _statusFilter = 'todos';
+  String _statusFilter = 'todos'; // todos | perdido | adoptado | reservado
   int _lostCount = 0;
 
   // Filtros del modal
@@ -42,6 +43,7 @@ class _HomePageState extends State<HomePage> {
           .select('''
             id, owner_id, nombre, especie, municipio, estado, talla,
             temperamento, edad_meses, created_at, depto,
+            reserved_by, reserved_until,
             pet_photos(url, position)
           ''')
           .order('created_at', ascending: false)
@@ -54,7 +56,8 @@ class _HomePageState extends State<HomePage> {
         }
       }
 
-      _lostCount = allPets.where((p) => (p['estado'] ?? '') == 'perdido').length;
+      _lostCount =
+          allPets.where((p) => (p['estado'] ?? '') == 'perdido').length;
 
       // ----- FILTROS EN MEMORIA -----
       List<Map<String, dynamic>> filtered = allPets.where((pet) {
@@ -63,7 +66,6 @@ class _HomePageState extends State<HomePage> {
             : ((pet['estado'] ?? '').toString().toLowerCase() ==
                 _statusFilter.toLowerCase());
 
-        // Especie: chip superior + modal (si lo usaste)
         bool especieChipOk = _filter == 'todos'
             ? true
             : ((pet['especie'] ?? '').toString().toLowerCase() ==
@@ -73,13 +75,11 @@ class _HomePageState extends State<HomePage> {
             : ((pet['especie'] ?? '').toString().toLowerCase() ==
                 _typeFilter!.toLowerCase());
 
-        // Talla (case-insensitive)
         bool tallaOk = _sizeFilter == null
             ? true
             : ((pet['talla'] ?? '').toString().toLowerCase() ==
                 _sizeFilter!.toLowerCase());
 
-        // Depto / Ciudad (case-insensitive)
         bool deptoOk = (_selDepto == null || _selDepto!.isEmpty)
             ? true
             : ((pet['depto'] ?? '').toString().trim().toLowerCase() ==
@@ -98,7 +98,7 @@ class _HomePageState extends State<HomePage> {
             ciudadOk;
       }).toList();
 
-      // Orden: perdidos primero cuando status = todos; dentro de cada grupo por fecha desc.
+      // Orden: perdidos primero cuando status = todos; luego por fecha desc.
       int estadoRank(String e) => (e == 'perdido') ? 0 : 1;
       int compareDateDesc(a, b) {
         final da = DateTime.tryParse(a['created_at']?.toString() ?? '') ??
@@ -170,15 +170,138 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<void> _adoptPet(String petId) async {
+  // --- Reservar 24h si está "publicado"
+  Future<bool> _tryReservePet(Map<String, dynamic> pet) async {
     try {
-      await _sb.from('pets').update({'estado': 'adoptado'}).eq('id', petId);
+      final petId = pet['id'] as String;
+      final userId = _sb.auth.currentUser?.id;
+      if (userId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Inicia sesión para continuar.')),
+        );
+        return false;
+      }
+      final now = DateTime.now().toUtc();
+      final until = now.add(const Duration(hours: 24));
+      final res = await _sb
+          .from('pets')
+          .update({
+            'estado': 'reservado',
+            'reserved_by': userId,
+            'reserved_until': until.toIso8601String(),
+          })
+          .eq('id', petId)
+          .eq('estado', 'publicado')
+          .is_('reserved_by', null)
+          .is_('reserved_until', null)
+          .select('id')
+          .single();
+
+      // Si no devolvió fila, no se aplicó (ya estaba reservado/adoptado)
+      return res is Map && res['id'] != null;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // --- Abre modal “Gracias” y si confirman, intenta reservar 24h y lanza WhatsApp
+  Future<void> _intentAdopt(Map<String, dynamic> pet) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) =>
+          _AdoptConfirmDialog(petName: pet['nombre'] ?? 'tu mascota'),
+    );
+    if (ok != true) return;
+
+    // Primero, intentar reservar (si ya está reservado/adoptado, se informará)
+    final reserved = await _tryReservePet(pet);
+    if (!reserved) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text(
+                'No fue posible reservar. Puede que ya esté reservada o adoptada.')),
+      );
+      await _loadPets();
+      return;
+    }
+
+    try {
+      final ownerId = pet['owner_id'] as String?;
+      if (ownerId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo obtener contacto del dueño.')),
+        );
+        return;
+      }
+
+      final profile = await _sb
+          .from('profiles')
+          .select('whatsapp, phone, full_name')
+          .eq('id', ownerId)
+          .single();
+
+      final rawPhone =
+          (profile['whatsapp'] ?? profile['phone'] ?? '').toString().trim();
+      if (rawPhone.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('El dueño no tiene WhatsApp registrado.')),
+        );
+        return;
+      }
+
+      final msg =
+          '¡Hola! Reservé a *${pet['nombre']}* en PetfyCo y me gustaría adoptar. ¿Podemos hablar?';
+      final uri =
+          Uri.parse('https://wa.me/$rawPhone?text=${Uri.encodeComponent(msg)}');
+
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No pude abrir WhatsApp en este dispositivo.')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      await _loadPets();
+    }
+  }
+
+  // — Marca adoptado (solo dueño)
+  Future<void> _markAdopted(String petId) async {
+    try {
+      await _sb.from('pets').update({
+        'estado': 'adoptado',
+        'reserved_by': null,
+        'reserved_until': null,
+      }).eq('id', petId);
       await _loadPets();
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('¡Gracias por adoptar!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Marcado como adoptado.')),
+      );
     } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+  }
+
+  // — Liberar reserva (solo dueño)
+  Future<void> _ownerRelease(String petId) async {
+    try {
+      await _sb.from('pets').update({
+        'estado': 'publicado',
+        'reserved_by': null,
+        'reserved_until': null,
+      }).eq('id', petId);
+      await _loadPets();
       if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Reserva liberada.')),
+      );
+    } catch (e) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('Error: $e')));
     }
@@ -207,7 +330,6 @@ class _HomePageState extends State<HomePage> {
       _typeFilter = result.type;
       _sizeFilter = result.size;
 
-      // si sincronizas el tipo con los chips superiores
       if (result.type != null) _filter = result.type!;
     });
 
@@ -283,7 +405,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
 
-            // Panel centrado de filtros (dos filas) bajo el banner
+            // Panel filtros
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
@@ -304,7 +426,7 @@ class _HomePageState extends State<HomePage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // --- fila 1: especie + lupa
+                      // fila 1
                       Wrap(
                         alignment: WrapAlignment.center,
                         spacing: 8,
@@ -314,7 +436,10 @@ class _HomePageState extends State<HomePage> {
                             label: '🐾 Todos',
                             selected: _filter == 'todos',
                             onTap: () {
-                              setState(() { _filter = 'todos'; _typeFilter = null; });
+                              setState(() {
+                                _filter = 'todos';
+                                _typeFilter = null;
+                              });
                               _loadPets();
                             },
                           ),
@@ -322,7 +447,10 @@ class _HomePageState extends State<HomePage> {
                             label: '🐶 Perros',
                             selected: _filter == 'perro',
                             onTap: () {
-                              setState(() { _filter = 'perro'; _typeFilter = null; });
+                              setState(() {
+                                _filter = 'perro';
+                                _typeFilter = null;
+                              });
                               _loadPets();
                             },
                           ),
@@ -330,19 +458,22 @@ class _HomePageState extends State<HomePage> {
                             label: '🐱 Gatos',
                             selected: _filter == 'gato',
                             onTap: () {
-                              setState(() { _filter = 'gato'; _typeFilter = null; });
+                              setState(() {
+                                _filter = 'gato';
+                                _typeFilter = null;
+                              });
                               _loadPets();
                             },
                           ),
                           _SearchIconChip(onTap: _openSearchSheet),
                         ],
                       ),
-
                       const SizedBox(height: 10),
-
-                      // fila 2: estados
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      // fila 2
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 8,
+                        runSpacing: 8,
                         children: [
                           _StatusChip(
                             label: 'Publicados',
@@ -352,9 +483,9 @@ class _HomePageState extends State<HomePage> {
                               _loadPets();
                             },
                           ),
-                          const SizedBox(width: 8),
                           _StatusChip(
                             labelWidget: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: const [
                                 Icon(Icons.campaign,
                                     size: 16, color: Colors.red),
@@ -374,7 +505,14 @@ class _HomePageState extends State<HomePage> {
                               _loadPets();
                             },
                           ),
-                          const SizedBox(width: 8),
+                          _StatusChip(
+                            label: 'Reservados',
+                            selected: _statusFilter == 'reservado',
+                            onTap: () {
+                              setState(() => _statusFilter = 'reservado');
+                              _loadPets();
+                            },
+                          ),
                           _StatusChip(
                             label: 'Adoptados',
                             selected: _statusFilter == 'adoptado',
@@ -391,7 +529,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
 
-            // Grid / estados
+            // Grid
             if (_loading)
               const SliverFillRemaining(
                 child: Center(child: CircularProgressIndicator()),
@@ -408,7 +546,8 @@ class _HomePageState extends State<HomePage> {
                         _statusFilter == 'perdido'
                             ? 'No hay reportes de mascotas perdidas'
                             : 'No hay mascotas disponibles',
-                        style: const TextStyle(fontSize: 18, color: Colors.grey),
+                        style:
+                            const TextStyle(fontSize: 18, color: Colors.grey),
                       ),
                       const SizedBox(height: 24),
                       ElevatedButton.icon(
@@ -424,7 +563,8 @@ class _HomePageState extends State<HomePage> {
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
                 sliver: SliverGrid(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate:
+                      const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     mainAxisSpacing: 14,
                     crossAxisSpacing: 14,
@@ -439,8 +579,20 @@ class _HomePageState extends State<HomePage> {
                         pet: pet,
                         isOwner: isOwner,
                         onEdit: () => _goEdit(pet['id'] as String),
-                        onFound: () => _markFoundAndAskDelete(pet['id'] as String),
-                        onAdopt: () => _adoptPet(pet['id'] as String),
+                        onFound: () =>
+                            _markFoundAndAskDelete(pet['id'] as String),
+                        onAdopt: () => _intentAdopt(pet), // no-dueño
+                        onOwnerAdopted: () =>
+                            _markAdopted(pet['id'] as String), // dueño
+                        onOwnerDelete: () async {
+                          await _sb
+                              .from('pets')
+                              .delete()
+                              .eq('id', pet['id'] as String);
+                          _loadPets();
+                        },
+                        onOwnerRelease: () =>
+                            _ownerRelease(pet['id'] as String), // dueño
                       );
                     },
                     childCount: _pets.length,
@@ -530,7 +682,7 @@ class _FilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FilterChip(
-      label: Text(label), // sin maxLines ni overflow
+      label: Text(label),
       selected: selected,
       onSelected: (_) => onTap(),
       backgroundColor: Colors.grey.shade200,
@@ -539,7 +691,6 @@ class _FilterChip extends StatelessWidget {
       shape: const StadiumBorder(side: BorderSide(color: Colors.black12)),
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       visualDensity: VisualDensity.compact,
-      // estos dos ayudan a que el texto respire
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       labelPadding: const EdgeInsets.symmetric(horizontal: 4),
     );
@@ -571,7 +722,9 @@ class _StatusChip extends StatelessWidget {
           color:
               selected ? AppColors.blue.withOpacity(0.2) : Colors.grey.shade200,
           borderRadius: BorderRadius.circular(12),
-          border: selected ? Border.all(color: AppColors.blue, width: 2) : Border.all(color: Colors.black12),
+          border: selected
+              ? Border.all(color: AppColors.blue, width: 2)
+              : Border.all(color: Colors.black12),
         ),
         child: DefaultTextStyle.merge(
           style: TextStyle(
@@ -585,7 +738,6 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
-// Chip de búsqueda (lupa) — mismo tamaño visual que los chips
 class _SearchIconChip extends StatelessWidget {
   const _SearchIconChip({required this.onTap});
   final VoidCallback onTap;
@@ -618,20 +770,26 @@ class _PetCard extends StatelessWidget {
     required this.onEdit,
     required this.onFound,
     required this.onAdopt,
+    required this.onOwnerAdopted,
+    required this.onOwnerDelete,
+    required this.onOwnerRelease,
   });
 
   final Map<String, dynamic> pet;
   final bool isOwner;
   final VoidCallback onEdit;
   final VoidCallback onFound;
-  final VoidCallback onAdopt;
+  final VoidCallback onAdopt; // no-dueño (WhatsApp + reserva)
+  final VoidCallback onOwnerAdopted; // dueño marca adoptado
+  final VoidCallback onOwnerDelete; // dueño elimina
+  final VoidCallback onOwnerRelease; // dueño libera reserva
 
   @override
   Widget build(BuildContext context) {
     final nombre = pet['nombre'] as String? ?? 'Sin nombre';
     final especie = pet['especie'] as String? ?? 'desconocido';
     final municipio = (pet['municipio'] as String?)?.trim();
-    final depto = (pet['depto'] as String?)?.trim(); // <- NUEVO
+    final depto = (pet['depto'] as String?)?.trim();
     final estado = pet['estado'] as String? ?? 'publicado';
     final talla = pet['talla'] as String?;
     final temperamento = pet['temperamento'] as String?;
@@ -661,11 +819,13 @@ class _PetCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(16)),
               child: SizedBox(
                 height: 180,
                 child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(16)),
                   child: Stack(
                     children: [
                       Positioned.fill(
@@ -674,7 +834,8 @@ class _PetCard extends StatelessWidget {
                                 imageUrl!,
                                 fit: BoxFit.cover,
                                 alignment: Alignment.center,
-                                errorBuilder: (_, __, ___) => const _ImagePlaceholder(),
+                                errorBuilder: (_, __, ___) =>
+                                    const _ImagePlaceholder(),
                               )
                             : const _ImagePlaceholder(),
                       ),
@@ -705,7 +866,8 @@ class _PetCard extends StatelessWidget {
                           children: [
                             _chip(context, especie == 'perro' ? 'Perro' : 'Gato'),
                             if (edadAnios != null)
-                              _chip(context, '$edadAnios año${edadAnios == 1 ? '' : 's'}'),
+                              _chip(context,
+                                  '$edadAnios año${edadAnios == 1 ? '' : 's'}'),
                             if (talla != null && talla.isNotEmpty)
                               _chip(context, _cap(talla)),
                             if (temperamento != null && temperamento.isNotEmpty)
@@ -742,7 +904,9 @@ class _PetCard extends StatelessWidget {
                         child: Text(
                           (municipio != null && municipio.isNotEmpty)
                               ? municipio
-                              : (depto != null && depto.isNotEmpty ? depto : 'Colombia'),
+                              : (depto != null && depto.isNotEmpty
+                                  ? depto
+                                  : 'Colombia'),
                           style: Theme.of(context)
                               .textTheme
                               .bodySmall
@@ -771,6 +935,31 @@ class _PetCard extends StatelessWidget {
                                 label: 'Encontrado',
                                 onTap: onFound,
                                 bg: AppColors.orange),
+                          const SizedBox(width: 6),
+                          if (estado == 'publicado' || estado == 'reservado')
+                            _smallAction(
+                              context,
+                              icon: Icons.check_circle_outline,
+                              label: 'Adoptado',
+                              onTap: onOwnerAdopted,
+                              bg: Colors.green.shade700,
+                            ),
+                          const SizedBox(width: 6),
+                          if (estado == 'reservado')
+                            _smallAction(
+                              context,
+                              icon: Icons.lock_open,
+                              label: 'Liberar',
+                              onTap: onOwnerRelease,
+                              bg: Colors.blueGrey,
+                            ),
+                          const SizedBox(width: 6),
+                          if (estado == 'adoptado')
+                            _smallAction(context,
+                                icon: Icons.delete_forever,
+                                label: 'Eliminar',
+                                onTap: onOwnerDelete,
+                                bg: Colors.redAccent),
                         ] else if (estado == 'publicado') ...[
                           _smallAction(context,
                               icon: Icons.volunteer_activism_outlined,
@@ -851,6 +1040,27 @@ class _PetCard extends StatelessWidget {
         ),
       );
     }
+    if (estado == 'reservado') {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.amber.shade800.withOpacity(0.95),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.lock_clock, size: 14, color: Colors.white),
+            const SizedBox(width: 4),
+            Text('Reservado',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    )),
+          ],
+        ),
+      );
+    }
     return _chip(context, 'Disponible');
   }
 
@@ -889,7 +1099,8 @@ class _PetCard extends StatelessWidget {
     );
   }
 
-  String _cap(String s) => s.isEmpty ? s : (s[0].toUpperCase() + s.substring(1));
+  String _cap(String s) =>
+      s.isEmpty ? s : (s[0].toUpperCase() + s.substring(1));
 }
 
 class _ImagePlaceholder extends StatelessWidget {
@@ -949,6 +1160,70 @@ class _FoundSheet extends StatelessWidget {
   }
 }
 
+/// --------- Modal de confirmación de adopción (no dueño) ---------
+class _AdoptConfirmDialog extends StatelessWidget {
+  const _AdoptConfirmDialog({required this.petName});
+  final String petName;
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset('assets/logo/petfyco_icon.png', height: 64),
+            const SizedBox(height: 8),
+            Text('¡Muchas gracias!',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    )),
+            const SizedBox(height: 8),
+            Text(
+              'La adopción es un acto de amor y responsabilidad. '
+              'Si deseas continuar, te llevaré al WhatsApp del dueño para hablar sobre ${'' + petName}.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    style: OutlinedButton.styleFrom(
+                      shape: const StadiumBorder(),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: const Text('Cancelar'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.pop(context, true),
+                    icon: const Icon(Icons.whatsapp),
+                    label: const Text('Continuar'),
+                    style: ElevatedButton.styleFrom(
+                      shape: const StadiumBorder(),
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// ----------------------
 /// Búsqueda y Filtros (modal) con datos de BD
 /// ----------------------
@@ -981,17 +1256,14 @@ class _SearchFiltersSheet extends StatefulWidget {
 }
 
 class _SearchFiltersSheetState extends State<_SearchFiltersSheet> {
-  // Datos desde BD
   List<String> _deptos = const [];
   final Map<String, List<String>> _citiesCache = {};
 
-  // Selecciones
   String? _depto;
   String? _city;
   String? _type;
   String? _size;
 
-  // Catálogos fijos
   final List<String> _tipos = const ['perro', 'gato'];
   final List<String> _tallas = const ['pequeño', 'mediano', 'grande'];
 
@@ -1013,11 +1285,11 @@ class _SearchFiltersSheetState extends State<_SearchFiltersSheet> {
     });
   }
 
-  // Carga TODOS los departamentos desde public.departments; si falla, hace fallback a pets
   Future<void> _loadDeptos() async {
     setState(() => _loadingDeptos = true);
     try {
-      final res = await widget.sb.from('departments').select('name').order('name');
+      final res =
+          await widget.sb.from('departments').select('name').order('name');
       final set = <String>{};
       if (res is List) {
         for (final row in res) {
@@ -1025,14 +1297,16 @@ class _SearchFiltersSheetState extends State<_SearchFiltersSheet> {
           if (v != null && v.isNotEmpty) set.add(v);
         }
       }
-      final list = set.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+      final list = set.toList()
+        ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
       setState(() {
         _deptos = list;
         _loadingDeptos = false;
       });
     } catch (_) {
       try {
-        final res2 = await widget.sb.from('pets').select('depto').order('depto');
+        final res2 =
+            await widget.sb.from('pets').select('depto').order('depto');
         final set = <String>{};
         if (res2 is List) {
           for (final row in res2) {
@@ -1040,7 +1314,8 @@ class _SearchFiltersSheetState extends State<_SearchFiltersSheet> {
             if (v != null && v.isNotEmpty) set.add(v);
           }
         }
-        final list = set.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+        final list = set.toList()
+          ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
         setState(() {
           _deptos = list;
         });
@@ -1050,13 +1325,12 @@ class _SearchFiltersSheetState extends State<_SearchFiltersSheet> {
     }
   }
 
-  // Carga ciudades del depto (si tienes tabla cities usa esa; si no, cae a pets)
   Future<void> _loadCities(String depto) async {
     if (_citiesCache.containsKey(depto)) return;
     setState(() => _loadingCities = true);
     List<String> list = [];
     try {
-      // Intentar cities (si existe)
+      // cities (si existe)
       try {
         final res = await widget.sb
             .from('cities')
@@ -1069,14 +1343,18 @@ class _SearchFiltersSheetState extends State<_SearchFiltersSheet> {
             final v = (row['name'] as String?)?.trim();
             if (v != null && v.isNotEmpty) set.add(v);
           }
-          list = set.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+          list = set.toList()
+            ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
         }
-      } catch (_) { /* ignore */ }
+      } catch (_) {}
 
-      // Fallback por pets
+      // Fallback pets
       if (list.isEmpty) {
-        final resPets =
-            await widget.sb.from('pets').select('municipio').eq('depto', depto).order('municipio');
+        final resPets = await widget.sb
+            .from('pets')
+            .select('municipio')
+            .eq('depto', depto)
+            .order('municipio');
         final set = <String>{};
         if (resPets is List) {
           for (final row in resPets) {
@@ -1084,7 +1362,8 @@ class _SearchFiltersSheetState extends State<_SearchFiltersSheet> {
             if (v != null && v.isNotEmpty) set.add(v);
           }
         }
-        list = set.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+        list = set.toList()
+          ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
       }
 
       setState(() {
@@ -1136,7 +1415,6 @@ class _SearchFiltersSheetState extends State<_SearchFiltersSheet> {
                       )),
               const SizedBox(height: 8),
 
-              // Depto
               _DropdownField<String>(
                 value: _depto,
                 icon: Icons.place_outlined,
@@ -1155,7 +1433,6 @@ class _SearchFiltersSheetState extends State<_SearchFiltersSheet> {
               ),
               const SizedBox(height: 12),
 
-              // Ciudad
               _DropdownField<String>(
                 value: _city,
                 icon: Icons.location_city_outlined,
@@ -1272,11 +1549,13 @@ class _DropdownField<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     return InputDecorator(
       decoration: InputDecoration(
-        prefixIcon: icon != null ? Icon(icon, color: Colors.grey.shade700) : null,
+        prefixIcon:
+            icon != null ? Icon(icon, color: Colors.grey.shade700) : null,
         hintText: hint,
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: Colors.black12),
