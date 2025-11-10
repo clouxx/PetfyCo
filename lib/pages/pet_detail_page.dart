@@ -380,6 +380,11 @@ class _PetDetailPageState extends State<PetDetailPage> {
                     onPressed: () => _contactOwner(isLost: isLost),
                     icon: const Icon(Icons.chat_outlined),
                     label: Text(isLost ? 'WhatsApp dueño' : 'WhatsApp'),
+                    style: ElevatedButton.styleFrom(
+                      shape: const StadiumBorder(),
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                 ),
               ],
