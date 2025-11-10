@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../theme/app_theme.dart';
 
 class PetDetailPage extends StatefulWidget {
-  final String petId; // <-- renombrado para coincidir con main.dart
+  final String petId;
   const PetDetailPage({super.key, required this.petId});
 
   @override
@@ -26,23 +27,22 @@ class _PetDetailPageState extends State<PetDetailPage> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      // pets + owner profile (display_name, phone)
+      // No traemos datos sensibles del dueño aquí
       final data = await _sb
           .from('pets')
           .select('''
-            id, owner_id, nombre, especie, municipio, estado, talla, temperamento, edad_meses, descripcion,
-            pet_photos(url, position),
-            profiles:owner_id ( display_name, phone )
+            id, owner_id, nombre, especie, municipio, estado,
+            talla, temperamento, edad_meses, descripcion,
+            pet_photos(url, position)
           ''')
-          .eq('id', widget.petId) // <-- usar petId
+          .eq('id', widget.petId)
           .maybeSingle();
 
-      if (mounted) {
-        setState(() {
-          _pet = data as Map<String, dynamic>?;
-          _loading = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _pet = data as Map<String, dynamic>?;
+        _loading = false;
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
@@ -52,17 +52,75 @@ class _PetDetailPageState extends State<PetDetailPage> {
     }
   }
 
+  Future<void> _contactOwner() async {
+    final pet = _pet;
+    if (pet == null) return;
+
+    // 1) Diálogo de confirmación (igual a adoptar)
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => _AdoptConfirmDialog(petName: pet['nombre'] ?? 'la mascota'),
+    );
+    if (ok != true) return;
+
+    // 2) Buscar contacto del dueño SIN mostrarlo
+    try {
+      final ownerId = pet['owner_id'] as String?;
+      if (ownerId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo obtener contacto del dueño.')),
+        );
+        return;
+      }
+
+      final profile = await _sb
+          .from('profiles')
+          .select('whatsapp, phone')
+          .eq('id', ownerId)
+          .single();
+
+      final number =
+          (profile['whatsapp'] ?? profile['phone'] ?? '').toString().trim();
+
+      if (number.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('El dueño no tiene contacto registrado.')),
+        );
+        return;
+      }
+
+      final msg =
+          '¡Hola! Vi a *${pet['nombre']}* en PetfyCo y me gustaría adoptar. ¿Podemos hablar?';
+
+      // Preferimos WhatsApp; si falla intentamos tel:
+      final wa = Uri.parse('https://wa.me/$number?text=${Uri.encodeComponent(msg)}');
+      if (await canLaunchUrl(wa)) {
+        await launchUrl(wa, mode: LaunchMode.externalApplication);
+        return;
+      }
+
+      final tel = Uri.parse('tel:$number');
+      if (await canLaunchUrl(tel)) {
+        await launchUrl(tel, mode: LaunchMode.externalApplication);
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No pude abrir una app de contacto en este dispositivo.')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error al contactar: $e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     if (_pet == null) {
-      return const Scaffold(
-        body: Center(child: Text('Mascota no encontrada')),
-      );
+      return const Scaffold(body: Center(child: Text('Mascota no encontrada')));
     }
 
     final pet = _pet!;
@@ -73,10 +131,6 @@ class _PetDetailPageState extends State<PetDetailPage> {
     photos.sort((a, b) =>
         (a['position'] as int? ?? 0).compareTo(b['position'] as int? ?? 0));
     final imageUrl = photos.isNotEmpty ? photos.first['url'] as String? : null;
-
-    final owner = pet['profiles'] as Map<String, dynamic>?;
-    final ownerName = (owner?['display_name'] as String?) ?? 'Sin nombre';
-    final ownerPhone = (owner?['phone'] as String?) ?? 'Sin teléfono';
 
     final edadMeses = pet['edad_meses'] as int?;
     final edadAnios = edadMeses == null ? null : (edadMeses ~/ 12);
@@ -102,8 +156,7 @@ class _PetDetailPageState extends State<PetDetailPage> {
                   : Container(
                       color: AppColors.blue.withOpacity(0.12),
                       child: const Center(
-                        child:
-                            Icon(Icons.pets, size: 40, color: AppColors.navy),
+                        child: Icon(Icons.pets, size: 40, color: AppColors.navy),
                       ),
                     ),
             ),
@@ -158,25 +211,24 @@ class _PetDetailPageState extends State<PetDetailPage> {
             ),
 
             const SizedBox(height: 20),
-            // CONTACTO DEL DUEÑO
+            // Mensaje genérico (sin datos del dueño)
             Text('Contacto',
                 style: Theme.of(context)
                     .textTheme
                     .titleMedium
                     ?.copyWith(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 8),
-            _contactRow(Icons.person_outline, ownerName),
             const SizedBox(height: 6),
-            _contactRow(Icons.phone_outlined, ownerPhone),
+            const Text(
+              'Para cuidar la privacidad, no mostramos los datos del dueño. '
+              'Usa los botones para enviar tu intención de adopción.',
+            ),
 
             const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () {
-                      // tel: / copiar número
-                    },
+                    onPressed: _contactOwner, // hace lo mismo que adoptar
                     icon: const Icon(Icons.call),
                     label: const Text('Llamar'),
                   ),
@@ -184,9 +236,7 @@ class _PetDetailPageState extends State<PetDetailPage> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () {
-                      // wa.me / copiar enlace
-                    },
+                    onPressed: _contactOwner, // hace lo mismo que adoptar
                     icon: const Icon(Icons.chat_outlined),
                     label: const Text('WhatsApp'),
                   ),
@@ -199,16 +249,6 @@ class _PetDetailPageState extends State<PetDetailPage> {
     );
   }
 
-  Widget _contactRow(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: Colors.black54),
-        const SizedBox(width: 8),
-        Expanded(child: Text(text)),
-      ],
-    );
-  }
-
   Widget _chip(String text) {
     return Chip(
       label: Text(text.trim(), style: const TextStyle(fontSize: 12)),
@@ -216,6 +256,69 @@ class _PetDetailPageState extends State<PetDetailPage> {
       labelPadding: const EdgeInsets.symmetric(horizontal: 10),
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    );
+  }
+}
+
+class _AdoptConfirmDialog extends StatelessWidget {
+  const _AdoptConfirmDialog({required this.petName});
+  final String petName;
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset('assets/logo/petfyco_icon.png', height: 64),
+            const SizedBox(height: 8),
+            Text('¡Muchas gracias!',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    )),
+            const SizedBox(height: 8),
+            Text(
+              'La adopción es un acto de amor y responsabilidad. '
+              'Si deseas continuar, te llevaré a contactar sobre ${'' + petName}.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    style: OutlinedButton.styleFrom(
+                      shape: const StadiumBorder(),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: const Text('Cancelar'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.pop(context, true),
+                    icon: const Icon(Icons.chat),
+                    label: const Text('Continuar'),
+                    style: ElevatedButton.styleFrom(
+                      shape: const StadiumBorder(),
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
