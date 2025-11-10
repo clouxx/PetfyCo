@@ -184,10 +184,10 @@ class _HomePageState extends State<HomePage> {
         return;
       }
 
-      // Ajusta los campos según tu tabla profiles
+      // ← Usa columnas REALES de tu tabla profiles
       final profile = await _sb
           .from('profiles')
-          .select('whatsapp, phone, full_name')
+          .select('whatsapp, phone, display_name')
           .eq('id', ownerId)
           .single();
 
@@ -1084,7 +1084,7 @@ class _AdoptConfirmDialog extends StatelessWidget {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () => Navigator.pop(context, true),
-                    icon: const Icon(Icons.chat), // <- reemplazo de whatsapp
+                    icon: const Icon(Icons.chat), // compatible web
                     label: const Text('Continuar'),
                     style: ElevatedButton.styleFrom(
                       shape: const StadiumBorder(),
