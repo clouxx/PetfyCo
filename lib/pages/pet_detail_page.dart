@@ -366,24 +366,36 @@ class _PetDetailPageState extends State<PetDetailPage> {
 
             const SizedBox(height: 16),
             Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _contactOwner(isLost: isLost),
-                    icon: const Icon(Icons.call),
-                    label: Text(isLost ? 'Llamar dueño' : 'Llamar'),
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _contactOwner(isLost: isLost),
+                      icon: const Icon(Icons.call),
+                      label: Text(isLost ? 'Llamar dueño' : 'Llamar'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.blue,
+                        foregroundColor: Colors.white,
+                        shape: const StadiumBorder(),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _contactOwner(isLost: isLost),
-                    icon: const Icon(Icons.chat_outlined),
-                    label: Text(isLost ? 'WhatsApp dueño' : 'WhatsApp'),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _contactOwner(isLost: isLost),
+                      icon: const Icon(Icons.chat_outlined),
+                      label: Text(isLost ? 'WhatsApp dueño' : 'WhatsApp'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green, // mismo verde que el botón “Continuar”
+                        foregroundColor: Colors.white,
+                        shape: const StadiumBorder(),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
 
             // ----- Acciones del dueño -----
             if (isOwner) ...[
