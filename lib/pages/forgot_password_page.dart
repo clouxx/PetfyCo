@@ -41,7 +41,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
       await sb.auth.resetPasswordForEmail(
         _email.text.trim(),
-        redirectTo: redirectTo,
+        redirectTo: 'https://clouxx.github.io/PetfyCo/reset-password',
       );
 
       if (!mounted) return;
