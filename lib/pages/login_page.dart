@@ -123,6 +123,15 @@ class _LoginPageState extends State<LoginPage> {
                       },
                     ),
                     const SizedBox(height: 16),
+
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: PetfyLink(
+                        text: '¿Has olvidado tu contraseña?',
+                        onTap: () => context.push('/forgot-password'),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     
                     // Botón Login
                     PetfyButton(
