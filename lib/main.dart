@@ -12,6 +12,9 @@ import 'pages/pet_detail_page.dart';
 import 'pages/lost_pets_page.dart';
 import 'pages/profile_page.dart';
 
+// ✅ NUEVO: Forgot password page
+import 'pages/forgot_password_page.dart';
+
 // Lee las variables de entorno pasadas con --dart-define
 const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const _supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
@@ -44,6 +47,13 @@ class MyApp extends StatelessWidget {
           path: '/login',
           builder: (_, __) => const LoginPage(),
         ),
+
+        // ✅ NUEVO: Ruta para "Olvidé mi contraseña"
+        GoRoute(
+          path: '/forgot-password',
+          builder: (_, __) => const ForgotPasswordPage(),
+        ),
+
         GoRoute(
           path: '/register',
           builder: (_, __) => const RegisterPage(),
@@ -55,9 +65,7 @@ class MyApp extends StatelessWidget {
         GoRoute(
           path: '/publish',
           builder: (_, state) {
-            // Lee ?estado=perdido (u otros) para prellenar el formulario
             final presetEstado = state.uri.queryParameters['estado'];
-            // Si luego implementas edición, podrías pasar ?editId=...
             final editId = state.uri.queryParameters['editId'];
             return PublishPetPage(
               presetEstado: presetEstado,
@@ -78,12 +86,10 @@ class MyApp extends StatelessWidget {
         GoRoute(
           path: '/profile',
           builder: (_, state) {
-            // Si quieres ver el perfil de otro usuario: /profile?uid=xxx
             final uid = state.uri.queryParameters['uid'];
             return const ProfilePage(); // Ajusta si vas a usar uid
           },
         ),
-        // Redirección básica
         GoRoute(
           path: '/',
           builder: (_, __) => const SplashPage(),
