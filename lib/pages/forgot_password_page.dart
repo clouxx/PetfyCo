@@ -29,25 +29,20 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     try {
       final sb = Supabase.instance.client;
 
-      // ✅ IMPORTANTE:
-      // Debe ser una URL que EXISTA y esté permitida en Supabase Redirect URLs.
-      // - Web local:  http://localhost:TU_PUERTO/reset-password
-      // - Producción: https://tu-dominio/reset-password
-      // - App móvil: uri de deep link (ej. io.supabase.petfyco://login-callback/)
-      // NOTA: Para Android 12+, es más confiable usar App Links con URLs http estándar.
+      // Enviamos el correo con el token de recuperación (OTP)
       await sb.auth.resetPasswordForEmail(
         _email.text.trim(),
-        redirectTo: 'https://clouxx.github.io/PetfyCo/reset-password',
       );
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Si el correo está registrado, te enviamos un enlace para restablecer tu contraseña.'),
+          content: Text('Revisa tu correo. Te enviamos un código de 6 dígitos para restablecer tu contraseña.'),
         ),
       );
 
-      context.pop();
+      final mail = _email.text.trim();
+      context.pushReplacement('/reset-password?email=$mail');
     } on AuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
