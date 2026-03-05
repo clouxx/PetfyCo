@@ -5,6 +5,7 @@ class AppColors {
   static const blue = Color(0xFF56C4F2);
   static const orange = Color(0xFFFF8A34);
   static const pink = Color(0xFFE46AA3);
+  static const purple = Color(0xFF7C5CBF); // Main accent color (reference app)
   static const white = Colors.white;
   static const grey = Color(0xFFF3F6F9);
 }
