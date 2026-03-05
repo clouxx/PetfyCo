@@ -142,15 +142,19 @@ class _AdoptPageState extends State<AdoptPage> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
                             decoration: BoxDecoration(
-                              color: isSelected ? AppColors.purple : Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(24),
+                              color: isSelected ? AppColors.blue.withOpacity(0.15) : const Color(0xFFF5F5F7),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: isSelected ? AppColors.blue : Colors.grey.shade300,
+                                width: 1,
+                              ),
                             ),
                             child: Text(
                               label,
                               style: TextStyle(
-                                color: isSelected ? Colors.white : Colors.grey.shade600,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                fontSize: 14,
+                                color: isSelected ? AppColors.navy : Colors.grey.shade700,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
                               ),
                             ),
                           ),
@@ -265,9 +269,12 @@ class _SpeciesChip extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? AppColors.purpleGlass : AppColors.greyBg,
+          color: selected ? AppColors.blue.withOpacity(0.15) : const Color(0xFFF5F5F7),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: selected ? AppColors.purple : Colors.transparent, width: 1.5),
+          border: Border.all(
+            color: selected ? AppColors.blue : Colors.grey.shade300, 
+            width: 1
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -275,8 +282,8 @@ class _SpeciesChip extends StatelessWidget {
             Text(emoji, style: const TextStyle(fontSize: 14)),
             const SizedBox(width: 5),
             Text(label, style: TextStyle(
-              color: selected ? AppColors.purple : Colors.grey.shade700,
-              fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+              color: selected ? AppColors.navy : Colors.grey.shade700,
+              fontWeight: FontWeight.w600,
               fontSize: 13,
             )),
           ],
