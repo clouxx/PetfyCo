@@ -34,9 +34,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       // - Web local:  http://localhost:TU_PUERTO/reset-password
       // - Producción: https://tu-dominio/reset-password
       // - App móvil: uri de deep link (ej. io.supabase.petfyco://login-callback/)
+      // NOTA: Para Android 12+, es más confiable usar App Links con URLs http estándar.
       await sb.auth.resetPasswordForEmail(
         _email.text.trim(),
-        redirectTo: 'io.supabase.petfyco://login-callback/',
+        redirectTo: 'https://clouxx.github.io/PetfyCo/reset-password',
       );
 
       if (!mounted) return;
