@@ -42,6 +42,7 @@ dependencies:
   
   # Image Picker (NUEVO - para subir fotos)
   image_picker: ^1.0.7
+  carousel_slider: ^5.1.2
 
 dev_dependencies:
   flutter_test:

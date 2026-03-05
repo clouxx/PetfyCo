@@ -227,10 +227,7 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mi Perfil'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
-        ),
+        centerTitle: true,
       ),
       body: _loading 
         ? const Center(child: CircularProgressIndicator())
@@ -384,6 +381,61 @@ class _ProfilePageState extends State<ProfilePage> {
                           loading: _saving,
                           onPressed: _saving ? null : _saveProfile,
                         ),
+                        const SizedBox(height: 24),
+
+                        // ── Datos de Facturación ─────────────────────
+                        Align(alignment: Alignment.centerLeft, child: Text('Datos de Facturación', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold))),
+                        const SizedBox(height: 8),
+                        Card(
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+                          child: ListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.purple.shade50),
+                              child: const Icon(Icons.add_circle_outline, color: Colors.purple),
+                            ),
+                            title: const Text('Agregar Datos De Facturación'),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Próximamente: Datos de facturación'))),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // ── Mis Direcciones ──────────────────────────
+                        Align(alignment: Alignment.centerLeft, child: Text('Mis Direcciones', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold))),
+                        const SizedBox(height: 8),
+                        Card(
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+                          child: ListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.purple.shade50),
+                              child: const Icon(Icons.location_on_outlined, color: Colors.purple),
+                            ),
+                            title: const Text('Agregar Dirección de Entrega'),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Próximamente: Mis direcciones'))),
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+
+                        // ── Cerrar sesión ────────────────────────────
+                        OutlinedButton.icon(
+                          onPressed: () async {
+                            await _sb.auth.signOut();
+                            if (mounted) context.go('/login');
+                          },
+                          icon: const Icon(Icons.logout, color: Colors.red),
+                          label: const Text('Cerrar Sesión', style: TextStyle(color: Colors.red)),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.red),
+                            minimumSize: const Size.fromHeight(48),
+                          ),
+                        ),
+                        const SizedBox(height: 100),
+
                       ],
                     ),
                   ),

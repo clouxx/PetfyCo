@@ -10,7 +10,9 @@ import 'pages/home_page.dart';
 import 'pages/publish_pet_page.dart';
 import 'pages/pet_detail_page.dart';
 import 'pages/lost_pets_page.dart';
+import 'pages/adopt_page.dart';
 import 'pages/profile_page.dart';
+import 'pages/main_scaffold.dart';
 
 // ✅ NUEVO: Forgot password page
 import 'pages/forgot_password_page.dart';
@@ -49,6 +51,7 @@ class _MyAppState extends State<MyApp> {
     _router = GoRouter(
       initialLocation: '/splash',
       routes: [
+        // Rutas sin barra de navegación inferior
         GoRoute(
           path: '/splash',
           builder: (_, __) => const SplashPage(),
@@ -73,10 +76,6 @@ class _MyAppState extends State<MyApp> {
           builder: (_, __) => const RegisterPage(),
         ),
         GoRoute(
-          path: '/home',
-          builder: (_, __) => const HomePage(),
-        ),
-        GoRoute(
           path: '/publish',
           builder: (_, state) {
             final presetEstado = state.uri.queryParameters['estado'];
@@ -93,15 +92,50 @@ class _MyAppState extends State<MyApp> {
             petId: state.pathParameters['id']!,
           ),
         ),
-        GoRoute(
-          path: '/lost',
-          builder: (_, __) => const LostPetsPage(),
-        ),
-        GoRoute(
-          path: '/profile',
-          builder: (_, state) {
-            return const ProfilePage();
+
+        // Ruta principal con barra inferior (4 tabs reales)
+        StatefulShellRoute.indexedStack(
+          builder: (context, state, navigationShell) {
+            return MainScaffold(navigationShell: navigationShell);
           },
+          branches: [
+            // Rama 0 (Inicio)
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/home',
+                  builder: (_, __) => const HomePage(),
+                ),
+              ],
+            ),
+            // Rama 1 (Perdidos)
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/lost',
+                  builder: (_, __) => const LostPetsPage(),
+                ),
+              ],
+            ),
+            // Rama 2 (Adoptar)
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/adopt',
+                  builder: (_, __) => const AdoptPage(),
+                ),
+              ],
+            ),
+            // Rama 3 (Perfil)
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/profile',
+                  builder: (_, __) => const ProfilePage(),
+                ),
+              ],
+            ),
+          ],
         ),
       ],
     );
