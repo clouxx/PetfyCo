@@ -413,10 +413,10 @@ class _HomePageState extends State<HomePage> {
                     const Text('Mis Mascotas', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                     TextButton.icon(
                       onPressed: () => context.push('/publish'),
-                      icon: const Icon(Icons.add, size: 18, color: AppColors.purple),
-                      label: const Text('Agregar', style: TextStyle(color: AppColors.purple, fontWeight: FontWeight.bold)),
+                      icon: const Icon(Icons.add, size: 18, color: AppColors.navy),
+                      label: const Text('Agregar', style: TextStyle(color: AppColors.navy, fontWeight: FontWeight.bold)),
                       style: TextButton.styleFrom(
-                        backgroundColor: AppColors.purpleGlass,
+                        backgroundColor: AppColors.blue.withOpacity(0.15),
                         shape: const StadiumBorder(),
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       ),
@@ -631,16 +631,27 @@ class _HeaderBanner extends StatelessWidget {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: onPublish,
-                  icon: const Icon(Icons.favorite_outline),
+                  icon: const Icon(Icons.favorite_outline, size: 18),
                   label: const Text('Dar en adopción'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.navy,
+                    side: BorderSide(color: Colors.grey.shade400, width: 1),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: onLost,
-                  icon: const Icon(Icons.campaign),
+                  icon: const Icon(Icons.campaign, size: 18),
                   label: const Text('Reportar perdido'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF5F5F7),
+                    foregroundColor: AppColors.navy,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  ),
                 ),
               ),
             ],
@@ -667,10 +678,10 @@ class _FilterChip extends StatelessWidget {
       label: Text(label),
       selected: selected,
       onSelected: (_) => onTap(),
-      backgroundColor: Colors.grey.shade200,
-      selectedColor: AppColors.blue.withOpacity(0.2),
+      backgroundColor: const Color(0xFFF5F5F7),
+      selectedColor: AppColors.blue.withOpacity(0.15),
       checkmarkColor: AppColors.navy,
-      shape: const StadiumBorder(side: BorderSide(color: Colors.black12)),
+      shape: const StadiumBorder(side: BorderSide(color: Colors.black12, width: 1)),
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       visualDensity: VisualDensity.compact,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -701,12 +712,12 @@ class _StatusChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         decoration: BoxDecoration(
-          color:
-              selected ? AppColors.blue.withOpacity(0.2) : Colors.grey.shade200,
+          color: selected ? AppColors.blue.withOpacity(0.15) : const Color(0xFFF5F5F7),
           borderRadius: BorderRadius.circular(12),
-          border: selected
-              ? Border.all(color: AppColors.blue, width: 2)
-              : Border.all(color: Colors.black12),
+          border: Border.all(
+            color: selected ? AppColors.blue : Colors.black12, 
+            width: 1
+          ),
         ),
         child: DefaultTextStyle.merge(
           style: TextStyle(
@@ -728,8 +739,8 @@ class _SearchIconChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
-      shape: const StadiumBorder(side: BorderSide(color: Colors.black12)),
+      color: const Color(0xFFF5F5F7),
+      shape: const StadiumBorder(side: BorderSide(color: Colors.black12, width: 1)),
       child: InkWell(
         onTap: onTap,
         customBorder: const StadiumBorder(),
