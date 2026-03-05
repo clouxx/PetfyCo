@@ -63,11 +63,10 @@ class _MyAppState extends State<MyApp> {
         ),
         GoRoute(
           path: '/reset-password',
-          builder: (_, __) => const ResetPasswordPage(),
-        ),
-        GoRoute(
-          path: '/PetfyCo/reset-password',
-          builder: (_, __) => const ResetPasswordPage(),
+          builder: (_, state) {
+            final email = state.uri.queryParameters['email'];
+            return ResetPasswordPage(email: email);
+          },
         ),
         GoRoute(
           path: '/register',
