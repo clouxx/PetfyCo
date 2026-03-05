@@ -13,6 +13,7 @@ import 'pages/lost_pets_page.dart';
 import 'pages/adopt_page.dart';
 import 'pages/profile_page.dart';
 import 'pages/main_scaffold.dart';
+import 'pages/tienda_page.dart';
 
 // ✅ NUEVO: Forgot password page
 import 'pages/forgot_password_page.dart';
@@ -91,6 +92,10 @@ class _MyAppState extends State<MyApp> {
           builder: (_, state) => PetDetailPage(
             petId: state.pathParameters['id']!,
           ),
+        ),
+        GoRoute(
+          path: '/tienda',
+          builder: (_, __) => const TiendaPage(),
         ),
 
         // Ruta principal con barra inferior (4 tabs reales)
