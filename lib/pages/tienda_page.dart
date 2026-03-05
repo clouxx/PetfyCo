@@ -121,32 +121,14 @@ class _TiendaPageState extends State<TiendaPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // ─── Banner Promo ─────────────────────────────
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [AppColors.purple, AppColors.purple.withOpacity(0.7)],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      children: [
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Entrega a domicilio', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                              SizedBox(height: 4),
-                              Text('Todo lo que tu mascota necesita, en la puerta de tu casa.', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                            ],
-                          ),
-                        ),
-                        const Text('🚚', style: TextStyle(fontSize: 36)),
-                      ],
+                  // ─── Banner Promo (Logo real de la empresa) ─────────────
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.asset(
+                      'assets/logo/petfyco_nutricion.png',
+                      width: double.infinity,
+                      height: 150,
+                      fit: BoxFit.contain,
                     ),
                   ),
                   const SizedBox(height: 16),

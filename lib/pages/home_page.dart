@@ -336,36 +336,43 @@ class _HomePageState extends State<HomePage> {
               // 1. Promotional Carousel
               CarouselSlider(
                 options: CarouselOptions(
-                  height: 140.0,
+                  height: 160.0,
                   autoPlay: true,
+                  autoPlayInterval: const Duration(seconds: 4),
                   enlargeCenterPage: true,
-                  viewportFraction: 0.9,
+                  viewportFraction: 0.92,
                 ),
                 items: [
-                  'assets/logo/petfyco_logo_full.png', // Fallback
-                  'assets/logo/petfyco_logo_full.png', // Replace with real promo URLs later
-                ].map((i) {
-                  return Builder(
-                    builder: (BuildContext context) {
-                      return Container(
-                        width: MediaQuery.of(context).size.width,
-                        margin: const EdgeInsets.symmetric(horizontal: 5.0),
-                        decoration: BoxDecoration(
-                          color: AppColors.blue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(16),
-                          image: const DecorationImage(
-                            // This would be NetworkImage in production with real promos
-                            image: AssetImage('assets/logo/petfyco_icon.png'),
-                            fit: BoxFit.contain,
-                          )
-                        ),
-                        child: Center(
-                          child: Text('Espacio Promocional', style: TextStyle(color: AppColors.navy.withOpacity(0.5)))
-                        )
-                      );
-                    },
-                  );
-                }).toList(),
+                  // Slide 1 — PetfyCo Nutrición y Limpieza (logo real)
+                  _buildPromoSlide(
+                    child: Image.asset('assets/logo/petfyco_nutricion.png', fit: BoxFit.contain),
+                    bg: Colors.white,
+                  ),
+                  // Slide 2 — Tienda banner
+                  _buildPromoSlide(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text('🛍 Visita nuestra Tienda', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.navy)),
+                        const SizedBox(height: 6),
+                        Text('Nutrición y Limpieza a Domicilio', style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+                      ],
+                    ),
+                    bg: AppColors.purple.withOpacity(0.06),
+                  ),
+                  // Slide 3 — Héroe de Patitas
+                  _buildPromoSlide(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Text('💜 Héroe de Patitas', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.purple)),
+                        SizedBox(height: 6),
+                        Text('Apoya la causa por solo \$1 / mes', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                      ],
+                    ),
+                    bg: AppColors.purple.withOpacity(0.06),
+                  ),
+                ],
               ),
               const SizedBox(height: 24),
 
@@ -514,6 +521,21 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+  Widget _buildPromoSlide({required Widget child, required Color bg}) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: child,
       ),
     );
   }
