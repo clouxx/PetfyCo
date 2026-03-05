@@ -32,12 +32,21 @@ Future<void> main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final router = GoRouter(
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  late final GoRouter _router;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _router = GoRouter(
       initialLocation: '/splash',
       routes: [
         GoRoute(
@@ -48,19 +57,14 @@ class MyApp extends StatelessWidget {
           path: '/login',
           builder: (_, __) => const LoginPage(),
         ),
-
-        // ✅ NUEVO: Ruta para "Olvidé mi contraseña"
         GoRoute(
           path: '/forgot-password',
           builder: (_, __) => const ForgotPasswordPage(),
         ),
-
-        // ✅ NUEVO: Ruta para "Restablecer contraseña"
         GoRoute(
           path: '/reset-password',
           builder: (_, __) => const ResetPasswordPage(),
         ),
-
         GoRoute(
           path: '/register',
           builder: (_, __) => const RegisterPage(),
@@ -93,20 +97,27 @@ class MyApp extends StatelessWidget {
         GoRoute(
           path: '/profile',
           builder: (_, state) {
-            final uid = state.uri.queryParameters['uid'];
-            return const ProfilePage(); // Ajusta si vas a usar uid
+            return const ProfilePage();
           },
-        ),
-        GoRoute(
-          path: '/',
-          builder: (_, __) => const SplashPage(),
         ),
       ],
     );
 
+    // Escuchar el evento de recuperación de contraseña (deep link de Supabase)
+    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      final AuthChangeEvent event = data.event;
+      if (event == AuthChangeEvent.passwordRecovery) {
+        // Redirigir siempre a reset-password cuando venga un recovery link
+        _router.go('/reset-password');
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'PetfyCo',
-      routerConfig: router,
+      routerConfig: _router,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorSchemeSeed: const Color(0xFF1F6FEB),
