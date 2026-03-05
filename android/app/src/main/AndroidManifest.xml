@@ -47,6 +47,15 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="io.supabase.petfyco" android:host="login-callback" />
             </intent-filter>
+            
+            <!-- App Links for Android 12+ using standard http/https -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" android:host="clouxx.github.io" android:pathPrefix="/PetfyCo" />
+                <data android:scheme="https" />
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
