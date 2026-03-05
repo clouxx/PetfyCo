@@ -104,9 +104,9 @@ class _MainScaffoldState extends State<MainScaffold> {
       extendBody: true,
       floatingActionButton: FloatingActionButton(
         onPressed: () => _onTap(context, 2),
-        backgroundColor: AppColors.purple,
-        foregroundColor: Colors.white,
-        elevation: 4,
+        backgroundColor: AppColors.purple.withOpacity(0.15),
+        foregroundColor: AppColors.purple,
+        elevation: 0,
         shape: const CircleBorder(),
         child: const Icon(Icons.radar, size: 32),
       ),

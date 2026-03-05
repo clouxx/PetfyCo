@@ -138,8 +138,9 @@ class _LostPetsPageState extends State<LostPetsPage>
       // ─── Floating Action Button ──────────────────────────────
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/publish?estado=perdido'),
-        backgroundColor: Colors.red.shade600,
-        foregroundColor: Colors.white,
+        backgroundColor: AppColors.orange.withOpacity(0.15),
+        foregroundColor: AppColors.orange,
+        elevation: 0,
         icon: const Icon(Icons.warning_amber_rounded),
         label: const Text('¡Encontré una mascota!', style: TextStyle(fontWeight: FontWeight.bold)),
       ),
@@ -161,7 +162,11 @@ class _LostPetsPageState extends State<LostPetsPage>
               onPressed: () => context.push('/publish?estado=perdido'),
               icon: const Icon(Icons.campaign),
               label: const Text('Reportar mascota perdida'),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.orange.withOpacity(0.15),
+                foregroundColor: AppColors.orange,
+                elevation: 0,
+              ),
             ),
           ],
         ),
@@ -185,10 +190,10 @@ class _LostPetsPageState extends State<LostPetsPage>
           Container(
             width: 80, height: 80,
             decoration: BoxDecoration(
-              color: AppColors.purple.withOpacity(0.1),
+              color: AppColors.blue.withOpacity(0.15),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.map, size: 40, color: AppColors.purple),
+            child: const Icon(Icons.map, size: 40, color: AppColors.blue),
           ),
           const SizedBox(height: 16),
           const Text('Vista de Mapa', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
