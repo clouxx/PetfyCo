@@ -82,7 +82,18 @@ class _TiendaPageState extends State<TiendaPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F7FC),
+      backgroundColor: AppColors.bgLight,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        foregroundColor: AppColors.navy,
+        elevation: 0,
+        leading: BackButton(
+          color: AppColors.navy,
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
+        title: const Text('Tienda PetfyCo', style: TextStyle(color: AppColors.navy, fontWeight: FontWeight.bold)),
+        centerTitle: true,
+      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
