@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 import '../ui/map_picker.dart';
 import '../widgets/petfy_widgets.dart';
 import '../theme/app_theme.dart';
+import '../widgets/cross_sell_modal.dart';
 
 class PublishPetPage extends StatefulWidget {
   final String? presetEstado;
