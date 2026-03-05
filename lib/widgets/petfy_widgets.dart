@@ -44,6 +44,7 @@ class PetfyTextField extends StatelessWidget {
     this.onChanged,
     this.maxLines = 1,
     this.enabled = true,
+    this.readOnly = false,
   });
 
   final TextEditingController? controller;
@@ -57,6 +58,7 @@ class PetfyTextField extends StatelessWidget {
   final void Function(String)? onChanged;
   final int maxLines;
   final bool enabled;
+  final bool readOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -68,6 +70,7 @@ class PetfyTextField extends StatelessWidget {
       onChanged: onChanged,
       maxLines: maxLines,
       enabled: enabled,
+      readOnly: readOnly,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
