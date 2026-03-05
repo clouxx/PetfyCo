@@ -34,6 +34,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _loadPets();
+    _loadMyPets();
   }
 
   Future<void> _loadPets() async {
@@ -262,12 +263,17 @@ class _HomePageState extends State<HomePage> {
     await _loadPets();
   }
 
-  // --- Mock data for new UI ---
-  // In a real scenario we might load this from a 'pets' table where owner_id = me
-  List<Map<String, dynamic>> _myPetsMock = [
-    {'name': 'Chiquitas', 'image': 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80', 'type': 'perro'},
-    {'name': 'Valentina', 'image': 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80', 'type': 'gato'},
-  ];
+  // --- My real pets from Supabase ---
+  List<Map<String, dynamic>> _myPets = [];
+
+  Future<void> _loadMyPets() async {
+    final me = _sb.auth.currentUser?.id;
+    if (me == null) return;
+    try {
+      final data = await _sb.from('pets').select('id, nombre, especie, pet_photos(url, position)').eq('owner_id', me).limit(10);
+      if (mounted) setState(() => _myPets = List<Map<String, dynamic>>.from(data));
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -276,7 +282,7 @@ class _HomePageState extends State<HomePage> {
     final displayName = user?.email?.split('@').first ?? 'Amigo';
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.bgLight,
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -293,8 +299,16 @@ class _HomePageState extends State<HomePage> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.calendar_month_outlined),
-            onPressed: () {}, // Future Calendar Feature
+            icon: const Icon(Icons.calendar_month_outlined, color: AppColors.navy),
+            onPressed: () async {
+              await showDatePicker(
+                context: context,
+                initialDate: DateTime.now(),
+                firstDate: DateTime(2024),
+                lastDate: DateTime(2026, 12),
+                locale: const Locale('es', 'CO'),
+              );
+            },
           ),
           IconButton(
             onPressed: () => context.push('/lost'),
@@ -384,14 +398,13 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     const Text('Mis Mascotas', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                     TextButton.icon(
-                      onPressed: () {
-                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Próximamente: Agregar mascota propia')));
-                      },
+                      onPressed: () => context.push('/publish'),
                       icon: const Icon(Icons.add, size: 18, color: AppColors.purple),
-                      label: const Text('Agregar', style: TextStyle(color: AppColors.purple)),
+                      label: const Text('Agregar', style: TextStyle(color: AppColors.purple, fontWeight: FontWeight.bold)),
                       style: TextButton.styleFrom(
                         backgroundColor: AppColors.purple.withOpacity(0.1),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       ),
                     ),
                   ],
@@ -401,42 +414,69 @@ class _HomePageState extends State<HomePage> {
               
               // Horizontal Pets List
               SizedBox(
-                height: 100,
+                height: 110,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: _myPetsMock.length + 1,
+                  itemCount: _myPets.length + 1,
                   itemBuilder: (context, index) {
-                    if (index == _myPetsMock.length) {
-                       return Padding(
-                         padding: const EdgeInsets.only(right: 16.0),
-                         child: Column(
-                           mainAxisSize: MainAxisSize.min,
-                           children: [
-                             CircleAvatar(
-                               radius: 35,
-                               backgroundColor: Colors.grey.shade200,
-                               child: const Icon(Icons.add, color: Colors.grey, size: 30),
-                             ),
-                             const SizedBox(height: 8),
-                             const Text('Nuevo', style: TextStyle(fontWeight: FontWeight.w500)),
-                           ],
+                    if (index == _myPets.length) {
+                       return GestureDetector(
+                         onTap: () => context.push('/publish'),
+                         child: Padding(
+                           padding: const EdgeInsets.only(right: 16.0),
+                           child: Column(
+                             mainAxisSize: MainAxisSize.min,
+                             children: [
+                               Container(
+                                 width: 70, height: 70,
+                                 decoration: BoxDecoration(
+                                   color: AppColors.purple.withOpacity(0.1),
+                                   shape: BoxShape.circle,
+                                   border: Border.all(color: AppColors.purple.withOpacity(0.3), width: 2, strokeAlign: BorderSide.strokeAlignOutside),
+                                 ),
+                                 child: const Icon(Icons.add, color: AppColors.purple, size: 30),
+                               ),
+                               const SizedBox(height: 8),
+                               const Text('Nuevo', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 12)),
+                             ],
+                           ),
                          ),
                        );
                     }
-                    final p = _myPetsMock[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 16.0),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CircleAvatar(
-                            radius: 35,
-                            backgroundImage: NetworkImage(p['image']),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(p['name'], style: const TextStyle(fontWeight: FontWeight.w500)),
-                        ],
+                    final p = _myPets[index];
+                    final nombre = p['nombre'] as String? ?? 'Mi mascota';
+                    // Get first photo
+                    String? imgUrl;
+                    final photos = p['pet_photos'];
+                    if (photos is List && photos.isNotEmpty) {
+                      final sorted = photos.whereType<Map>().map((e) => Map<String, dynamic>.from(e as Map)).toList()
+                        ..sort((a, b) => (a['position'] as int? ?? 0).compareTo(b['position'] as int? ?? 0));
+                      imgUrl = sorted.first['url'] as String?;
+                    }
+                    return GestureDetector(
+                      onTap: () => context.push('/pet/${p['id']}'),
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 16.0),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 70, height: 70,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(color: AppColors.purple, width: 2),
+                              ),
+                              child: ClipOval(
+                                child: imgUrl != null
+                                    ? Image.network(imgUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: AppColors.purple.withOpacity(0.1), child: const Icon(Icons.pets, color: AppColors.purple)))
+                                    : Container(color: AppColors.purple.withOpacity(0.1), child: const Icon(Icons.pets, color: AppColors.purple)),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(nombre, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12), overflow: TextOverflow.ellipsis),
+                          ],
+                        ),
                       ),
                     );
                   },
