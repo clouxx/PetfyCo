@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../ui/map_picker.dart';
 import '../widgets/petfy_widgets.dart';
@@ -31,9 +32,12 @@ class _ProfilePageState extends State<ProfilePage> {
   double? _lat;
   double? _lng;
   LatLng? _pickedPoint;
+  String? _avatarUrl; // Para mostrar la foto actual
 
   bool _loading = true;
   bool _saving = false;
+  
+  final _picker = ImagePicker();
 
   @override
   void initState() {
@@ -65,6 +69,7 @@ class _ProfilePageState extends State<ProfilePage> {
           _phoneCtrl.text = profile['phone'] ?? '';
           _deptName = profile['depto'];
           _cityName = profile['municipio'];
+          _avatarUrl = profile['avatar_url']; // <--- Carga de la foto
           
           if (_deptName != null) {
             final match = _departments.where((d) => d['name'] == _deptName).toList();
@@ -151,6 +156,40 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Future<void> _pickAndUploadImage() async {
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (image == null) return;
+    
+    setState(() => _saving = true);
+    try {
+      final user = _sb.auth.currentUser;
+      if (user == null) return;
+
+      final path = '${user.id}/${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final bytes = await image.readAsBytes();
+      
+      // Asegúrate de tener un bucket llamado 'avatars' en Supabase Storage
+      await _sb.storage.from('avatars').uploadBinary(
+        path,
+        bytes,
+        fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
+      );
+      
+      final publicUrl = _sb.storage.from('avatars').getPublicUrl(path);
+      
+      await _sb.from('profiles').update({'avatar_url': publicUrl}).eq('id', user.id);
+      
+      if (mounted) {
+        setState(() => _avatarUrl = publicUrl);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Foto de perfil actualizada'), backgroundColor: Colors.green));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al subir foto: $e'), backgroundColor: Colors.red));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
     if (_deptName == null || _cityName == null) {
@@ -206,8 +245,36 @@ class _ProfilePageState extends State<ProfilePage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Icon(Icons.account_circle, size: 80, color: Colors.grey),
-                        const SizedBox(height: 16),
+                        Center(
+                          child: Stack(
+                            children: [
+                              CircleAvatar(
+                                radius: 50,
+                                backgroundColor: Colors.grey[300],
+                                backgroundImage: _avatarUrl != null ? NetworkImage(_avatarUrl!) : null,
+                                child: _avatarUrl == null
+                                    ? const Icon(Icons.person, size: 60, color: Colors.white)
+                                    : null,
+                              ),
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: InkWell(
+                                  onTap: _saving ? null : _pickAndUploadImage,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.blue,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
                         
                         PetfyTextField(
                           controller: _nameCtrl,
