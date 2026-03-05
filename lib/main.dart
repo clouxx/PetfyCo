@@ -66,6 +66,10 @@ class _MyAppState extends State<MyApp> {
           builder: (_, __) => const ResetPasswordPage(),
         ),
         GoRoute(
+          path: '/PetfyCo/reset-password',
+          builder: (_, __) => const ResetPasswordPage(),
+        ),
+        GoRoute(
           path: '/register',
           builder: (_, __) => const RegisterPage(),
         ),
