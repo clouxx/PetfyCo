@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../theme/app_theme.dart';
+import '../widgets/cross_sell_modal.dart';
 
 class PetDetailPage extends StatefulWidget {
   final String petId;
@@ -195,7 +196,17 @@ class _PetDetailPageState extends State<PetDetailPage> {
           .eq('id', _pet!['id'] as String);
       await _load();
       if (!mounted) return;
-      _showSuccessDialog(isFound: false);
+      
+      final name = _pet?['nombre'] ?? 'La mascota';
+      final species = _pet?['especie'] ?? 'mascota';
+
+      _showSuccessDialog(
+        isFound: false,
+        onClose: () {
+          // Enganche Comercial Post-Adopción
+          CrossSellModal.show(context, petName: name, petSpecies: species);
+        },
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
@@ -203,7 +214,7 @@ class _PetDetailPageState extends State<PetDetailPage> {
     }
   }
 
-  void _showSuccessDialog({required bool isFound}) {
+  void _showSuccessDialog({required bool isFound, VoidCallback? onClose}) {
     final name = _pet?['nombre'] ?? 'La mascota';
     final title = isFound ? '¡Mascota Encontrada!' : '¡Adopción Exitosa!';
     final action = isFound ? 'encontrado' : 'adoptado';
@@ -239,7 +250,10 @@ class _PetDetailPageState extends State<PetDetailPage> {
               ),
               const SizedBox(height: 24),
               ElevatedButton(
-                onPressed: () => Navigator.pop(_),
+                onPressed: () {
+                  Navigator.pop(_);
+                  if (onClose != null) onClose();
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.orange,
                   foregroundColor: Colors.white,

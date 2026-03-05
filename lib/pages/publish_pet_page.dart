@@ -287,7 +287,17 @@ class _PublishPetPageState extends State<PublishPetPage> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(
               _editingPetId == null ? '¡Mascota publicada!' : 'Mascota actualizada')));
-      context.go('/home');
+              
+      // Enganche comercial al registrar nueva mascota
+      if (_editingPetId == null) {
+        await CrossSellModal.show(
+          context, 
+          petName: _nombreCtrl.text.trim(), 
+          petSpecies: _especie
+        );
+      }
+      
+      if (mounted) context.go('/home');
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
