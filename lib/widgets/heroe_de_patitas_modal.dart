@@ -136,9 +136,9 @@ class HeroeDePatitasModal extends StatelessWidget {
             ],
 
             // Price
-            const Text(
-              '\$1.00 / mes',
-              style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: AppColors.purple),
+            Text(
+              _getPrice(context),
+              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: AppColors.purple),
             ),
             const SizedBox(height: 20),
 
@@ -173,5 +173,13 @@ class HeroeDePatitasModal extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _getPrice(BuildContext context) {
+    try {
+      final country = View.of(context).platformDispatcher.locale.countryCode;
+      if (country == 'CO') return '5.000 COP / mes';
+    } catch (_) {}
+    return '\$1.00 USD / mes';
   }
 }
