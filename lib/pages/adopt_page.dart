@@ -88,15 +88,26 @@ class _AdoptPageState extends State<AdoptPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F7FC),
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ─── Header Area ────────────────────────────────────
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      backgroundColor: AppColors.bgLight,
+      body: Container(
+        decoration: const BoxDecoration(
+          color: AppColors.bgLight,
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.blue,
+              blurRadius: 90,
+              spreadRadius: -40,
+              offset: Offset(0, -20),
+            )
+          ]
+        ),
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ─── Header Area ────────────────────────────────────
+              Container(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -232,6 +243,7 @@ class _AdoptPageState extends State<AdoptPage> {
             ),
           ],
         ),
+        ),
       ),
     );
   }
@@ -253,7 +265,7 @@ class _SpeciesChip extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? AppColors.purple.withOpacity(0.12) : Colors.grey.shade100,
+          color: selected ? AppColors.purpleGlass : AppColors.greyBg,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: selected ? AppColors.purple : Colors.transparent, width: 1.5),
         ),
@@ -305,7 +317,7 @@ class _AdoptPetCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 12, offset: const Offset(0, 4))],
+          border: Border.all(color: Colors.grey.shade200),
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(

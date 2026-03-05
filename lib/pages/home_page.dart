@@ -336,10 +336,24 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(width: 8),
         ],
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
       ),
-      body: RefreshIndicator(
+      extendBodyBehindAppBar: true,
+      body: Container(
+        decoration: BoxDecoration(
+          color: AppColors.bgLight,
+          boxShadow: const [
+            BoxShadow(
+              color: AppColors.blue,
+              blurRadius: 90,
+              spreadRadius: -40,
+              offset: Offset(0, -20),
+            )
+          ]
+        ),
+        child: SafeArea(
+          child: RefreshIndicator(
         onRefresh: _loadPets,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -402,9 +416,9 @@ class _HomePageState extends State<HomePage> {
                       icon: const Icon(Icons.add, size: 18, color: AppColors.purple),
                       label: const Text('Agregar', style: TextStyle(color: AppColors.purple, fontWeight: FontWeight.bold)),
                       style: TextButton.styleFrom(
-                        backgroundColor: AppColors.purple.withOpacity(0.1),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        backgroundColor: AppColors.purpleGlass,
+                        shape: const StadiumBorder(),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       ),
                     ),
                   ],
@@ -430,12 +444,11 @@ class _HomePageState extends State<HomePage> {
                              children: [
                                Container(
                                  width: 70, height: 70,
-                                 decoration: BoxDecoration(
-                                   color: AppColors.purple.withOpacity(0.1),
+                                 decoration: const BoxDecoration(
+                                   color: AppColors.greyBg,
                                    shape: BoxShape.circle,
-                                   border: Border.all(color: AppColors.purple.withOpacity(0.3), width: 2, strokeAlign: BorderSide.strokeAlignOutside),
                                  ),
-                                 child: const Icon(Icons.add, color: AppColors.purple, size: 30),
+                                 child: const Icon(Icons.add, color: AppColors.greyText, size: 30),
                                ),
                                const SizedBox(height: 8),
                                const Text('Nuevo', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 12)),
@@ -463,14 +476,13 @@ class _HomePageState extends State<HomePage> {
                           children: [
                             Container(
                               width: 70, height: 70,
-                              decoration: BoxDecoration(
+                              decoration: const BoxDecoration(
                                 shape: BoxShape.circle,
-                                border: Border.all(color: AppColors.purple, width: 2),
                               ),
                               child: ClipOval(
                                 child: imgUrl != null
-                                    ? Image.network(imgUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: AppColors.purple.withOpacity(0.1), child: const Icon(Icons.pets, color: AppColors.purple)))
-                                    : Container(color: AppColors.purple.withOpacity(0.1), child: const Icon(Icons.pets, color: AppColors.purple)),
+                                    ? Image.network(imgUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: AppColors.greyBg, child: const Icon(Icons.pets, color: AppColors.greyText)))
+                                    : Container(color: AppColors.greyBg, child: const Icon(Icons.pets, color: AppColors.greyText)),
                               ),
                             ),
                             const SizedBox(height: 6),
@@ -508,6 +520,8 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       ),
+      ),
+      ),
     );
   }
 
@@ -515,15 +529,8 @@ class _HomePageState extends State<HomePage> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          )
-        ],
-        border: Border.all(color: Colors.grey.shade100),
+        borderRadius: BorderRadius.circular(20), // More rounded corners
+        border: Border.all(color: Colors.grey.shade200),
       ),
       child: Material(
         color: Colors.transparent,
@@ -539,8 +546,8 @@ class _HomePageState extends State<HomePage> {
               children: [
                 Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.purple.withOpacity(0.1),
+                  decoration: const BoxDecoration(
+                    color: AppColors.greyBg,
                     shape: BoxShape.circle,
                   ),
                   child: Icon(icon, color: AppColors.purple, size: 28),
@@ -570,7 +577,6 @@ class _HomePageState extends State<HomePage> {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       clipBehavior: Clip.antiAlias,
       child: Padding(

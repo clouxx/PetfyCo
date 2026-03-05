@@ -111,46 +111,50 @@ class _MainScaffoldState extends State<MainScaffold> {
         child: const Icon(Icons.radar, size: 32),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: Theme(
-        data: Theme.of(context).copyWith(
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
+      bottomNavigationBar: NavigationBarTheme(
+        data: NavigationBarThemeData(
+          indicatorColor: AppColors.purpleGlass,
+          backgroundColor: Colors.white.withOpacity(0.9),
+          surfaceTintColor: Colors.transparent,
+          labelTextStyle: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return const TextStyle(color: AppColors.purple, fontWeight: FontWeight.bold, fontSize: 11);
+            }
+            return TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w500, fontSize: 11);
+          }),
+          iconTheme: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return const IconThemeData(color: AppColors.purple);
+            }
+            return IconThemeData(color: Colors.grey.shade500);
+          }),
         ),
-        child: BottomNavigationBar(
-          currentIndex: visualIndex,
-          onTap: (i) => _onTap(context, i),
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
-          selectedItemColor: AppColors.purple,
-          unselectedItemColor: Colors.grey.shade400,
-          showSelectedLabels: true,
-          showUnselectedLabels: true,
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
-          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 11),
-          elevation: 20,
-          items: const [
-            BottomNavigationBarItem(
+        child: NavigationBar(
+          selectedIndex: visualIndex,
+          onDestinationSelected: (i) => _onTap(context, i),
+          destinations: const [
+            NavigationDestination(
               icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home),
+              selectedIcon: Icon(Icons.home),
               label: 'Inicio',
             ),
-            BottomNavigationBarItem(
+            NavigationDestination(
               icon: Icon(Icons.location_searching),
-              activeIcon: Icon(Icons.my_location),
+              selectedIcon: Icon(Icons.my_location),
               label: 'Perdidos',
             ),
-            BottomNavigationBarItem(
-              icon: Icon(null), // Placeholder for centered FAB
+            NavigationDestination(
+              icon: SizedBox.shrink(), // Empty placeholder for FAB
               label: '',
             ),
-            BottomNavigationBarItem(
+            NavigationDestination(
               icon: Icon(Icons.pets_outlined),
-              activeIcon: Icon(Icons.pets),
+              selectedIcon: Icon(Icons.pets),
               label: 'Adoptar',
             ),
-            BottomNavigationBarItem(
+            NavigationDestination(
               icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
+              selectedIcon: Icon(Icons.person),
               label: 'Perfil',
             ),
           ],
