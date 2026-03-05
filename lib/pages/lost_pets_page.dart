@@ -136,13 +136,16 @@ class _LostPetsPageState extends State<LostPetsPage>
       ),
 
       // ─── Floating Action Button ──────────────────────────────
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/publish?estado=perdido'),
-        backgroundColor: AppColors.orange.withOpacity(0.15),
-        foregroundColor: AppColors.orange,
-        elevation: 0,
-        icon: const Icon(Icons.warning_amber_rounded),
-        label: const Text('¡Encontré una mascota!', style: TextStyle(fontWeight: FontWeight.bold)),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 80.0),
+        child: FloatingActionButton.extended(
+          onPressed: () => context.push('/publish?estado=perdido'),
+          backgroundColor: AppColors.orange.withOpacity(0.15),
+          foregroundColor: AppColors.orange,
+          elevation: 0,
+          icon: const Icon(Icons.warning_amber_rounded),
+          label: const Text('¡Encontré una mascota!', style: TextStyle(fontWeight: FontWeight.bold)),
+        ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );

@@ -414,7 +414,7 @@ class _HomePageState extends State<HomePage> {
                     TextButton.icon(
                       onPressed: () => context.push('/publish'),
                       icon: const Icon(Icons.add, size: 18, color: AppColors.navy),
-                      label: const Text('Agregar', style: TextStyle(color: AppColors.navy, fontWeight: FontWeight.bold)),
+                      label: const Text('Publicar mascota', style: TextStyle(color: AppColors.navy, fontWeight: FontWeight.bold)),
                       style: TextButton.styleFrom(
                         backgroundColor: AppColors.blue.withOpacity(0.15),
                         shape: const StadiumBorder(),

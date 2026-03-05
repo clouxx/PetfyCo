@@ -382,6 +382,7 @@ class _AdoptPetCard extends StatelessWidget {
                       if (especie.isNotEmpty) _tag(especie == 'perro' ? '🐶 Perro' : '🐱 Gato'),
                       if (edadAnios != null) _tag('$edadAnios año${edadAnios == 1 ? '' : 's'}'),
                       if (talla != null && talla.isNotEmpty) _tag(talla[0].toUpperCase() + talla.substring(1)),
+                      if (pet['estado'] == 'adoptado') _adoptedTag(),
                     ],
                   ),
                 ],
@@ -406,6 +407,24 @@ class _AdoptPetCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(label, style: const TextStyle(fontSize: 10, color: AppColors.purple, fontWeight: FontWeight.w600)),
+    );
+  }
+
+  Widget _adoptedTag() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.green.shade600,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: const [
+          Icon(Icons.check_circle, size: 12, color: Colors.white),
+          SizedBox(width: 4),
+          Text('Adoptado', style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold)),
+        ],
+      ),
     );
   }
 }
