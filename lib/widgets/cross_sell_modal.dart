@@ -136,7 +136,7 @@ class CrossSellModal extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.grey,
+        color: AppColors.greyBg,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
