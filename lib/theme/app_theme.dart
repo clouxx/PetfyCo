@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class AppColors {
   // ── EXACT Original PetfyCo Colors ─────────────────────────────────────
-  static const purple = Color(0xFF7C5CBF);    // Morado original petfyco (Botones, FAB, Iconos)
+  static const purple = Color(0xFF4CB5F9);    // Actualizado a Azul Cielo a petición (mantiene nombre 'purple' por compatibilidad)
   static const navy   = Color(0xFF2D2D2D);    // Texto principal oscuro
   static const blue   = Color(0xFF56C4F2);    // Acento azul radiante (Iconos género)
   static const orange = Color(0xFFFF9800);    // Etiquetas adopción / Alertas
