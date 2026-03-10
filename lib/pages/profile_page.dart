@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../ui/map_picker.dart';
 import '../widgets/petfy_widgets.dart';
+import '../theme/app_theme.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -392,8 +393,8 @@ class _ProfilePageState extends State<ProfilePage> {
                           child: ListTile(
                             leading: Container(
                               padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.purple.shade50),
-                              child: const Icon(Icons.add_circle_outline, color: Colors.purple),
+                              decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.purpleGlass),
+                              child: const Icon(Icons.add_circle_outline, color: AppColors.purple),
                             ),
                             title: const Text('Agregar Datos De Facturación'),
                             trailing: const Icon(Icons.chevron_right),
@@ -411,8 +412,8 @@ class _ProfilePageState extends State<ProfilePage> {
                           child: ListTile(
                             leading: Container(
                               padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.purple.shade50),
-                              child: const Icon(Icons.location_on_outlined, color: Colors.purple),
+                              decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.purpleGlass),
+                              child: const Icon(Icons.location_on_outlined, color: AppColors.purple),
                             ),
                             title: const Text('Agregar Dirección de Entrega'),
                             trailing: const Icon(Icons.chevron_right),
