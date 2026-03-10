@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_theme.dart';
+import '../providers/cart_provider.dart';
+import 'cart_page.dart';
 
 /// E-commerce store page - PetfyCo Nutrición y Limpieza a Domicilio
-class TiendaPage extends StatefulWidget {
+class TiendaPage extends ConsumerStatefulWidget {
   const TiendaPage({super.key});
 
   @override
-  State<TiendaPage> createState() => _TiendaPageState();
+  ConsumerState<TiendaPage> createState() => _TiendaPageState();
 }
 
-class _TiendaPageState extends State<TiendaPage> {
+class _TiendaPageState extends ConsumerState<TiendaPage> {
   String _selectedCategory = 'Todos';
 
   final List<String> _categories = ['Todos', 'Alimentos', 'Baño y Limpieza', 'Accesorios', 'Salud'];
@@ -81,6 +84,9 @@ class _TiendaPageState extends State<TiendaPage> {
 
   @override
   Widget build(BuildContext context) {
+    final cartItems = ref.watch(cartProvider);
+    final cartCount = ref.read(cartProvider.notifier).totalItems;
+
     return Scaffold(
       backgroundColor: AppColors.bgLight,
       appBar: AppBar(
@@ -115,16 +121,29 @@ class _TiendaPageState extends State<TiendaPage> {
                           Text('Nutrición y Limpieza a Domicilio', style: TextStyle(color: Colors.grey, fontSize: 13)),
                         ],
                       ),
-                      IconButton(
-                        onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Carrito próximamente 🛒'))),
-                        icon: Stack(
+                      // ── Ícono carrito con badge real ──────────
+                      GestureDetector(
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const CartPage()),
+                        ),
+                        child: Stack(
                           clipBehavior: Clip.none,
-                          children: const [
-                            Icon(Icons.shopping_bag_outlined, color: AppColors.purple),
-                            Positioned(
-                              right: -4, top: -4,
-                              child: CircleAvatar(radius: 7, backgroundColor: AppColors.purple, child: Text('0', style: TextStyle(color: Colors.white, fontSize: 9))),
-                            ),
+                          children: [
+                            const Icon(Icons.shopping_bag_outlined, color: AppColors.purple, size: 28),
+                            if (cartCount > 0)
+                              Positioned(
+                                right: -4,
+                                top: -4,
+                                child: CircleAvatar(
+                                  radius: 8,
+                                  backgroundColor: AppColors.orange,
+                                  child: Text(
+                                    cartCount > 9 ? '9+' : '$cartCount',
+                                    style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -188,7 +207,20 @@ class _TiendaPageState extends State<TiendaPage> {
                   mainAxisExtent: 220,
                 ),
                 itemCount: _filtered.length,
-                itemBuilder: (_, i) => _ProductCard(product: _filtered[i]),
+                itemBuilder: (_, i) => _ProductCard(
+                  product: _filtered[i],
+                  inCartQty: cartItems
+                      .where((e) => e.name == _filtered[i].name)
+                      .fold(0, (s, e) => s + e.quantity),
+                  onAdd: () => ref.read(cartProvider.notifier).add(
+                    CartItem(
+                      name: _filtered[i].name,
+                      description: _filtered[i].description,
+                      price: _filtered[i].price,
+                      emoji: _filtered[i].emoji,
+                    ),
+                  ),
+                ),
               ),
             ),
           ],
@@ -217,8 +249,10 @@ class _Product {
 // ─────────── Product Card ────────────────────────────────────────────────────
 
 class _ProductCard extends StatelessWidget {
-  const _ProductCard({required this.product});
+  const _ProductCard({required this.product, required this.inCartQty, required this.onAdd});
   final _Product product;
+  final int inCartQty;
+  final VoidCallback onAdd;
 
   @override
   Widget build(BuildContext context) {
@@ -253,6 +287,16 @@ class _ProductCard extends StatelessWidget {
                       child: Text(product.badgeText!, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                     ),
                   ),
+                // Badge cantidad en carrito
+                if (inCartQty > 0)
+                  Positioned(
+                    top: 10, right: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                      decoration: BoxDecoration(color: AppColors.purple, borderRadius: BorderRadius.circular(8)),
+                      child: Text('$inCartQty en carrito', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -271,7 +315,7 @@ class _ProductCard extends StatelessWidget {
                   children: [
                     Text(formattedPrice, style: const TextStyle(color: AppColors.purple, fontWeight: FontWeight.bold, fontSize: 14)),
                     GestureDetector(
-                      onTap: () => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${product.name} añadido al carrito 🛒'))),
+                      onTap: onAdd,
                       child: Container(
                         padding: const EdgeInsets.all(6),
                         decoration: const BoxDecoration(color: AppColors.purple, shape: BoxShape.circle),

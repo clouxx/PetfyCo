@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import '../theme/app_theme.dart';
 
 class MapPickerDialog extends StatefulWidget {
   final LatLng? initial;
@@ -20,35 +22,95 @@ class _MapPickerDialogState extends State<MapPickerDialog> {
 
   @override
   Widget build(BuildContext context) {
-    // Placeholder sin dependencias pesadas (flutter_map/google_maps).
-    // Si ya añadiste el mapa real, reemplaza este Container por tu widget de mapa
-    // y actualiza _point cuando el usuario toque/arrastre.
     return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 700, maxHeight: 520),
+        constraints: const BoxConstraints(maxWidth: 700, maxHeight: 540),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(16),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Selecciona una ubicación', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+              // ── Header ──────────────────────────────────────
+              Row(
+                children: [
+                  const Icon(Icons.location_on, color: AppColors.purple),
+                  const SizedBox(width: 8),
+                  const Text('Selecciona una ubicación',
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close, size: 20),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Toca el mapa para elegir el punto exacto',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
               const SizedBox(height: 12),
+
+              // ── Mapa ─────────────────────────────────────────
               Expanded(
-                child: Container(
-                  color: Colors.grey.shade200,
-                  alignment: Alignment.center,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: FlutterMap(
+                    options: MapOptions(
+                      initialCenter: _point,
+                      initialZoom: 13,
+                      onTap: (_, latLng) => setState(() => _point = latLng),
+                    ),
                     children: [
-                      const Icon(Icons.map_outlined, size: 64),
-                      const SizedBox(height: 8),
-                      Text('Mapa de ejemplo (reemplaza por tu widget de mapa)'),
-                      const SizedBox(height: 8),
-                      Text('Lat: ${_point.latitude.toStringAsFixed(6)}  Lng: ${_point.longitude.toStringAsFixed(6)}'),
+                      TileLayer(
+                        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        userAgentPackageName: 'com.petfyco.app',
+                      ),
+                      MarkerLayer(
+                        markers: [
+                          Marker(
+                            point: _point,
+                            width: 44,
+                            height: 44,
+                            child: const Icon(
+                              Icons.location_pin,
+                              color: AppColors.purple,
+                              size: 44,
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
               ),
+
+              // ── Coordenadas ───────────────────────────────────
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.purpleGlass,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.my_location, size: 14, color: AppColors.purple),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Lat: ${_point.latitude.toStringAsFixed(6)}   Lng: ${_point.longitude.toStringAsFixed(6)}',
+                      style: const TextStyle(fontSize: 12, color: AppColors.purple, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 12),
+
+              // ── Botones ───────────────────────────────────────
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
@@ -57,12 +119,13 @@ class _MapPickerDialogState extends State<MapPickerDialog> {
                     child: const Text('Cancelar'),
                   ),
                   const SizedBox(width: 8),
-                  FilledButton(
+                  ElevatedButton.icon(
                     onPressed: () => Navigator.pop(context, _point),
-                    child: const Text('Usar este punto'),
+                    icon: const Icon(Icons.check, size: 16),
+                    label: const Text('Usar este punto'),
                   ),
                 ],
-              )
+              ),
             ],
           ),
         ),
