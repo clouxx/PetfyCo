@@ -177,8 +177,14 @@ class _LostPetsPageState extends State<LostPetsPage>
     }
     return RefreshIndicator(
       onRefresh: _load,
-      child: ListView.builder(
+      child: GridView.builder(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 16,
+          crossAxisSpacing: 16,
+          mainAxisExtent: 280,
+        ),
         itemCount: _pets.length,
         itemBuilder: (_, i) => _LostListCard(pet: _pets[i]),
       ),
@@ -293,7 +299,6 @@ class _LostListCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final nombre = pet['nombre'] as String? ?? 'Sin nombre';
     final municipio = (pet['municipio'] as String?)?.trim() ?? '';
-    final depto = (pet['depto'] as String?)?.trim() ?? '';
     final especie = (pet['especie'] as String?)?.toLowerCase() ?? '';
     final edadMeses = pet['edad_meses'] as int?;
     final talla = pet['talla'] as String?;
@@ -315,69 +320,84 @@ class _LostListCard extends StatelessWidget {
     return GestureDetector(
       onTap: () => context.push('/pet/${pet['id']}'),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 12, offset: const Offset(0, 4))],
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 12, offset: const Offset(0, 4))],
         ),
-        child: Row(
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image
-            ClipRRect(
-              borderRadius: const BorderRadius.horizontal(left: Radius.circular(20)),
-              child: SizedBox(
-                width: 110, height: 120,
-                child: imageUrl != null
-                    ? Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _ph())
-                    : _ph(),
+            // Image with overlaid chips
+            Expanded(
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: imageUrl != null
+                        ? Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _ph())
+                        : _ph(),
+                  ),
+                  // Translucent chips bottom
+                  Positioned(
+                    left: 8,
+                    right: 8,
+                    bottom: 8,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Wrap(
+                          spacing: 4,
+                          runSpacing: 4,
+                          children: [
+                            if (especie.isNotEmpty) _overlayTag(especie == 'perro' ? 'Perro' : 'Gato'),
+                            if (edadLabel != null) _overlayTag(edadLabel),
+                            if (talla != null && talla.isNotEmpty) _overlayTag(talla[0].toUpperCase() + talla.substring(1)),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        // Perdido badge
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            color: Colors.red.withOpacity(0.85),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.campaign, size: 12, color: Colors.white),
+                                const SizedBox(width: 4),
+                                const Text('Perdido', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold)),
+                                if (days != null) ...[
+                                  const SizedBox(width: 4),
+                                  Text('· $days d', style: const TextStyle(fontSize: 10, color: Colors.white70)),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            // Info
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Status badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(6)),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.campaign, size: 12, color: Colors.red.shade700),
-                          const SizedBox(width: 4),
-                          Text('PERDIDO', style: TextStyle(fontSize: 11, color: Colors.red.shade700, fontWeight: FontWeight.bold)),
-                          if (days != null) ...[
-                            const SizedBox(width: 4),
-                            Text('• hace $days días', style: TextStyle(fontSize: 10, color: Colors.red.shade400)),
-                          ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(nombre, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17), overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(Icons.place, size: 14, color: AppColors.pink),
-                        const SizedBox(width: 4),
-                        Expanded(child: Text('$municipio, $depto', style: TextStyle(color: Colors.grey.shade600, fontSize: 12), overflow: TextOverflow.ellipsis)),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 4,
-                      children: [
-                        if (especie.isNotEmpty) _chip(especie == 'perro' ? '🐶 Perro' : '🐱 Gato'),
-                        if (edadLabel != null) _chip(edadLabel),
-                        if (talla != null && talla.isNotEmpty) _chip(talla[0].toUpperCase() + talla.substring(1)),
-                      ],
-                    ),
-                  ],
-                ),
+            // Info Area
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(nombre, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      const Icon(Icons.place, size: 12, color: Colors.grey),
+                      const SizedBox(width: 2),
+                      Expanded(child: Text(municipio, style: const TextStyle(color: Colors.grey, fontSize: 11), overflow: TextOverflow.ellipsis)),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
@@ -388,9 +408,12 @@ class _LostListCard extends StatelessWidget {
 
   Widget _ph() => Container(color: Colors.red.shade50, child: const Center(child: Icon(Icons.pets, color: Colors.redAccent, size: 36)));
 
-  Widget _chip(String label) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-    decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(8)),
-    child: Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600)),
+  Widget _overlayTag(String label) => ClipRRect(
+    borderRadius: BorderRadius.circular(8),
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      color: Colors.white.withOpacity(0.72),
+      child: Text(label, style: const TextStyle(fontSize: 11, color: Colors.black87, fontWeight: FontWeight.w600)),
+    ),
   );
 }

@@ -324,13 +324,13 @@ class _AdoptPetCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.grey.shade200),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 12, offset: const Offset(0, 4))],
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image with gender badge
+            // Image with overlaid chips
             Expanded(
               child: Stack(
                 children: [
@@ -339,6 +339,7 @@ class _AdoptPetCard extends StatelessWidget {
                         ? Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _ph())
                         : _ph(),
                   ),
+                  // Gender badge top-right
                   if (sexo != null)
                     Positioned(
                       top: 10,
@@ -356,12 +357,36 @@ class _AdoptPetCard extends StatelessWidget {
                         ),
                       ),
                     ),
+                  // Translucent chips at bottom of image
+                  Positioned(
+                    left: 8,
+                    right: 8,
+                    bottom: 8,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Wrap(
+                          spacing: 4,
+                          runSpacing: 4,
+                          children: [
+                            if (especie.isNotEmpty) _overlayTag(especie == 'perro' ? 'Perro' : 'Gato'),
+                            if (edadAnios != null) _overlayTag('$edadAnios año${edadAnios == 1 ? '' : 's'}'),
+                            if (talla != null && talla.isNotEmpty) _overlayTag(talla[0].toUpperCase() + talla.substring(1)),
+                          ],
+                        ),
+                        if (pet['estado'] == 'adoptado') ...[
+                          const SizedBox(height: 4),
+                          _adoptedTag(),
+                        ],
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
-            // Info Area
+            // Info Area (name + location only)
             Padding(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -372,17 +397,6 @@ class _AdoptPetCard extends StatelessWidget {
                       const Icon(Icons.place, size: 12, color: Colors.grey),
                       const SizedBox(width: 2),
                       Expanded(child: Text(municipio, style: const TextStyle(color: Colors.grey, fontSize: 11), overflow: TextOverflow.ellipsis)),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 4,
-                    runSpacing: 4,
-                    children: [
-                      if (especie.isNotEmpty) _tag(especie == 'perro' ? '🐶 Perro' : '🐱 Gato'),
-                      if (edadAnios != null) _tag('$edadAnios año${edadAnios == 1 ? '' : 's'}'),
-                      if (talla != null && talla.isNotEmpty) _tag(talla[0].toUpperCase() + talla.substring(1)),
-                      if (pet['estado'] == 'adoptado') _adoptedTag(),
                     ],
                   ),
                 ],
@@ -399,14 +413,14 @@ class _AdoptPetCard extends StatelessWidget {
         child: const Center(child: Icon(Icons.pets, size: 40, color: AppColors.purple)),
       );
 
-  Widget _tag(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: AppColors.purple.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
+  Widget _overlayTag(String label) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        color: Colors.white.withOpacity(0.72),
+        child: Text(label, style: const TextStyle(fontSize: 11, color: Colors.black87, fontWeight: FontWeight.w600)),
       ),
-      child: Text(label, style: const TextStyle(fontSize: 10, color: AppColors.purple, fontWeight: FontWeight.w600)),
     );
   }
 
