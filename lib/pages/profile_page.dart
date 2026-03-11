@@ -35,11 +35,13 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   double? _lat;
   double? _lng;
   LatLng? _pickedPoint;
-  String? _avatarUrl; // Para mostrar la foto actual
+  String? _avatarUrl;
+
+  List<Map<String, dynamic>> _addresses = [];
 
   bool _loading = true;
   bool _saving = false;
-  
+
   final _picker = ImagePicker();
 
   @override
@@ -86,6 +88,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             _lat = (profile['lat'] as num).toDouble();
             _lng = (profile['lng'] as num).toDouble();
             _pickedPoint = LatLng(_lat!, _lng!);
+          }
+
+          final rawAddresses = profile['delivery_addresses'];
+          if (rawAddresses != null) {
+            _addresses = List<Map<String, dynamic>>.from(rawAddresses as List);
           }
         } else {
           _emailCtrl.text = user.email ?? '';
@@ -222,6 +229,41 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
     } finally {
       if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _saveAddresses() async {
+    final user = _sb.auth.currentUser;
+    if (user == null) return;
+    await _sb.from('profiles').update({'delivery_addresses': _addresses}).eq('id', user.id);
+  }
+
+  Future<void> _addOrEditAddress({Map<String, dynamic>? existing, int? index}) async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (_) => _AddressFormDialog(initial: existing),
+    );
+    if (result == null) return;
+    setState(() {
+      if (index != null) {
+        _addresses[index] = result;
+      } else {
+        _addresses.add(result);
+      }
+    });
+    try {
+      await _saveAddresses();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al guardar: $e'), backgroundColor: Colors.red));
+    }
+  }
+
+  Future<void> _deleteAddress(int index) async {
+    setState(() => _addresses.removeAt(index));
+    try {
+      await _saveAddresses();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al eliminar: $e'), backgroundColor: Colors.red));
     }
   }
 
@@ -406,22 +448,100 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         const SizedBox(height: 16),
 
                         // ── Mis Direcciones ──────────────────────────
-                        Align(alignment: Alignment.centerLeft, child: Text('Mis Direcciones', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold))),
-                        const SizedBox(height: 8),
-                        Card(
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
-                          child: ListTile(
-                            leading: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.purpleGlass),
-                              child: const Icon(Icons.location_on_outlined, color: AppColors.purple),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('Mis Direcciones', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                            TextButton.icon(
+                              onPressed: () => _addOrEditAddress(),
+                              icon: const Icon(Icons.add, size: 18),
+                              label: const Text('Agregar'),
+                              style: TextButton.styleFrom(foregroundColor: AppColors.purple),
                             ),
-                            title: const Text('Agregar Dirección de Entrega'),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Próximamente: Mis direcciones'))),
-                          ),
+                          ],
                         ),
+                        const SizedBox(height: 8),
+                        if (_addresses.isEmpty)
+                          Card(
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+                            child: ListTile(
+                              leading: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.purpleGlass),
+                                child: const Icon(Icons.location_on_outlined, color: AppColors.purple),
+                              ),
+                              title: const Text('Agregar Dirección de Entrega'),
+                              subtitle: const Text('Para recibir pedidos de la tienda'),
+                              trailing: const Icon(Icons.add, color: AppColors.purple),
+                              onTap: () => _addOrEditAddress(),
+                            ),
+                          )
+                        else
+                          ...List.generate(_addresses.length, (i) {
+                            final addr = _addresses[i];
+                            final alias = addr['alias'] as String? ?? 'Dirección';
+                            final direccion = addr['direccion'] as String? ?? '';
+                            final barrio = addr['barrio'] as String? ?? '';
+                            final ciudad = addr['ciudad'] as String? ?? '';
+                            final indicaciones = addr['indicaciones'] as String? ?? '';
+                            return Card(
+                              elevation: 0,
+                              margin: const EdgeInsets.only(bottom: 8),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.purpleGlass),
+                                      child: Icon(
+                                        alias == 'Casa' ? Icons.home_outlined : alias == 'Trabajo' ? Icons.work_outline : Icons.location_on_outlined,
+                                        color: AppColors.purple,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(alias, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                          Text(direccion, style: const TextStyle(fontSize: 13)),
+                                          if (barrio.isNotEmpty || ciudad.isNotEmpty)
+                                            Text(
+                                              [barrio, ciudad].where((s) => s.isNotEmpty).join(', '),
+                                              style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                                            ),
+                                          if (indicaciones.isNotEmpty)
+                                            Text(indicaciones, style: TextStyle(fontSize: 11, color: Colors.grey.shade400, fontStyle: FontStyle.italic)),
+                                        ],
+                                      ),
+                                    ),
+                                    Column(
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(Icons.edit_outlined, size: 20, color: AppColors.purple),
+                                          onPressed: () => _addOrEditAddress(existing: addr, index: i),
+                                          tooltip: 'Editar',
+                                          constraints: const BoxConstraints(),
+                                          padding: const EdgeInsets.all(6),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                                          onPressed: () => _deleteAddress(i),
+                                          tooltip: 'Eliminar',
+                                          constraints: const BoxConstraints(),
+                                          padding: const EdgeInsets.all(6),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }),
                         const SizedBox(height: 32),
 
                         // ── Mi rol ──────────────────────────────────
@@ -562,6 +682,191 @@ class _RolCard extends ConsumerWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Formulario para agregar / editar una dirección de entrega
+// ─────────────────────────────────────────────────────────────────────────────
+class _AddressFormDialog extends StatefulWidget {
+  const _AddressFormDialog({this.initial});
+  final Map<String, dynamic>? initial;
+
+  @override
+  State<_AddressFormDialog> createState() => _AddressFormDialogState();
+}
+
+class _AddressFormDialogState extends State<_AddressFormDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _direccionCtrl = TextEditingController();
+  final _barrioCtrl = TextEditingController();
+  final _ciudadCtrl = TextEditingController();
+  final _indicacionesCtrl = TextEditingController();
+
+  String _alias = 'Casa';
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initial != null) {
+      final d = widget.initial!;
+      _alias = d['alias'] as String? ?? 'Casa';
+      _direccionCtrl.text = d['direccion'] as String? ?? '';
+      _barrioCtrl.text = d['barrio'] as String? ?? '';
+      _ciudadCtrl.text = d['ciudad'] as String? ?? '';
+      _indicacionesCtrl.text = d['indicaciones'] as String? ?? '';
+    }
+  }
+
+  @override
+  void dispose() {
+    _direccionCtrl.dispose();
+    _barrioCtrl.dispose();
+    _ciudadCtrl.dispose();
+    _indicacionesCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 500),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Row(
+                  children: [
+                    const Icon(Icons.location_on, color: AppColors.purple),
+                    const SizedBox(width: 8),
+                    Text(
+                      widget.initial == null ? 'Nueva dirección' : 'Editar dirección',
+                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close, size: 20),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Alias chips
+                Text('Tipo', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey.shade700, fontSize: 13)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: ['Casa', 'Trabajo', 'Otro'].map((label) {
+                    final selected = _alias == label;
+                    return ChoiceChip(
+                      label: Text(label),
+                      selected: selected,
+                      onSelected: (_) => setState(() => _alias = label),
+                      selectedColor: AppColors.purpleGlass,
+                      labelStyle: TextStyle(
+                        color: selected ? AppColors.purple : Colors.black87,
+                        fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 14),
+
+                // Dirección
+                TextFormField(
+                  controller: _direccionCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Dirección*',
+                    hintText: 'Ej: Calle 45 # 12-34 Apto 201',
+                    prefixIcon: const Icon(Icons.home_outlined),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    isDense: true,
+                  ),
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+                ),
+                const SizedBox(height: 12),
+
+                // Barrio
+                TextFormField(
+                  controller: _barrioCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Barrio / Sector',
+                    prefixIcon: const Icon(Icons.map_outlined),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    isDense: true,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Ciudad
+                TextFormField(
+                  controller: _ciudadCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Ciudad*',
+                    prefixIcon: const Icon(Icons.location_city_outlined),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    isDense: true,
+                  ),
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+                ),
+                const SizedBox(height: 12),
+
+                // Indicaciones
+                TextFormField(
+                  controller: _indicacionesCtrl,
+                  maxLines: 2,
+                  decoration: InputDecoration(
+                    labelText: 'Indicaciones adicionales',
+                    hintText: 'Ej: Portón azul, llamar al llegar',
+                    prefixIcon: const Icon(Icons.info_outline),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    isDense: true,
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Botones
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancelar'),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton.icon(
+                      onPressed: () {
+                        if (!_formKey.currentState!.validate()) return;
+                        Navigator.pop(context, {
+                          'alias': _alias,
+                          'direccion': _direccionCtrl.text.trim(),
+                          'barrio': _barrioCtrl.text.trim(),
+                          'ciudad': _ciudadCtrl.text.trim(),
+                          'indicaciones': _indicacionesCtrl.text.trim(),
+                        });
+                      },
+                      icon: const Icon(Icons.check, size: 18),
+                      label: const Text('Guardar'),
+                      style: FilledButton.styleFrom(backgroundColor: AppColors.purple),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
