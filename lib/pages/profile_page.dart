@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:geolocator/geolocator.dart';
@@ -8,15 +9,16 @@ import 'package:image_picker/image_picker.dart';
 import '../ui/map_picker.dart';
 import '../widgets/petfy_widgets.dart';
 import '../theme/app_theme.dart';
+import '../providers/role_provider.dart';
 
-class ProfilePage extends StatefulWidget {
+class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
 
   @override
-  State<ProfilePage> createState() => _ProfilePageState();
+  ConsumerState<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> {
+class _ProfilePageState extends ConsumerState<ProfilePage> {
   final _sb = Supabase.instance.client;
   final _formKey = GlobalKey<FormState>();
 
@@ -422,6 +424,12 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                         const SizedBox(height: 32),
 
+                        // ── Mi rol ──────────────────────────────────
+                        Align(alignment: Alignment.centerLeft, child: Text('Mi rol en PetfyCo', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold))),
+                        const SizedBox(height: 8),
+                        _RolCard(onRolChanged: () => ref.read(rolProvider.notifier).refresh()),
+                        const SizedBox(height: 16),
+
                         // ── Cerrar sesión ────────────────────────────
                         OutlinedButton.icon(
                           onPressed: () async {
@@ -444,6 +452,118 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
           ),
+    );
+  }
+}
+
+class _RolCard extends ConsumerWidget {
+  const _RolCard({required this.onRolChanged});
+  final VoidCallback onRolChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final rolAsync = ref.watch(rolProvider);
+    final rol = rolAsync.valueOrNull ?? 'buscador';
+    final esPublicador = rol == 'publicador';
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: esPublicador ? AppColors.orange.withOpacity(0.12) : AppColors.purpleGlass,
+                  ),
+                  child: Icon(
+                    esPublicador ? Icons.campaign : Icons.search,
+                    color: esPublicador ? AppColors.orange : AppColors.purple,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        esPublicador ? 'Publicador' : 'Buscador',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      ),
+                      Text(
+                        esPublicador
+                            ? 'Publicas mascotas en adopción o reportas perdidas'
+                            : 'Buscas mascotas perdidas o quieres adoptar',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: rolAsync.isLoading
+                    ? null
+                    : () async {
+                        final nuevoRol = esPublicador ? 'buscador' : 'publicador';
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            title: const Text('Cambiar rol'),
+                            content: Text(
+                              nuevoRol == 'publicador'
+                                  ? 'Cambiarás a Publicador: podrás dar mascotas en adopción y reportar mascotas perdidas.'
+                                  : 'Cambiarás a Buscador: verás mascotas para adoptar y reportarás mascotas encontradas.',
+                            ),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+                              FilledButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                style: FilledButton.styleFrom(backgroundColor: AppColors.purple),
+                                child: const Text('Cambiar'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirm != true) return;
+                        await ref.read(rolProvider.notifier).setRole(nuevoRol);
+                        onRolChanged();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Rol cambiado a ${nuevoRol == 'publicador' ? 'Publicador' : 'Buscador'}'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      },
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.purple),
+                ),
+                child: rolAsync.isLoading
+                    ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    : Text(
+                        'Cambiar a ${esPublicador ? 'Buscador' : 'Publicador'}',
+                        style: const TextStyle(color: AppColors.purple),
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
