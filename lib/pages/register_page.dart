@@ -205,17 +205,31 @@ class _RegisterPageState extends State<RegisterPage> {
       final uid = auth.user?.id;
       if (uid != null) {
         // ADAPTADO: Insertar en profiles con TUS columnas
-        await sb.from('profiles').upsert({
-          'id': uid,
-          'display_name': displayName,
-          'email': email,
-          'phone': phone,
-          'depto': _deptName,
-          'municipio': _cityName,
-          'lat': _lat,
-          'lng': _lng,
-          'rol': _rol,
-        });
+        // Upsert profile — try with rol first, fall back without it if column doesn't exist yet
+        try {
+          await sb.from('profiles').upsert({
+            'id': uid,
+            'display_name': displayName,
+            'email': email,
+            'phone': phone,
+            'depto': _deptName,
+            'municipio': _cityName,
+            'lat': _lat,
+            'lng': _lng,
+            'rol': _rol,
+          });
+        } catch (_) {
+          await sb.from('profiles').upsert({
+            'id': uid,
+            'display_name': displayName,
+            'email': email,
+            'phone': phone,
+            'depto': _deptName,
+            'municipio': _cityName,
+            'lat': _lat,
+            'lng': _lng,
+          });
+        }
       }
 
       if (!mounted) return;
