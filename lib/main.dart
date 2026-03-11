@@ -15,6 +15,8 @@ import 'pages/adopt_page.dart';
 import 'pages/profile_page.dart';
 import 'pages/main_scaffold.dart';
 import 'pages/tienda_page.dart';
+import 'pages/my_pets_page.dart';
+import 'providers/role_provider.dart';
 
 // ✅ NUEVO: Forgot password page
 import 'pages/forgot_password_page.dart';
@@ -123,12 +125,12 @@ class _MyAppState extends State<MyApp> {
                 ),
               ],
             ),
-            // Rama 2 (Adoptar)
+            // Rama 2 (Adoptar / Mis mascotas — depende del rol)
             StatefulShellBranch(
               routes: [
                 GoRoute(
                   path: '/adopt',
-                  builder: (_, __) => const AdoptPage(),
+                  builder: (_, __) => const _RoleAwareMidPage(),
                 ),
               ],
             ),
@@ -167,5 +169,17 @@ class _MyAppState extends State<MyApp> {
         useMaterial3: true,
       ),
     );
+  }
+}
+
+/// Muestra AdoptPage para buscadores y MyPetsPage para publicadores.
+class _RoleAwareMidPage extends ConsumerWidget {
+  const _RoleAwareMidPage();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final rol = ref.watch(rolProvider).valueOrNull ?? 'buscador';
+    if (rol == 'publicador') return const MyPetsPage();
+    return const AdoptPage();
   }
 }

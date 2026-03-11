@@ -1,22 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../theme/app_theme.dart';
 import '../widgets/heroe_de_patitas_modal.dart';
+import '../providers/role_provider.dart';
 
-class MainScaffold extends StatefulWidget {
+class MainScaffold extends ConsumerStatefulWidget {
   const MainScaffold({super.key, required this.navigationShell});
   final StatefulNavigationShell navigationShell;
 
   @override
-  State<MainScaffold> createState() => _MainScaffoldState();
+  ConsumerState<MainScaffold> createState() => _MainScaffoldState();
 }
 
-class _MainScaffoldState extends State<MainScaffold> {
-  // Shell branches: 0=home, 1=lost, 2=adopt, 3=tienda, 4=profile
-  // Visual nav: 0=Inicio, 1=Perdidos, [2=FAB], 3=Adoptar, 4=Tienda, 5=Perfil
-  // But we keep 5 visual items to match the reference app layout:
-  //   Inicio | Perdidos | [FAB Radar] | Adoptar | Perfil
-  // "Tienda" is accessed via the FAB modal or the Home banners.
+class _MainScaffoldState extends ConsumerState<MainScaffold> {
+  // Shell branches: 0=home, 1=lost, 2=adopt/my-pets, 3=profile
+  // Visual nav: 0=Inicio, 1=Perdidos, [2=FAB], 3=Adoptar|Mis mascotas, 4=Perfil
 
   void _onTap(BuildContext context, int index) {
     if (index == 2) {
@@ -31,6 +30,7 @@ class _MainScaffoldState extends State<MainScaffold> {
   }
 
   void _showCentralModal(BuildContext context) {
+    final rol = ref.read(rolProvider).valueOrNull ?? 'buscador';
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -47,37 +47,61 @@ class _MainScaffoldState extends State<MainScaffold> {
               Text('¿Qué deseas hacer?', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 20),
 
-              // --- Dar en adopción
-              _ModalTile(
-                color: AppColors.orange,
-                icon: Icons.favorite,
-                title: 'Dar en adopción',
-                subtitle: 'Comparte el perfil de un peludito',
-                onTap: () { Navigator.pop(context); context.push('/publish'); },
-              ),
-              const SizedBox(height: 8),
+              if (rol == 'publicador') ...[
+                // --- Dar en adopción
+                _ModalTile(
+                  color: AppColors.orange,
+                  icon: Icons.favorite,
+                  title: 'Dar en adopción',
+                  subtitle: 'Comparte el perfil de un peludito',
+                  onTap: () { Navigator.pop(context); context.push('/publish'); },
+                ),
+                const SizedBox(height: 8),
 
-              // --- Reportar perdida
-              _ModalTile(
-                color: Colors.red,
-                icon: Icons.campaign,
-                title: 'Reportar mascota perdida',
-                subtitle: 'Ayudaremos a emitir la alerta local',
-                onTap: () { Navigator.pop(context); context.push('/publish?estado=perdido'); },
-              ),
-              const SizedBox(height: 8),
+                // --- Reportar perdida
+                _ModalTile(
+                  color: Colors.red,
+                  icon: Icons.campaign,
+                  title: 'Reportar mascota perdida',
+                  subtitle: 'Ayudaremos a emitir la alerta local',
+                  onTap: () { Navigator.pop(context); context.push('/publish?estado=perdido'); },
+                ),
+                const SizedBox(height: 8),
 
-              // --- Tienda
-              _ModalTile(
-                color: AppColors.purple,
-                icon: Icons.shopping_bag_outlined,
-                title: 'Visitar la Tienda',
-                subtitle: 'Nutrición y Limpieza a Domicilio',
-                onTap: () { Navigator.pop(context); context.push('/tienda'); },
-              ),
-              const SizedBox(height: 8),
+                // --- Tienda
+                _ModalTile(
+                  color: AppColors.purple,
+                  icon: Icons.shopping_bag_outlined,
+                  title: 'Visitar la Tienda',
+                  subtitle: 'Nutrición y Limpieza a Domicilio',
+                  onTap: () { Navigator.pop(context); context.push('/tienda'); },
+                ),
+                const SizedBox(height: 8),
+              ],
 
-              // --- Héroe de Patitas
+              if (rol == 'buscador') ...[
+                // --- Encontré una mascota
+                _ModalTile(
+                  color: Colors.green,
+                  icon: Icons.search,
+                  title: 'Encontré una mascota',
+                  subtitle: 'Ayuda a reunirla con su dueño',
+                  onTap: () { Navigator.pop(context); context.push('/publish?estado=encontrado'); },
+                ),
+                const SizedBox(height: 8),
+
+                // --- Tienda
+                _ModalTile(
+                  color: AppColors.purple,
+                  icon: Icons.shopping_bag_outlined,
+                  title: 'Visitar la Tienda',
+                  subtitle: 'Nutrición y Limpieza a Domicilio',
+                  onTap: () { Navigator.pop(context); context.push('/tienda'); },
+                ),
+                const SizedBox(height: 8),
+              ],
+
+              // --- Héroe de Patitas (siempre visible)
               _ModalTile(
                 color: AppColors.pink,
                 icon: Icons.volunteer_activism,
@@ -96,6 +120,9 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   @override
   Widget build(BuildContext context) {
+    final rolAsync = ref.watch(rolProvider);
+    final rol = rolAsync.valueOrNull ?? 'buscador';
+
     int visualIndex = widget.navigationShell.currentIndex;
     if (visualIndex >= 2) visualIndex += 1;
 
@@ -132,27 +159,35 @@ class _MainScaffoldState extends State<MainScaffold> {
         child: NavigationBar(
           selectedIndex: visualIndex,
           onDestinationSelected: (i) => _onTap(context, i),
-          destinations: const [
-            NavigationDestination(
+          destinations: [
+            const NavigationDestination(
               icon: Icon(Icons.home_outlined),
               selectedIcon: Icon(Icons.home),
               label: 'Inicio',
             ),
-            NavigationDestination(
+            const NavigationDestination(
               icon: Icon(Icons.location_searching),
               selectedIcon: Icon(Icons.my_location),
               label: 'Perdidos',
             ),
-            NavigationDestination(
-              icon: SizedBox.shrink(), // Empty placeholder for FAB
+            const NavigationDestination(
+              icon: SizedBox.shrink(),
               label: '',
             ),
-            NavigationDestination(
-              icon: Icon(Icons.pets_outlined),
-              selectedIcon: Icon(Icons.pets),
-              label: 'Adoptar',
-            ),
-            NavigationDestination(
+            // Tab 3 cambia según el rol
+            if (rol == 'publicador')
+              const NavigationDestination(
+                icon: Icon(Icons.list_alt_outlined),
+                selectedIcon: Icon(Icons.list_alt),
+                label: 'Mis mascotas',
+              )
+            else
+              const NavigationDestination(
+                icon: Icon(Icons.pets_outlined),
+                selectedIcon: Icon(Icons.pets),
+                label: 'Adoptar',
+              ),
+            const NavigationDestination(
               icon: Icon(Icons.person_outline),
               selectedIcon: Icon(Icons.person),
               label: 'Perfil',

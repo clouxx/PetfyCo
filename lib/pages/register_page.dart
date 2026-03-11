@@ -37,6 +37,7 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _ob2 = true;
   bool _sending = false;
   bool _accepted = false;
+  String _rol = 'buscador'; // 'buscador' | 'publicador'
 
   @override
   void initState() {
@@ -206,13 +207,14 @@ class _RegisterPageState extends State<RegisterPage> {
         // ADAPTADO: Insertar en profiles con TUS columnas
         await sb.from('profiles').upsert({
           'id': uid,
-          'display_name': displayName, // TU columna
+          'display_name': displayName,
           'email': email,
           'phone': phone,
-          'depto': _deptName, // TU columna
-          'municipio': _cityName, // TU columna
+          'depto': _deptName,
+          'municipio': _cityName,
           'lat': _lat,
           'lng': _lng,
+          'rol': _rol,
         });
       }
 
@@ -456,6 +458,34 @@ class _RegisterPageState extends State<RegisterPage> {
                     ],
                     const SizedBox(height: 16),
 
+                    // Rol
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '¿Cómo usarás PetfyCo?',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _RolOption(
+                      value: 'buscador',
+                      groupValue: _rol,
+                      icon: Icons.search,
+                      title: 'Quiero adoptar o encontrar mascotas',
+                      subtitle: 'Busca mascotas perdidas o en adopción',
+                      onChanged: (v) => setState(() => _rol = v!),
+                    ),
+                    const SizedBox(height: 6),
+                    _RolOption(
+                      value: 'publicador',
+                      groupValue: _rol,
+                      icon: Icons.campaign,
+                      title: 'Tengo mascotas para publicar',
+                      subtitle: 'Dar en adopción o reportar mascota perdida',
+                      onChanged: (v) => setState(() => _rol = v!),
+                    ),
+                    const SizedBox(height: 16),
+
                     // Términos
                     Row(
                       children: [
@@ -579,6 +609,63 @@ Teléfono de contacto: +573003334030''',
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RolOption extends StatelessWidget {
+  const _RolOption({
+    required this.value,
+    required this.groupValue,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onChanged,
+  });
+  final String value;
+  final String groupValue;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final void Function(String?) onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = value == groupValue;
+    final color = selected ? const Color(0xFF7C3AED) : Colors.grey.shade400;
+    return InkWell(
+      onTap: () => onChanged(value),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFF7C3AED).withOpacity(0.06) : Colors.transparent,
+          border: Border.all(color: selected ? const Color(0xFF7C3AED) : Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Radio<String>(
+              value: value,
+              groupValue: groupValue,
+              onChanged: onChanged,
+              activeColor: const Color(0xFF7C3AED),
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            Icon(icon, color: color, size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: selected ? const Color(0xFF7C3AED) : Colors.black87)),
+                  Text(subtitle, style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
