@@ -641,7 +641,7 @@ class _RolCard extends ConsumerWidget {
                         final nuevoRol = esPublicador ? 'buscador' : 'publicador';
                         final confirm = await showDialog<bool>(
                           context: context,
-                          builder: (_) => AlertDialog(
+                          builder: (dialogCtx) => AlertDialog(
                             title: const Text('Cambiar rol'),
                             content: Text(
                               nuevoRol == 'publicador'
@@ -649,9 +649,9 @@ class _RolCard extends ConsumerWidget {
                                   : 'Cambiarás a Buscador: verás mascotas para adoptar y reportarás mascotas encontradas.',
                             ),
                             actions: [
-                              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+                              TextButton(onPressed: () => Navigator.pop(dialogCtx, false), child: const Text('Cancelar')),
                               FilledButton(
-                                onPressed: () => Navigator.pop(context, true),
+                                onPressed: () => Navigator.pop(dialogCtx, true),
                                 style: FilledButton.styleFrom(backgroundColor: AppColors.purple),
                                 child: const Text('Cambiar'),
                               ),

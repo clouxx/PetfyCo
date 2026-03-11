@@ -42,13 +42,13 @@ class _MyPetsPageState extends State<MyPetsPage> {
   Future<void> _delete(String petId) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         title: const Text('¿Eliminar publicación?'),
         content: const Text('Esta acción no se puede deshacer.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+          TextButton(onPressed: () => Navigator.pop(dialogCtx, false), child: const Text('Cancelar')),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogCtx, true),
             child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
           ),
         ],
