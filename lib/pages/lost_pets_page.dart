@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../theme/app_theme.dart';
@@ -14,10 +17,12 @@ class LostPetsPage extends StatefulWidget {
 class _LostPetsPageState extends State<LostPetsPage>
     with SingleTickerProviderStateMixin {
   final _sb = Supabase.instance.client;
+  final _mapController = MapController();
   bool _loading = true;
   List<Map<String, dynamic>> _pets = [];
-  String _tabFilter = 'busqueda'; // 'busqueda' | 'alertas' | 'cerca'
-  String _viewMode = 'lista'; // 'lista' | 'mapa'
+  String _tabFilter = 'busqueda';
+  String _viewMode = 'lista';
+  LatLng? _myLocation;
 
   @override
   void initState() {
@@ -30,7 +35,7 @@ class _LostPetsPageState extends State<LostPetsPage>
     try {
       final data = await _sb.from('pets').select('''
         id, owner_id, nombre, especie, municipio, depto, estado,
-        edad_meses, talla, created_at,
+        edad_meses, talla, lat, lng, created_at,
         profiles:owner_id(display_name, phone),
         pet_photos(url, position)
       ''').eq('estado', 'perdido').order('created_at', ascending: false).limit(50);
@@ -128,7 +133,7 @@ class _LostPetsPageState extends State<LostPetsPage>
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _viewMode == 'mapa'
-                      ? _buildMapPlaceholder()
+                      ? _buildMap()
                       : _buildList(),
             ),
           ],
@@ -191,27 +196,205 @@ class _LostPetsPageState extends State<LostPetsPage>
     );
   }
 
-  Widget _buildMapPlaceholder() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 80, height: 80,
-            decoration: BoxDecoration(
-              color: AppColors.blue.withOpacity(0.15),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.map, size: 40, color: AppColors.blue),
+  Future<void> _goToMyLocation() async {
+    try {
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.deniedForever) return;
+      final pos = await Geolocator.getCurrentPosition();
+      final latlng = LatLng(pos.latitude, pos.longitude);
+      setState(() => _myLocation = latlng);
+      _mapController.move(latlng, 13);
+    } catch (_) {}
+  }
+
+  void _showPetBottomSheet(Map<String, dynamic> pet) {
+    final nombre = pet['nombre'] as String? ?? 'Sin nombre';
+    final municipio = (pet['municipio'] as String?)?.trim() ?? '';
+    final especie = (pet['especie'] as String?)?.toLowerCase() ?? '';
+    final edadMeses = pet['edad_meses'] as int?;
+    final talla = pet['talla'] as String?;
+
+    String? imageUrl;
+    final photos = pet['pet_photos'];
+    if (photos is List && photos.isNotEmpty) {
+      final sorted = photos.whereType<Map>().map((e) => Map<String, dynamic>.from(e as Map)).toList()
+        ..sort((a, b) => (a['position'] as int? ?? 0).compareTo(b['position'] as int? ?? 0));
+      imageUrl = sorted.first['url'] as String?;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => GestureDetector(
+        onTap: () {
+          Navigator.pop(context);
+          context.push('/pet/${pet['id']}');
+        },
+        child: Container(
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
           ),
-          const SizedBox(height: 16),
-          const Text('Vista de Mapa', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Text('Próximamente podrás ver las mascotas\nperdidas en el mapa interactivo.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey.shade600)),
-        ],
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: SizedBox(
+                  width: 80, height: 80,
+                  child: imageUrl != null
+                      ? Image.network(imageUrl, fit: BoxFit.cover)
+                      : Container(color: Colors.red.shade50, child: const Icon(Icons.pets, color: Colors.redAccent)),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(6)),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.campaign, size: 12, color: Colors.red.shade700),
+                        const SizedBox(width: 4),
+                        Text('PERDIDO', style: TextStyle(fontSize: 11, color: Colors.red.shade700, fontWeight: FontWeight.bold)),
+                      ]),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(nombre, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    const SizedBox(height: 2),
+                    Row(children: [
+                      const Icon(Icons.place, size: 12, color: Colors.grey),
+                      const SizedBox(width: 2),
+                      Text(municipio, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                    ]),
+                    const SizedBox(height: 6),
+                    Wrap(spacing: 4, children: [
+                      if (especie.isNotEmpty) _smallChip(especie == 'perro' ? 'Perro' : 'Gato'),
+                      if (edadMeses != null) _smallChip('${edadMeses ~/ 12} años'),
+                      if (talla != null && talla.isNotEmpty) _smallChip(talla[0].toUpperCase() + talla.substring(1)),
+                    ]),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Colors.grey),
+            ],
+          ),
+        ),
       ),
+    );
+  }
+
+  Widget _smallChip(String label) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+    decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(6)),
+    child: Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600)),
+  );
+
+  Widget _buildMap() {
+    final petsWithLocation = _pets.where((p) => p['lat'] != null && p['lng'] != null).toList();
+    final center = _myLocation ??
+        (petsWithLocation.isNotEmpty
+            ? LatLng((petsWithLocation.first['lat'] as num).toDouble(), (petsWithLocation.first['lng'] as num).toDouble())
+            : const LatLng(4.7110, -74.0721));
+
+    return Stack(
+      children: [
+        FlutterMap(
+          mapController: _mapController,
+          options: MapOptions(initialCenter: center, initialZoom: 12),
+          children: [
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.petfyco.app',
+            ),
+            MarkerLayer(
+              markers: [
+                // Marcadores de mascotas perdidas
+                ...petsWithLocation.map((pet) {
+                  final lat = (pet['lat'] as num).toDouble();
+                  final lng = (pet['lng'] as num).toDouble();
+                  return Marker(
+                    point: LatLng(lat, lng),
+                    width: 48,
+                    height: 48,
+                    child: GestureDetector(
+                      onTap: () => _showPetBottomSheet(pet),
+                      child: Stack(
+                        children: [
+                          const Icon(Icons.location_pin, color: Colors.red, size: 44),
+                          Positioned(
+                            top: 2, left: 6,
+                            child: Container(
+                              width: 22, height: 22,
+                              decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                              child: const Icon(Icons.pets, size: 14, color: Colors.red),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+                // Mi ubicación
+                if (_myLocation != null)
+                  Marker(
+                    point: _myLocation!,
+                    width: 40,
+                    height: 40,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.blue.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.blue, width: 2),
+                      ),
+                      child: const Icon(Icons.person_pin_circle, color: AppColors.blue, size: 22),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+        // Botón mi ubicación
+        Positioned(
+          right: 16, bottom: 100,
+          child: FloatingActionButton.small(
+            heroTag: 'my_location',
+            backgroundColor: Colors.white,
+            onPressed: _goToMyLocation,
+            child: const Icon(Icons.my_location, color: AppColors.blue),
+          ),
+        ),
+        // Leyenda sin ubicación
+        if (petsWithLocation.isEmpty)
+          Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+              child: const Text('Ninguna mascota tiene ubicación registrada', style: TextStyle(fontSize: 13)),
+            ),
+          ),
+        // Contador
+        Positioned(
+          top: 12, left: 16,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8)]),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.location_pin, color: Colors.red, size: 14),
+              const SizedBox(width: 4),
+              Text('${petsWithLocation.length} en el mapa', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+            ]),
+          ),
+        ),
+      ],
     );
   }
 }
