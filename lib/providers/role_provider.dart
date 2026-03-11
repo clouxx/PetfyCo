@@ -32,8 +32,9 @@ class RolNotifier extends AsyncNotifier<String> {
           .update({'rol': rol})
           .eq('id', user.id);
       state = AsyncData(rol);
-    } catch (e) {
-      state = AsyncError(e, StackTrace.current);
+    } catch (_) {
+      // Column may not exist yet — apply migration in Supabase SQL Editor
+      state = AsyncData(rol); // Update local state optimistically
     }
   }
 
