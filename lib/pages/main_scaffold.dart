@@ -101,11 +101,11 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
                 const SizedBox(height: 8),
               ],
 
-              // --- Héroe de Patitas (siempre visible)
+              // --- Apoya con Petfyco (siempre visible)
               _ModalTile(
                 color: AppColors.pink,
                 icon: Icons.volunteer_activism,
-                title: 'Héroe de Patitas ❤️',
+                title: 'Apoya con Petfyco ❤️',
                 subtitle: 'Apoya la causa por solo \$1/mes',
                 onTap: () { Navigator.pop(context); HeroeDePatitasModal.show(context); },
               ),
