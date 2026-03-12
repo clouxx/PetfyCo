@@ -220,26 +220,47 @@ class _LostPetsPageState extends State<LostPetsPage>
                     children: [
                       // Búsqueda abre el sheet de filtros
                       GestureDetector(
-                        onTap: _openSearchSheet,
+                        onTap: () {
+                          setState(() => _tabFilter = 'busqueda');
+                          _openSearchSheet();
+                        },
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                           decoration: BoxDecoration(
-                            color: AppColors.purple,
+                            color: _tabFilter == 'busqueda' ? AppColors.purple : Colors.grey.shade100,
                             borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: _tabFilter == 'busqueda' ? AppColors.purple : Colors.transparent,
+                              width: 1.5,
+                            ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.search, size: 14, color: Colors.white),
+                              Icon(Icons.search, size: 14,
+                                  color: _tabFilter == 'busqueda' ? Colors.white : Colors.grey.shade600),
                               const SizedBox(width: 6),
-                              const Text('Búsqueda', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                              Text('Búsqueda',
+                                  style: TextStyle(
+                                    color: _tabFilter == 'busqueda' ? Colors.white : Colors.grey.shade600,
+                                    fontWeight: _tabFilter == 'busqueda' ? FontWeight.bold : FontWeight.normal,
+                                    fontSize: 13,
+                                  )),
                               if (_activeFilterCount > 0) ...[
                                 const SizedBox(width: 6),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
-                                  child: Text('$_activeFilterCount', style: const TextStyle(color: AppColors.purple, fontSize: 10, fontWeight: FontWeight.bold)),
+                                  decoration: BoxDecoration(
+                                    color: _tabFilter == 'busqueda' ? Colors.white : AppColors.purple,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text('$_activeFilterCount',
+                                      style: TextStyle(
+                                        color: _tabFilter == 'busqueda' ? AppColors.purple : Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      )),
                                 ),
                               ],
                             ],
@@ -368,18 +389,6 @@ class _LostPetsPageState extends State<LostPetsPage>
             Text('Te avisaremos cuando aparezca una mascota\nque coincida con tus criterios.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: _openCreateAlertSheet,
-              icon: const Icon(Icons.add_alert, size: 18),
-              label: const Text('Crear alerta'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.purple,
-                foregroundColor: Colors.white,
-                shape: const StadiumBorder(),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              ),
-            ),
           ],
         ),
       );
@@ -1211,8 +1220,11 @@ class _LostSearchSheetState extends State<_LostSearchSheet> {
   @override
   Widget build(BuildContext context) {
     final cities = (_depto != null && _citiesCache[_depto!] != null) ? _citiesCache[_depto!]! : <String>[];
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+    final screenH = MediaQuery.of(context).size.height;
+    return SizedBox(
+      height: screenH * 0.82,
+      child: Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).padding.bottom),
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
         child: Column(
@@ -1327,7 +1339,7 @@ class _LostSearchSheetState extends State<_LostSearchSheet> {
           ],
         ),
       ),
-    );
+    ));
   }
 }
 
