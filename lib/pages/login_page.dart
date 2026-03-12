@@ -63,27 +63,28 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
-            child: PetfyCard(
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Logo
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: Image.asset(
-                        'assets/logo/petfyco_logo_full.png',
-                        height: 300,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
+            child: Column(
+              children: [
+                // Logo fuera de la card para que el fondo coincida
+                Image.asset(
+                  'assets/logo/petfyco_logo_full.png',
+                  height: 260,
+                  fit: BoxFit.contain,
+                ),
+                const SizedBox(height: 8),
+                PetfyCard(
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const SizedBox(height: 8),
                     
                     // Email
                     PetfyTextField(
@@ -151,6 +152,8 @@ class _LoginPageState extends State<LoginPage> {
                   ],
                 ),
               ),
+            ),
+              ],
             ),
           ),
         ),
