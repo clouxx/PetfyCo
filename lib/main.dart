@@ -22,6 +22,7 @@ import 'providers/role_provider.dart';
 import 'pages/forgot_password_page.dart';
 import 'pages/reset_password_page.dart';
 import 'pages/recetas_page.dart';
+import 'pages/conecta_page.dart';
 
 // Lee las variables de entorno pasadas con --dart-define
 const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
@@ -106,6 +107,10 @@ class _MyAppState extends State<MyApp> {
         GoRoute(
           path: '/recetas',
           builder: (_, __) => const RecetasPage(),
+        ),
+        GoRoute(
+          path: '/conecta',
+          builder: (_, __) => const ConectaPage(),
         ),
 
         // Ruta principal con barra inferior (4 tabs reales)

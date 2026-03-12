@@ -563,6 +563,8 @@ class _HomePageState extends State<HomePage> {
           onTap: () {
             if (title == 'Recetas') {
               context.push('/recetas');
+            } else if (title == 'Conecta') {
+              context.push('/conecta');
             } else {
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Módulo $title en construcción')));
             }
