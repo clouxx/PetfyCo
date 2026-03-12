@@ -404,6 +404,7 @@ class _HomePageState extends State<HomePage> {
                     subtitle: 'Nutrición y Limpieza\na Domicilio',
                     ctaLabel: 'Ver productos',
                     onTap: () => context.push('/tienda'),
+                    logoAsset: 'assets/logo/petfyco_nutricion.png',
                   ),
                   // Slide 3 — Aliado Petfyco
                   _buildRichSlide(
@@ -627,6 +628,7 @@ class _HomePageState extends State<HomePage> {
     required String subtitle,
     required String ctaLabel,
     required VoidCallback onTap,
+    String? logoAsset,           // optional blurred logo on the right
   }) {
     return GestureDetector(
       onTap: onTap,
@@ -647,12 +649,31 @@ class _HomePageState extends State<HomePage> {
             Positioned(right: 30, bottom: -30,
               child: Container(width: 90, height: 90,
                 decoration: BoxDecoration(color: Colors.white.withOpacity(0.08), shape: BoxShape.circle))),
-            // Decorative icon (right side, big)
-            Positioned(right: 14, top: 0, bottom: 0,
-              child: Center(child: Icon(decorIcon, size: 70, color: Colors.white.withOpacity(0.2)))),
+
+            // Logo difuminado (right side)
+            if (logoAsset != null)
+              Positioned(
+                right: -10, top: 0, bottom: 0,
+                child: Center(
+                  child: Opacity(
+                    opacity: 0.28,
+                    child: Image.asset(
+                      logoAsset,
+                      width: 130,
+                      height: 130,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+              )
+            else
+              // Fallback: decorative icon
+              Positioned(right: 14, top: 0, bottom: 0,
+                child: Center(child: Icon(decorIcon, size: 70, color: Colors.white.withOpacity(0.2)))),
+
             // Content
             Padding(
-              padding: const EdgeInsets.fromLTRB(18, 16, 100, 16),
+              padding: const EdgeInsets.fromLTRB(18, 16, 110, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -666,10 +687,7 @@ class _HomePageState extends State<HomePage> {
                   // CTA button
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
