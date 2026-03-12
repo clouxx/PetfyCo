@@ -384,7 +384,7 @@ class _AdoptPetCard extends StatelessWidget {
                 ],
               ),
             ),
-            // Info Area (name + location only)
+            // Info Area (name + location + adopt button)
             Padding(
               padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
               child: Column(
@@ -399,6 +399,24 @@ class _AdoptPetCard extends StatelessWidget {
                       Expanded(child: Text(municipio, style: const TextStyle(color: Colors.grey, fontSize: 11), overflow: TextOverflow.ellipsis)),
                     ],
                   ),
+                  if (!isOwner) ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: onAdopt,
+                        icon: const Icon(Icons.volunteer_activism, size: 14),
+                        label: const Text('Adoptar', style: TextStyle(fontSize: 12)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.purple,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          elevation: 0,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
