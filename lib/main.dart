@@ -24,6 +24,8 @@ import 'pages/reset_password_page.dart';
 import 'pages/recetas_page.dart';
 import 'pages/conecta_page.dart';
 import 'pages/historial_medico_page.dart';
+import 'services/notification_service.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 // Lee las variables de entorno pasadas con --dart-define
 const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
@@ -33,12 +35,14 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Inicializa Supabase
+  await Firebase.initializeApp();
+
   await Supabase.initialize(
     url: _supabaseUrl,
     anonKey: _supabaseAnonKey,
   );
 
-  await initRecetasNotifications();
+  await NotificationService.init();
 
   runApp(const ProviderScope(child: MyApp()));
 }
