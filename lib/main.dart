@@ -23,6 +23,7 @@ import 'pages/forgot_password_page.dart';
 import 'pages/reset_password_page.dart';
 import 'pages/recetas_page.dart';
 import 'pages/conecta_page.dart';
+import 'pages/historial_medico_page.dart';
 
 // Lee las variables de entorno pasadas con --dart-define
 const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
@@ -111,6 +112,10 @@ class _MyAppState extends State<MyApp> {
         GoRoute(
           path: '/conecta',
           builder: (_, __) => const ConectaPage(),
+        ),
+        GoRoute(
+          path: '/historial',
+          builder: (_, __) => const HistorialMedicoPage(),
         ),
 
         // Ruta principal con barra inferior (4 tabs reales)

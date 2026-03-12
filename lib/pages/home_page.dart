@@ -565,6 +565,8 @@ class _HomePageState extends State<HomePage> {
               context.push('/recetas');
             } else if (title == 'Conecta') {
               context.push('/conecta');
+            } else if (title == 'Historial médico') {
+              context.push('/historial');
             } else {
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Módulo $title en construcción')));
             }
