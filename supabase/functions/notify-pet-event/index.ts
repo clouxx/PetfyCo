@@ -1,25 +1,73 @@
 // Supabase Edge Function — notify-pet-event
 // Triggered by DB webhook on INSERT/UPDATE to the `pets` table.
-// Sends FCM push notifications to all registered devices.
+// Uses FCM HTTP v1 API (service account auth).
 //
-// Required secrets (supabase secrets set):
-//   FCM_SERVER_KEY = <your Firebase legacy server key>
-//   SUPABASE_URL   = <auto-set by Supabase>
-//   SUPABASE_SERVICE_ROLE_KEY = <auto-set by Supabase>
+// Required secrets:
+//   FIREBASE_SERVICE_ACCOUNT  = full JSON content of the service account key
+//   SUPABASE_URL              = auto-set by Supabase
+//   SUPABASE_SERVICE_ROLE_KEY = auto-set by Supabase
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { encode as base64url } from 'https://deno.land/std@0.168.0/encoding/base64url.ts'
 
-const FCM_KEY = Deno.env.get('FCM_SERVER_KEY')!
-const SB_URL  = Deno.env.get('SUPABASE_URL')!
-const SB_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const SB_URL = Deno.env.get('SUPABASE_URL')!
+const SB_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const SA_RAW = Deno.env.get('FIREBASE_SERVICE_ACCOUNT')!
+
+// ─── JWT / OAuth2 helper ────────────────────────────────────────────────────
+
+async function getAccessToken(sa: Record<string, string>): Promise<string> {
+  const now = Math.floor(Date.now() / 1000)
+  const header = { alg: 'RS256', typ: 'JWT' }
+  const payload = {
+    iss: sa.client_email,
+    scope: 'https://www.googleapis.com/auth/firebase.messaging',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now,
+    exp: now + 3600,
+  }
+
+  const enc = (obj: unknown) =>
+    base64url(new TextEncoder().encode(JSON.stringify(obj)))
+
+  const unsigned = `${enc(header)}.${enc(payload)}`
+
+  // Import private key
+  const pemBody = sa.private_key
+    .replace(/-----BEGIN PRIVATE KEY-----/g, '')
+    .replace(/-----END PRIVATE KEY-----/g, '')
+    .replace(/\s/g, '')
+  const keyBuf = Uint8Array.from(atob(pemBody), c => c.charCodeAt(0))
+  const cryptoKey = await crypto.subtle.importKey(
+    'pkcs8', keyBuf,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false, ['sign'],
+  )
+
+  const sig = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5',
+    cryptoKey,
+    new TextEncoder().encode(unsigned),
+  )
+  const jwt = `${unsigned}.${base64url(new Uint8Array(sig))}`
+
+  // Exchange JWT for access token
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`,
+  })
+  const data = await res.json()
+  return data.access_token as string
+}
+
+// ─── Main ───────────────────────────────────────────────────────────────────
 
 serve(async (req) => {
   try {
     const payload = await req.json()
-
-    // Supabase DB webhook sends { type, table, record, old_record }
-    const type   = payload.type   as string   // INSERT | UPDATE
+    const type   = payload.type   as string
     const record = payload.record as Record<string, unknown>
 
     if (!record) return ok({ skipped: true })
@@ -50,7 +98,7 @@ serve(async (req) => {
       return ok({ skipped: 'not INSERT or UPDATE' })
     }
 
-    // Get all FCM tokens from profiles
+    // Get all FCM tokens
     const sb = createClient(SB_URL, SB_KEY)
     const { data: profiles } = await sb
       .from('profiles')
@@ -63,23 +111,34 @@ serve(async (req) => {
 
     if (tokens.length === 0) return ok({ sent: 0, reason: 'no tokens' })
 
-    // Send via FCM legacy API
-    const fcmRes = await fetch('https://fcm.googleapis.com/fcm/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': `key=${FCM_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        registration_ids: tokens,
-        notification: { title, body, sound: 'default' },
-        android: { priority: 'high', notification: { sound: 'default', channel_id: 'petfyco_alerts' } },
-        apns:    { payload: { aps: { sound: 'default', badge: 1 } } },
-      }),
-    })
+    // Get OAuth2 access token
+    const sa = JSON.parse(SA_RAW)
+    const accessToken = await getAccessToken(sa)
+    const projectId = sa.project_id as string
 
-    const result = await fcmRes.json()
-    return ok({ sent: tokens.length, title, fcm: result })
+    // Send one notification per token (V1 API sends one at a time)
+    const results = await Promise.allSettled(
+      tokens.map(token =>
+        fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: {
+              token,
+              notification: { title, body },
+              android: { priority: 'high', notification: { sound: 'default', channel_id: 'petfyco_alerts' } },
+              apns: { payload: { aps: { sound: 'default', badge: 1 } } },
+            },
+          }),
+        }).then(r => r.json())
+      )
+    )
+
+    const sent = results.filter(r => r.status === 'fulfilled').length
+    return ok({ sent, total: tokens.length, title })
 
   } catch (e) {
     return new Response(JSON.stringify({ error: String(e) }), { status: 500 })
