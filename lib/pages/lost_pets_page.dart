@@ -328,7 +328,7 @@ class _LostPetsPageState extends State<LostPetsPage>
             Expanded(
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
-                  : _tabFilter == 'alertas'
+                  : _tabFilter == 'alertas' && _viewMode == 'lista'
                       ? _buildAlertas()
                       : _viewMode == 'mapa'
                           ? _buildMap(_tabFilter == 'cerca')
