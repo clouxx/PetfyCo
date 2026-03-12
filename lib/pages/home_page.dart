@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../theme/app_theme.dart';
+import '../widgets/heroe_de_patitas_modal.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 
 class HomePage extends StatefulWidget {
@@ -388,34 +389,35 @@ class _HomePageState extends State<HomePage> {
                   viewportFraction: 0.92,
                 ),
                 items: [
-                  // Slide 1 — PetfyCo Nutrición y Limpieza (logo real)
-                  _buildPromoSlide(
-                    child: Image.asset('assets/logo/petfyco_nutricion.png', fit: BoxFit.contain),
-                    bg: Colors.white,
-                  ),
-                  // Slide 2 — Tienda banner
-                  _buildPromoSlide(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text('🛍 Visita nuestra Tienda', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.navy)),
-                        const SizedBox(height: 6),
-                        Text('Nutrición y Limpieza a Domicilio', style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
-                      ],
+                  // Slide 1 — PetfyCo Nutrición (logo)
+                  _buildBrandSlide(context),
+                  // Slide 2 — Tienda
+                  _buildRichSlide(
+                    context,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFF8C00), Color(0xFFFFB347)],
+                      begin: Alignment.topLeft, end: Alignment.bottomRight,
                     ),
-                    bg: AppColors.purple.withOpacity(0.06),
+                    icon: Icons.storefront_outlined,
+                    decorIcon: Icons.local_offer_outlined,
+                    title: 'Visita nuestra Tienda',
+                    subtitle: 'Nutrición y Limpieza\na Domicilio',
+                    ctaLabel: 'Ver productos',
+                    onTap: () => context.push('/tienda'),
                   ),
                   // Slide 3 — Aliado Petfyco
-                  _buildPromoSlide(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Text('💜 Aliado Petfyco', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.purple)),
-                        SizedBox(height: 6),
-                        Text('Apoya la causa por solo \$1 / mes', style: TextStyle(fontSize: 13, color: Colors.grey)),
-                      ],
+                  _buildRichSlide(
+                    context,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFE53935), Color(0xFFFF7043)],
+                      begin: Alignment.topLeft, end: Alignment.bottomRight,
                     ),
-                    bg: AppColors.purple.withOpacity(0.06),
+                    icon: Icons.favorite,
+                    decorIcon: Icons.volunteer_activism_outlined,
+                    title: 'Aliado Petfyco',
+                    subtitle: 'Apoya la causa\npor solo \$1 / mes',
+                    ctaLabel: 'Unirme',
+                    onTap: () => HeroeDePatitasModal.show(context),
                   ),
                 ],
               ),
@@ -603,17 +605,85 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-  Widget _buildPromoSlide({required Widget child, required Color bg}) {
+  Widget _buildBrandSlide(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 6),
       decoration: BoxDecoration(
-        color: bg,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: child,
+      child: Image.asset('assets/logo/petfyco_nutricion.png', fit: BoxFit.cover),
+    );
+  }
+
+  Widget _buildRichSlide(
+    BuildContext context, {
+    required LinearGradient gradient,
+    required IconData icon,
+    required IconData decorIcon,
+    required String title,
+    required String subtitle,
+    required String ctaLabel,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 6),
+        decoration: BoxDecoration(
+          gradient: gradient,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [BoxShadow(color: gradient.colors.first.withOpacity(0.35), blurRadius: 12, offset: const Offset(0, 5))],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: [
+            // Decorative background circles
+            Positioned(right: -20, top: -20,
+              child: Container(width: 120, height: 120,
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), shape: BoxShape.circle))),
+            Positioned(right: 30, bottom: -30,
+              child: Container(width: 90, height: 90,
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.08), shape: BoxShape.circle))),
+            // Decorative icon (right side, big)
+            Positioned(right: 14, top: 0, bottom: 0,
+              child: Center(child: Icon(decorIcon, size: 70, color: Colors.white.withOpacity(0.2)))),
+            // Content
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 16, 100, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(children: [
+                    Icon(icon, color: Colors.white, size: 20),
+                    const SizedBox(width: 6),
+                    Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                  ]),
+                  Text(subtitle, style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 13, height: 1.4)),
+                  // CTA button
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(ctaLabel, style: TextStyle(color: gradient.colors.first, fontWeight: FontWeight.bold, fontSize: 12)),
+                        const SizedBox(width: 4),
+                        Icon(Icons.arrow_forward, size: 13, color: gradient.colors.first),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
