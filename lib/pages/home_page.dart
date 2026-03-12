@@ -405,12 +405,12 @@ class _HomePageState extends State<HomePage> {
                     ),
                     bg: AppColors.purple.withOpacity(0.06),
                   ),
-                  // Slide 3 — Héroe de Patitas
+                  // Slide 3 — Apoya con Petfyco
                   _buildPromoSlide(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: const [
-                        Text('💜 Héroe de Patitas', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.purple)),
+                        Text('💜 Apoya con Petfyco', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.purple)),
                         SizedBox(height: 6),
                         Text('Apoya la causa por solo \$1 / mes', style: TextStyle(fontSize: 13, color: Colors.grey)),
                       ],
