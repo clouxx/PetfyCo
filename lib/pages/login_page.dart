@@ -77,82 +77,62 @@ class _LoginPageState extends State<LoginPage> {
                   height: 260,
                   fit: BoxFit.contain,
                 ),
-                const SizedBox(height: 8),
-                PetfyCard(
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const SizedBox(height: 8),
-                    
-                    // Email
-                    PetfyTextField(
-                      controller: _email,
-                      hint: 'Correo electrónico',
-                      keyboardType: TextInputType.emailAddress,
-                      prefix: const Icon(Icons.mail_outline),
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) {
-                          return 'Ingresa tu correo';
-                        }
-                        if (!v.contains('@')) {
-                          return 'Correo inválido';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    
-                    // Contraseña
-                    PetfyTextField(
-                      controller: _pass,
-                      hint: 'Contraseña',
-                      obscureText: _obscure,
-                      prefix: const Icon(Icons.lock_outline),
-                      suffix: IconButton(
-                        icon: Icon(
-                          _obscure ? Icons.visibility_off : Icons.visibility,
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Email
+                      PetfyTextField(
+                        controller: _email,
+                        hint: 'Correo electrónico',
+                        keyboardType: TextInputType.emailAddress,
+                        prefix: const Icon(Icons.mail_outline),
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) return 'Ingresa tu correo';
+                          if (!v.contains('@')) return 'Correo inválido';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      PetfyTextField(
+                        controller: _pass,
+                        hint: 'Contraseña',
+                        obscureText: _obscure,
+                        prefix: const Icon(Icons.lock_outline),
+                        suffix: IconButton(
+                          icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
+                          onPressed: () => setState(() => _obscure = !_obscure),
                         ),
-                        onPressed: () => setState(() => _obscure = !_obscure),
+                        validator: (v) {
+                          if (v == null || v.isEmpty) return 'Ingresa tu contraseña';
+                          return null;
+                        },
                       ),
-                      validator: (v) {
-                        if (v == null || v.isEmpty) {
-                          return 'Ingresa tu contraseña';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: PetfyLink(
-                        text: '¿Has olvidado tu contraseña?',
-                        onTap: () => context.push('/forgot-password'),
+                      const SizedBox(height: 16),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: PetfyLink(
+                          text: '¿Has olvidado tu contraseña?',
+                          onTap: () => context.push('/forgot-password'),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Botón Login
-                    PetfyButton(
-                      text: 'Iniciar sesión',
-                      loading: _sending,
-                      onPressed: _sending ? null : _doLogin,
-                    ),
-                    const SizedBox(height: 12),
-                    
-                    // Link a Registro
-                    Center(
-                      child: PetfyLink(
-                        text: '¿No tienes cuenta? Regístrate',
-                        onTap: () => context.push('/register'), // ✅ CORREGIDO
+                      const SizedBox(height: 16),
+                      PetfyButton(
+                        text: 'Iniciar sesión',
+                        loading: _sending,
+                        onPressed: _sending ? null : _doLogin,
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 12),
+                      Center(
+                        child: PetfyLink(
+                          text: '¿No tienes cuenta? Regístrate',
+                          onTap: () => context.push('/register'),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ),
               ],
             ),
           ),
