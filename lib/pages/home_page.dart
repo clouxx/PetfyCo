@@ -18,6 +18,7 @@ class _HomePageState extends State<HomePage> {
 
   List<Map<String, dynamic>> _pets = [];
   bool _loading = true;
+  String _displayName = 'Amigo';
 
   // Filtros visibles arriba
   String _filter = 'todos';
@@ -35,6 +36,23 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _loadPets();
     _loadMyPets();
+    _loadDisplayName();
+  }
+
+  Future<void> _loadDisplayName() async {
+    final user = _sb.auth.currentUser;
+    if (user == null) return;
+    try {
+      final data = await _sb
+          .from('profiles')
+          .select('display_name')
+          .eq('id', user.id)
+          .maybeSingle();
+      final name = data?['display_name'] as String?;
+      if (name != null && name.isNotEmpty && mounted) {
+        setState(() => _displayName = name);
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadPets() async {
@@ -278,8 +296,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     // Current user context
-    final user = _sb.auth.currentUser;
-    final displayName = user?.email?.split('@').first ?? 'Amigo';
+    final displayName = _displayName;
 
     return Scaffold(
       backgroundColor: AppColors.bgLight,
