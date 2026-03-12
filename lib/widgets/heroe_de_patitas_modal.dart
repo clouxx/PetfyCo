@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/app_theme.dart';
 
-/// Shows the "Apoya con Petfyco" donation modal.
+/// Shows the "Aliado Petfyco" donation modal.
 /// Call [HeroeDePatitasModal.show(context)] to display it.
 class HeroeDePatitasModal extends StatelessWidget {
   const HeroeDePatitasModal({super.key, required this.recentPets});
@@ -46,7 +46,7 @@ class HeroeDePatitasModal extends StatelessWidget {
 
             // Title
             Text(
-              'Apoya con Petfyco',
+              'Aliado Petfyco',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 color: AppColors.purple,
                 fontWeight: FontWeight.bold,
@@ -67,7 +67,7 @@ class HeroeDePatitasModal extends StatelessWidget {
 
             // Description
             Text(
-              'Apoya con Petfyco y ayúdanos a seguir salvando vidas. No podemos con todo solos: necesitamos que nos des una ',
+              'Sé un Aliado Petfyco y ayúdanos a seguir salvando vidas. No podemos con todo solos: necesitamos que nos des una ',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 15, color: Colors.grey.shade700, height: 1.5),
             ),
@@ -149,7 +149,7 @@ class HeroeDePatitasModal extends StatelessWidget {
                 onPressed: () {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('¡Gracias por apoyar con Petfyco! 💜')),
+                    const SnackBar(content: Text('¡Gracias por ser Aliado Petfyco! 💜')),
                   );
                 },
                 style: ElevatedButton.styleFrom(
@@ -159,7 +159,7 @@ class HeroeDePatitasModal extends StatelessWidget {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 0,
                 ),
-                child: const Text('Quiero apoyar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                child: const Text('Quiero ser Aliado', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ),
             const SizedBox(height: 12),
