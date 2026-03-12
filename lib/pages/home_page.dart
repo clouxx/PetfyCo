@@ -561,7 +561,11 @@ class _HomePageState extends State<HomePage> {
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: () {
-             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Módulo $title en construcción')));
+            if (title == 'Recetas') {
+              context.push('/recetas');
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Módulo $title en construcción')));
+            }
           },
           child: Padding(
             padding: const EdgeInsets.all(16.0),

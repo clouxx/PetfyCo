@@ -21,6 +21,7 @@ import 'providers/role_provider.dart';
 // ✅ NUEVO: Forgot password page
 import 'pages/forgot_password_page.dart';
 import 'pages/reset_password_page.dart';
+import 'pages/recetas_page.dart';
 
 // Lee las variables de entorno pasadas con --dart-define
 const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
@@ -34,6 +35,8 @@ Future<void> main() async {
     url: _supabaseUrl,
     anonKey: _supabaseAnonKey,
   );
+
+  await initRecetasNotifications();
 
   runApp(const ProviderScope(child: MyApp()));
 }
@@ -99,6 +102,10 @@ class _MyAppState extends State<MyApp> {
         GoRoute(
           path: '/tienda',
           builder: (_, __) => const TiendaPage(),
+        ),
+        GoRoute(
+          path: '/recetas',
+          builder: (_, __) => const RecetasPage(),
         ),
 
         // Ruta principal con barra inferior (4 tabs reales)
