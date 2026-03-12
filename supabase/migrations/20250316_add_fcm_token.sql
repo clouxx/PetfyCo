@@ -1,0 +1,3 @@
+-- FCM push token por usuario
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS fcm_token text;
