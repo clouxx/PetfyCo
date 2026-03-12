@@ -1,10 +1,15 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/app_theme.dart';
 
+/// Product ID configurado en App Store Connect / Google Play Console.
+const String _kAliadoProductId = 'aliado_petfyco_mensual';
+
 /// Shows the "Aliado Petfyco" donation modal.
 /// Call [HeroeDePatitasModal.show(context)] to display it.
-class HeroeDePatitasModal extends StatelessWidget {
+class HeroeDePatitasModal extends StatefulWidget {
   const HeroeDePatitasModal({super.key, required this.recentPets});
   final List<Map<String, dynamic>> recentPets;
 
@@ -33,6 +38,73 @@ class HeroeDePatitasModal extends StatelessWidget {
   }
 
   @override
+  State<HeroeDePatitasModal> createState() => _HeroeDePatitasModalState();
+}
+
+class _HeroeDePatitasModalState extends State<HeroeDePatitasModal> {
+  final InAppPurchase _iap = InAppPurchase.instance;
+  StreamSubscription<List<PurchaseDetails>>? _subscription;
+  ProductDetails? _product;
+  bool _loading = true;
+  bool _purchasing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscription = _iap.purchaseStream.listen(_onPurchaseUpdate);
+    _loadProduct();
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadProduct() async {
+    final available = await _iap.isAvailable();
+    if (!available) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
+    final response = await _iap.queryProductDetails({_kAliadoProductId});
+    if (mounted) {
+      setState(() {
+        _product = response.productDetails.isNotEmpty ? response.productDetails.first : null;
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _purchase() async {
+    if (_product == null) return;
+    setState(() => _purchasing = true);
+    final param = PurchaseParam(productDetails: _product!);
+    await _iap.buyNonConsumable(purchaseParam: param);
+  }
+
+  void _onPurchaseUpdate(List<PurchaseDetails> purchases) {
+    for (final purchase in purchases) {
+      if (purchase.status == PurchaseStatus.purchased ||
+          purchase.status == PurchaseStatus.restored) {
+        _iap.completePurchase(purchase);
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('¡Gracias por ser Aliado Petfyco! 💜')),
+          );
+        }
+      } else if (purchase.status == PurchaseStatus.error ||
+          purchase.status == PurchaseStatus.canceled) {
+        if (mounted) setState(() => _purchasing = false);
+      }
+      if (purchase.pendingCompletePurchase) {
+        _iap.completePurchase(purchase);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
@@ -54,7 +126,7 @@ class HeroeDePatitasModal extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Hero illustration
+            // Illustration
             Container(
               width: 110, height: 110,
               decoration: BoxDecoration(
@@ -78,7 +150,7 @@ class HeroeDePatitasModal extends StatelessWidget {
             const SizedBox(height: 24),
 
             // "Hazlo por" section
-            if (recentPets.isNotEmpty) ...[
+            if (widget.recentPets.isNotEmpty) ...[
               Row(
                 children: [
                   const Icon(Icons.favorite, color: AppColors.purple, size: 18),
@@ -91,9 +163,9 @@ class HeroeDePatitasModal extends StatelessWidget {
                 height: 90,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  itemCount: recentPets.length,
+                  itemCount: widget.recentPets.length,
                   itemBuilder: (_, i) {
-                    final pet = recentPets[i];
+                    final pet = widget.recentPets[i];
                     final nombre = pet['nombre'] as String? ?? '';
                     final photos = pet['pet_photos'];
                     String? imgUrl;
@@ -137,7 +209,7 @@ class HeroeDePatitasModal extends StatelessWidget {
 
             // Price
             Text(
-              _getPrice(context),
+              _product?.price ?? _getPrice(context),
               style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: AppColors.purple),
             ),
             const SizedBox(height: 20),
@@ -146,20 +218,18 @@ class HeroeDePatitasModal extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('¡Gracias por ser Aliado Petfyco! 💜')),
-                  );
-                },
+                onPressed: (_loading || _purchasing || _product == null) ? null : _purchase,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.purple,
                   foregroundColor: Colors.white,
+                  disabledBackgroundColor: AppColors.purple.withOpacity(0.5),
                   minimumSize: const Size.fromHeight(54),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 0,
                 ),
-                child: const Text('Quiero ser Aliado', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                child: _loading || _purchasing
+                    ? const SizedBox(height: 22, width: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                    : const Text('Quiero ser Aliado', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ),
             const SizedBox(height: 12),
