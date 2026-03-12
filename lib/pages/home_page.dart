@@ -461,14 +461,21 @@ class _HomePageState extends State<HomePage> {
                              children: [
                                Container(
                                  width: 70, height: 70,
-                                 decoration: const BoxDecoration(
-                                   color: AppColors.greyBg,
+                                 decoration: BoxDecoration(
+                                   color: AppColors.purple,
                                    shape: BoxShape.circle,
+                                   boxShadow: [
+                                     BoxShadow(
+                                       color: AppColors.purple.withOpacity(0.35),
+                                       blurRadius: 10,
+                                       offset: const Offset(0, 4),
+                                     ),
+                                   ],
                                  ),
-                                 child: const Icon(Icons.add, color: AppColors.greyText, size: 30),
+                                 child: const Icon(Icons.add, color: Colors.white, size: 32),
                                ),
                                const SizedBox(height: 8),
-                               const Text('Nuevo', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 12)),
+                               const Text('Nuevo', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.purple)),
                              ],
                            ),
                          ),
