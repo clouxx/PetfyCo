@@ -34,6 +34,24 @@ class _LostPetsPageState extends State<LostPetsPage>
   int get _activeFilterCount => [_filterDepto, _filterCiudad, _filterEspecie, _filterTalla]
       .where((f) => f != null && f.isNotEmpty).length;
 
+  List<Map<String, dynamic>> get _nearbyPets {
+    if (_myLocation == null) return _allPets;
+    const maxDistKm = 100.0;
+    final result = <Map<String, dynamic>>[];
+    for (final pet in _allPets) {
+      final lat = (pet['lat'] as num?)?.toDouble();
+      final lng = (pet['lng'] as num?)?.toDouble();
+      if (lat == null || lng == null) continue;
+      final dist = Geolocator.distanceBetween(
+              _myLocation!.latitude, _myLocation!.longitude, lat, lng) /
+          1000;
+      if (dist <= maxDistKm) result.add({...pet, '_distKm': dist});
+    }
+    result.sort((a, b) =>
+        (a['_distKm'] as double).compareTo(b['_distKm'] as double));
+    return result;
+  }
+
   // Alertas
   List<Map<String, dynamic>> _alerts = [];
   bool _loadingAlerts = false;
@@ -253,8 +271,14 @@ class _LostPetsPageState extends State<LostPetsPage>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('${_pets.length} reportes',
-                          style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                      Text(
+                        _tabFilter == 'cerca'
+                            ? '${_nearbyPets.length} cerca de ti'
+                            : _tabFilter == 'alertas'
+                                ? '${_alerts.length} alertas'
+                                : '${_pets.length} reportes',
+                        style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                      ),
                       Row(
                         children: [
                           _ViewToggle(
@@ -286,8 +310,10 @@ class _LostPetsPageState extends State<LostPetsPage>
                   : _tabFilter == 'alertas'
                       ? _buildAlertas()
                       : _viewMode == 'mapa'
-                          ? _buildMap()
-                          : _buildList(),
+                          ? _buildMap(_tabFilter == 'cerca')
+                          : _tabFilter == 'cerca'
+                              ? _buildCercaList()
+                              : _buildList(),
             ),
           ],
         ),
@@ -307,9 +333,11 @@ class _LostPetsPageState extends State<LostPetsPage>
               )
             : FloatingActionButton.extended(
                 onPressed: () => context.push('/publish?estado=perdido'),
-                backgroundColor: AppColors.orange.withOpacity(0.15),
-                foregroundColor: AppColors.orange,
-                elevation: 0,
+                backgroundColor: _tabFilter == 'cerca'
+                    ? AppColors.purple
+                    : AppColors.orange.withOpacity(0.15),
+                foregroundColor: _tabFilter == 'cerca' ? Colors.white : AppColors.orange,
+                elevation: _tabFilter == 'cerca' ? 2 : 0,
                 icon: const Icon(Icons.warning_amber_rounded),
                 label: const Text('¡Encontré una mascota!', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
@@ -544,8 +572,70 @@ class _LostPetsPageState extends State<LostPetsPage>
     child: Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600)),
   );
 
-  Widget _buildMap() {
-    final petsWithLocation = _pets.where((p) => p['lat'] != null && p['lng'] != null).toList();
+  Widget _buildCercaList() {
+    if (_myLocation == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppColors.purple.withOpacity(0.08),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.location_off_outlined, size: 48, color: AppColors.purple.withOpacity(0.6)),
+            ),
+            const SizedBox(height: 16),
+            const Text('Activa tu ubicación',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+            const SizedBox(height: 8),
+            Text('Para ver mascotas perdidas cerca de ti\nnecesitamos tu ubicación.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _goToMyLocation,
+              icon: const Icon(Icons.my_location, size: 18),
+              label: const Text('Usar mi ubicación'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.purple,
+                foregroundColor: Colors.white,
+                shape: const StadiumBorder(),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    final pets = _nearbyPets;
+    if (pets.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.pets, size: 60, color: Colors.grey),
+            const SizedBox(height: 12),
+            const Text('No hay mascotas perdidas cerca 🎉',
+                style: TextStyle(color: Colors.grey)),
+          ],
+        ),
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+        itemCount: pets.length,
+        itemBuilder: (_, i) => _CercaCard(pet: pets[i]),
+      ),
+    );
+  }
+
+  Widget _buildMap([bool cerca = false]) {
+    final source = cerca ? _nearbyPets : _pets;
+    final petsWithLocation = source.where((p) => p['lat'] != null && p['lng'] != null).toList();
     final center = _myLocation ??
         (petsWithLocation.isNotEmpty
             ? LatLng((petsWithLocation.first['lat'] as num).toDouble(), (petsWithLocation.first['lng'] as num).toDouble())
@@ -575,13 +665,13 @@ class _LostPetsPageState extends State<LostPetsPage>
                       onTap: () => _showPetBottomSheet(pet),
                       child: Stack(
                         children: [
-                          const Icon(Icons.location_pin, color: Colors.red, size: 44),
+                          Icon(Icons.location_pin, color: cerca ? AppColors.purple : Colors.red, size: 44),
                           Positioned(
                             top: 2, left: 6,
                             child: Container(
                               width: 22, height: 22,
                               decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                              child: const Icon(Icons.pets, size: 14, color: Colors.red),
+                              child: Icon(Icons.pets, size: 14, color: cerca ? AppColors.purple : Colors.red),
                             ),
                           ),
                         ],
@@ -632,12 +722,20 @@ class _LostPetsPageState extends State<LostPetsPage>
           top: 12, left: 16,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8)]),
+            decoration: BoxDecoration(
+              color: cerca ? AppColors.purple : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8)],
+            ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              const Icon(Icons.location_pin, color: Colors.red, size: 14),
+              Icon(Icons.pets, color: cerca ? Colors.white : Colors.red, size: 14),
               const SizedBox(width: 4),
-              Text('${petsWithLocation.length} en el mapa', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+              Text(
+                cerca
+                    ? '${petsWithLocation.length} mascota${petsWithLocation.length == 1 ? '' : 's'} perdida${petsWithLocation.length == 1 ? '' : 's'}'
+                    : '${petsWithLocation.length} en el mapa',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: cerca ? Colors.white : Colors.black87),
+              ),
             ]),
           ),
         ),
@@ -846,6 +944,137 @@ class _LostListCard extends StatelessWidget {
       child: Text(label, style: const TextStyle(fontSize: 11, color: Colors.black87, fontWeight: FontWeight.w600)),
     ),
   );
+}
+
+// ─────────── Cerca Card ──────────────────────────────────────────────────────
+
+class _CercaCard extends StatelessWidget {
+  const _CercaCard({required this.pet});
+  final Map<String, dynamic> pet;
+
+  @override
+  Widget build(BuildContext context) {
+    final nombre = pet['nombre'] as String? ?? 'Sin nombre';
+    final municipio = (pet['municipio'] as String?)?.trim() ?? '';
+    final especie = (pet['especie'] as String?)?.toLowerCase() ?? '';
+    final edadMeses = pet['edad_meses'] as int?;
+    final talla = pet['talla'] as String?;
+    final distKm = pet['_distKm'] as double?;
+
+    String? imageUrl;
+    final photos = pet['pet_photos'];
+    if (photos is List && photos.isNotEmpty) {
+      final sorted = photos.whereType<Map>().map((e) => Map<String, dynamic>.from(e as Map)).toList()
+        ..sort((a, b) => (a['position'] as int? ?? 0).compareTo(b['position'] as int? ?? 0));
+      imageUrl = sorted.first['url'] as String?;
+    }
+
+    final especieLabel = especie == 'perro' ? 'Perro' : especie == 'gato' ? 'Gato' : null;
+    final edadLabel = edadMeses != null ? '${edadMeses ~/ 12} años' : null;
+    final tallaLabel = talla != null && talla.isNotEmpty ? talla[0].toUpperCase() + talla.substring(1) : null;
+    final distLabel = distKm != null ? '${distKm.toStringAsFixed(1)} km' : null;
+
+    return GestureDetector(
+      onTap: () => context.push('/pet/${pet['id']}'),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 12, offset: const Offset(0, 4))],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Row(
+          children: [
+            // Photo
+            SizedBox(
+              width: 110,
+              height: 110,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  imageUrl != null
+                      ? Image.network(imageUrl, fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _ph())
+                      : _ph(),
+                  if (especieLabel != null)
+                    Positioned(
+                      top: 8, left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(especieLabel,
+                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black87)),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            // Info
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(nombre,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 3),
+                    if (edadLabel != null)
+                      Text(edadLabel, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                    if (tallaLabel != null)
+                      Text(tallaLabel, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        if (municipio.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade50,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(mainAxisSize: MainAxisSize.min, children: [
+                              Icon(Icons.place, size: 10, color: Colors.red.shade600),
+                              const SizedBox(width: 2),
+                              Text(municipio,
+                                  style: TextStyle(fontSize: 11, color: Colors.red.shade700, fontWeight: FontWeight.w600)),
+                            ]),
+                          ),
+                        if (distLabel != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppColors.purple.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(distLabel,
+                                style: const TextStyle(fontSize: 11, color: AppColors.purple, fontWeight: FontWeight.w600)),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(right: 8),
+              child: Icon(Icons.chevron_right, color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _ph() => Container(color: Colors.red.shade50, child: const Center(child: Icon(Icons.pets, color: Colors.redAccent, size: 36)));
 }
 
 // ─────────── Resultado del sheet de búsqueda ────────────────────────────────
