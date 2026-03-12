@@ -34,10 +34,84 @@ class _LostPetsPageState extends State<LostPetsPage>
   int get _activeFilterCount => [_filterDepto, _filterCiudad, _filterEspecie, _filterTalla]
       .where((f) => f != null && f.isNotEmpty).length;
 
+  // Alertas
+  List<Map<String, dynamic>> _alerts = [];
+  bool _loadingAlerts = false;
+
   @override
   void initState() {
     super.initState();
     _load();
+    _loadAlerts();
+  }
+
+  Future<void> _loadAlerts() async {
+    final user = _sb.auth.currentUser;
+    if (user == null) return;
+    setState(() => _loadingAlerts = true);
+    try {
+      final data = await _sb
+          .from('pet_alerts')
+          .select()
+          .eq('user_id', user.id)
+          .order('created_at', ascending: false);
+      if (mounted) setState(() => _alerts = List<Map<String, dynamic>>.from(data));
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _loadingAlerts = false);
+    }
+  }
+
+  Future<void> _createAlert(Map<String, String?> data) async {
+    final user = _sb.auth.currentUser;
+    if (user == null) return;
+    try {
+      await _sb.from('pet_alerts').insert({
+        'user_id': user.id,
+        if (data['especie'] != null) 'especie': data['especie'],
+        if (data['talla'] != null) 'talla': data['talla'],
+        if (data['depto'] != null) 'depto': data['depto'],
+        if (data['municipio'] != null) 'municipio': data['municipio'],
+      });
+      await _loadAlerts();
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Alerta creada'), backgroundColor: Colors.green),
+      );
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  Future<void> _deleteAlert(String alertId) async {
+    try {
+      await _sb.from('pet_alerts').delete().eq('id', alertId);
+      await _loadAlerts();
+    } catch (_) {}
+  }
+
+  Future<void> _openCreateAlertSheet() async {
+    final result = await showModalBottomSheet<_LostSearchResult>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => _LostSearchSheet(
+        sb: _sb,
+        title: 'Crear alerta',
+        actionLabel: 'Crear alerta',
+      ),
+    );
+    if (result == null) return;
+    await _createAlert({
+      'especie': result.especie,
+      'talla': result.talla,
+      'depto': result.depto,
+      'municipio': result.ciudad,
+    });
   }
 
   Future<void> _load() async {
@@ -209,9 +283,11 @@ class _LostPetsPageState extends State<LostPetsPage>
             Expanded(
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
-                  : _viewMode == 'mapa'
-                      ? _buildMap()
-                      : _buildList(),
+                  : _tabFilter == 'alertas'
+                      ? _buildAlertas()
+                      : _viewMode == 'mapa'
+                          ? _buildMap()
+                          : _buildList(),
             ),
           ],
         ),
@@ -220,18 +296,112 @@ class _LostPetsPageState extends State<LostPetsPage>
       // ─── Floating Action Button ──────────────────────────────
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 80.0),
-        child: FloatingActionButton.extended(
-          onPressed: () => context.push('/publish?estado=perdido'),
-          backgroundColor: AppColors.orange.withOpacity(0.15),
-          foregroundColor: AppColors.orange,
-          elevation: 0,
-          icon: const Icon(Icons.warning_amber_rounded),
-          label: const Text('¡Encontré una mascota!', style: TextStyle(fontWeight: FontWeight.bold)),
-        ),
+        child: _tabFilter == 'alertas'
+            ? FloatingActionButton.extended(
+                onPressed: _openCreateAlertSheet,
+                backgroundColor: AppColors.purple,
+                foregroundColor: Colors.white,
+                elevation: 2,
+                icon: const Icon(Icons.add_alert),
+                label: const Text('Crear alerta', style: TextStyle(fontWeight: FontWeight.bold)),
+              )
+            : FloatingActionButton.extended(
+                onPressed: () => context.push('/publish?estado=perdido'),
+                backgroundColor: AppColors.orange.withOpacity(0.15),
+                foregroundColor: AppColors.orange,
+                elevation: 0,
+                icon: const Icon(Icons.warning_amber_rounded),
+                label: const Text('¡Encontré una mascota!', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
+
+  Widget _buildAlertas() {
+    if (_loadingAlerts) return const Center(child: CircularProgressIndicator());
+    if (_alerts.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppColors.purple.withOpacity(0.08),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.add_alert_outlined, size: 48, color: AppColors.purple.withOpacity(0.6)),
+            ),
+            const SizedBox(height: 16),
+            const Text('No has creado ninguna alerta',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+            const SizedBox(height: 8),
+            Text('Te avisaremos cuando aparezca una mascota\nque coincida con tus criterios.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _openCreateAlertSheet,
+              icon: const Icon(Icons.add_alert, size: 18),
+              label: const Text('Crear alerta'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.purple,
+                foregroundColor: Colors.white,
+                shape: const StadiumBorder(),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadAlerts,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+        itemCount: _alerts.length,
+        itemBuilder: (_, i) {
+          final alert = _alerts[i];
+          final parts = <String>[];
+          if (alert['especie'] != null) parts.add(_cap(alert['especie'] as String));
+          if (alert['talla'] != null) parts.add(_cap(alert['talla'] as String));
+          if (alert['municipio'] != null) parts.add(alert['municipio'] as String);
+          if (alert['depto'] != null) parts.add(alert['depto'] as String);
+          final subtitle = parts.isEmpty ? 'Cualquier mascota perdida' : parts.join(' · ');
+
+          return Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: AppColors.purple.withOpacity(0.2)),
+            ),
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              leading: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.purple.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.notifications_active_outlined, color: AppColors.purple, size: 22),
+              ),
+              title: Text('Alerta activa', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+              subtitle: Text(subtitle, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+              trailing: IconButton(
+                icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                onPressed: () => _deleteAlert(alert['id'] as String),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  String _cap(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
   Widget _buildList() {
     if (_pets.isEmpty) {
@@ -697,12 +867,16 @@ class _LostSearchSheet extends StatefulWidget {
     this.initialCiudad,
     this.initialEspecie,
     this.initialTalla,
+    this.title = 'Búsqueda y Filtros',
+    this.actionLabel = 'Buscar',
   });
   final SupabaseClient sb;
   final String? initialDepto;
   final String? initialCiudad;
   final String? initialEspecie;
   final String? initialTalla;
+  final String title;
+  final String actionLabel;
 
   @override
   State<_LostSearchSheet> createState() => _LostSearchSheetState();
@@ -818,7 +992,7 @@ class _LostSearchSheetState extends State<_LostSearchSheet> {
             // Título
             Row(
               children: [
-                Text('Búsqueda y Filtros',
+                Text(widget.title,
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.navy)),
                 const Spacer(),
                 IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
@@ -916,7 +1090,7 @@ class _LostSearchSheetState extends State<_LostSearchSheet> {
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
-                    child: const Text('Buscar'),
+                    child: Text(widget.actionLabel),
                   ),
                 ),
               ],
