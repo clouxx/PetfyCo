@@ -19,10 +19,20 @@ class _LostPetsPageState extends State<LostPetsPage>
   final _sb = Supabase.instance.client;
   final _mapController = MapController();
   bool _loading = true;
+  List<Map<String, dynamic>> _allPets = [];
   List<Map<String, dynamic>> _pets = [];
   String _tabFilter = 'busqueda';
   String _viewMode = 'lista';
   LatLng? _myLocation;
+
+  // Filtros activos
+  String? _filterDepto;
+  String? _filterCiudad;
+  String? _filterEspecie;
+  String? _filterTalla;
+
+  int get _activeFilterCount => [_filterDepto, _filterCiudad, _filterEspecie, _filterTalla]
+      .where((f) => f != null && f.isNotEmpty).length;
 
   @override
   void initState() {
@@ -41,13 +51,55 @@ class _LostPetsPageState extends State<LostPetsPage>
       ''').eq('estado', 'perdido').order('created_at', ascending: false).limit(50);
 
       setState(() {
-        _pets = List<Map<String, dynamic>>.from(data);
+        _allPets = List<Map<String, dynamic>>.from(data);
+        _applyFilters();
         _loading = false;
       });
     } catch (e) {
       setState(() => _loading = false);
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
+  }
+
+  void _applyFilters() {
+    _pets = _allPets.where((pet) {
+      final especie = (pet['especie'] as String? ?? '').toLowerCase();
+      final talla = (pet['talla'] as String? ?? '').toLowerCase();
+      final depto = (pet['depto'] as String? ?? '').trim().toLowerCase();
+      final muni = (pet['municipio'] as String? ?? '').trim().toLowerCase();
+
+      if (_filterEspecie != null && especie != _filterEspecie!.toLowerCase()) return false;
+      if (_filterTalla != null && talla != _filterTalla!.toLowerCase()) return false;
+      if (_filterDepto != null && _filterDepto!.isNotEmpty && depto != _filterDepto!.trim().toLowerCase()) return false;
+      if (_filterCiudad != null && _filterCiudad!.isNotEmpty && muni != _filterCiudad!.trim().toLowerCase()) return false;
+      return true;
+    }).toList();
+  }
+
+  Future<void> _openSearchSheet() async {
+    final result = await showModalBottomSheet<_LostSearchResult>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => _LostSearchSheet(
+        sb: _sb,
+        initialDepto: _filterDepto,
+        initialCiudad: _filterCiudad,
+        initialEspecie: _filterEspecie,
+        initialTalla: _filterTalla,
+      ),
+    );
+    if (result == null) return;
+    setState(() {
+      _filterDepto = result.depto;
+      _filterCiudad = result.ciudad;
+      _filterEspecie = result.especie;
+      _filterTalla = result.talla;
+      _applyFilters();
+    });
   }
 
   @override
@@ -74,11 +126,33 @@ class _LostPetsPageState extends State<LostPetsPage>
                   // ─── 3 Top Tabs ─────────────────────────────
                   Row(
                     children: [
-                      _TabBtn(
-                        icon: Icons.search,
-                        label: 'Búsqueda',
-                        active: _tabFilter == 'busqueda',
-                        onTap: () => setState(() => _tabFilter = 'busqueda'),
+                      // Búsqueda abre el sheet de filtros
+                      GestureDetector(
+                        onTap: _openSearchSheet,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                          decoration: BoxDecoration(
+                            color: AppColors.purple,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.search, size: 14, color: Colors.white),
+                              const SizedBox(width: 6),
+                              const Text('Búsqueda', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                              if (_activeFilterCount > 0) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
+                                  child: Text('$_activeFilterCount', style: const TextStyle(color: AppColors.purple, fontSize: 10, fontWeight: FontWeight.bold)),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 8),
                       _TabBtn(
@@ -92,7 +166,10 @@ class _LostPetsPageState extends State<LostPetsPage>
                         icon: Icons.location_on,
                         label: 'Cerca',
                         active: _tabFilter == 'cerca',
-                        onTap: () => setState(() => _tabFilter = 'cerca'),
+                        onTap: () {
+                          setState(() => _tabFilter = 'cerca');
+                          _goToMyLocation();
+                        },
                       ),
                     ],
                   ),
@@ -599,4 +676,306 @@ class _LostListCard extends StatelessWidget {
       child: Text(label, style: const TextStyle(fontSize: 11, color: Colors.black87, fontWeight: FontWeight.w600)),
     ),
   );
+}
+
+// ─────────── Resultado del sheet de búsqueda ────────────────────────────────
+
+class _LostSearchResult {
+  final String? depto;
+  final String? ciudad;
+  final String? especie;
+  final String? talla;
+  _LostSearchResult({this.depto, this.ciudad, this.especie, this.talla});
+}
+
+// ─────────── Sheet de Búsqueda y Filtros ────────────────────────────────────
+
+class _LostSearchSheet extends StatefulWidget {
+  const _LostSearchSheet({
+    required this.sb,
+    this.initialDepto,
+    this.initialCiudad,
+    this.initialEspecie,
+    this.initialTalla,
+  });
+  final SupabaseClient sb;
+  final String? initialDepto;
+  final String? initialCiudad;
+  final String? initialEspecie;
+  final String? initialTalla;
+
+  @override
+  State<_LostSearchSheet> createState() => _LostSearchSheetState();
+}
+
+class _LostSearchSheetState extends State<_LostSearchSheet> {
+  List<String> _deptos = [];
+  final Map<String, List<String>> _citiesCache = {};
+  bool _loadingDeptos = true;
+  bool _loadingCities = false;
+
+  String? _depto;
+  String? _ciudad;
+  String? _especie;
+  String? _talla;
+
+  final _tipos = const ['perro', 'gato'];
+  final _tallas = const ['pequeño', 'mediano', 'grande'];
+
+  @override
+  void initState() {
+    super.initState();
+    _depto = widget.initialDepto;
+    _ciudad = widget.initialCiudad;
+    _especie = widget.initialEspecie;
+    _talla = widget.initialTalla;
+    _loadDeptos().then((_) {
+      if (_depto != null && _depto!.isNotEmpty) _loadCities(_depto!);
+    });
+  }
+
+  Future<void> _loadDeptos() async {
+    setState(() => _loadingDeptos = true);
+    try {
+      final res = await widget.sb.from('departments').select('name').order('name');
+      final set = <String>{};
+      if (res is List) {
+        for (final row in res) {
+          final v = (row['name'] as String?)?.trim();
+          if (v != null && v.isNotEmpty) set.add(v);
+        }
+      }
+      if (set.isEmpty) {
+        final res2 = await widget.sb.from('pets').select('depto').eq('estado', 'perdido');
+        if (res2 is List) {
+          for (final row in res2) {
+            final v = (row['depto'] as String?)?.trim();
+            if (v != null && v.isNotEmpty) set.add(v);
+          }
+        }
+      }
+      setState(() {
+        _deptos = set.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+        _loadingDeptos = false;
+      });
+    } catch (_) {
+      setState(() => _loadingDeptos = false);
+    }
+  }
+
+  Future<void> _loadCities(String depto) async {
+    if (_citiesCache.containsKey(depto)) return;
+    setState(() => _loadingCities = true);
+    try {
+      List<String> list = [];
+      try {
+        final res = await widget.sb
+            .from('cities')
+            .select('name, departments!inner(name)')
+            .eq('departments.name', depto)
+            .order('name');
+        if (res is List && res.isNotEmpty) {
+          final set = <String>{};
+          for (final row in res) {
+            final v = (row['name'] as String?)?.trim();
+            if (v != null && v.isNotEmpty) set.add(v);
+          }
+          list = set.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+        }
+      } catch (_) {}
+
+      if (list.isEmpty) {
+        final res2 = await widget.sb.from('pets').select('municipio').eq('depto', depto).eq('estado', 'perdido');
+        final set = <String>{};
+        if (res2 is List) {
+          for (final row in res2) {
+            final v = (row['municipio'] as String?)?.trim();
+            if (v != null && v.isNotEmpty) set.add(v);
+          }
+        }
+        list = set.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+      }
+
+      setState(() {
+        _citiesCache[depto] = list;
+        _loadingCities = false;
+      });
+    } catch (_) {
+      setState(() => _loadingCities = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cities = (_depto != null && _citiesCache[_depto!] != null) ? _citiesCache[_depto!]! : <String>[];
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Título
+            Row(
+              children: [
+                Text('Búsqueda y Filtros',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.navy)),
+                const Spacer(),
+                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+              ],
+            ),
+            const SizedBox(height: 4),
+
+            // — Ubicación
+            Text('¿Dónde quieres buscar?',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.purple)),
+            const SizedBox(height: 10),
+
+            // Departamento
+            _Dropdown(
+              value: _depto,
+              hint: _loadingDeptos ? 'Cargando...' : 'Departamento',
+              icon: Icons.place_outlined,
+              items: _deptos,
+              enabled: !_loadingDeptos,
+              onChanged: (v) {
+                setState(() { _depto = v; _ciudad = null; });
+                if (v != null && v.isNotEmpty) _loadCities(v);
+              },
+            ),
+            const SizedBox(height: 10),
+
+            // Ciudad
+            _Dropdown(
+              value: _ciudad,
+              hint: _loadingCities ? 'Cargando...' : 'Ciudad / Municipio',
+              icon: Icons.location_city_outlined,
+              items: cities,
+              enabled: !_loadingCities && _depto != null,
+              onChanged: (v) => setState(() => _ciudad = v),
+            ),
+
+            const SizedBox(height: 20),
+
+            // — Filtros
+            Text('Filtros',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.purple)),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: _Dropdown(
+                    value: _especie,
+                    hint: 'Tipo de mascota',
+                    icon: Icons.pets_outlined,
+                    items: _tipos,
+                    onChanged: (v) => setState(() => _especie = v),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _Dropdown(
+                    value: _talla,
+                    hint: 'Tamaño',
+                    icon: Icons.straighten_outlined,
+                    items: _tallas,
+                    onChanged: (v) => setState(() => _talla = v),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            // — Botones
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      setState(() { _depto = _ciudad = _especie = _talla = null; });
+                    },
+                    style: OutlinedButton.styleFrom(
+                      shape: const StadiumBorder(),
+                      side: const BorderSide(color: AppColors.purple),
+                      foregroundColor: AppColors.purple,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: const Text('Limpiar'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context, _LostSearchResult(
+                      depto: _depto, ciudad: _ciudad, especie: _especie, talla: _talla,
+                    )),
+                    style: ElevatedButton.styleFrom(
+                      shape: const StadiumBorder(),
+                      backgroundColor: AppColors.purple,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: const Text('Buscar'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────── Dropdown helper ────────────────────────────────────────────────
+
+class _Dropdown extends StatelessWidget {
+  const _Dropdown({
+    required this.value,
+    required this.hint,
+    required this.items,
+    required this.onChanged,
+    this.icon,
+    this.enabled = true,
+  });
+  final String? value;
+  final String hint;
+  final List<String> items;
+  final ValueChanged<String?> onChanged;
+  final IconData? icon;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return InputDecorator(
+      decoration: InputDecoration(
+        prefixIcon: icon != null ? Icon(icon, color: AppColors.purple, size: 20) : null,
+        hintText: hint,
+        filled: true,
+        fillColor: AppColors.purple.withOpacity(0.05),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: AppColors.purple.withOpacity(0.3)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: AppColors.purple.withOpacity(0.3)),
+        ),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          isExpanded: true,
+          value: value,
+          hint: Text(hint, style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
+          items: items.map((e) => DropdownMenuItem(
+            value: e,
+            child: Text(e[0].toUpperCase() + e.substring(1), style: const TextStyle(fontSize: 13)),
+          )).toList(),
+          onChanged: enabled ? onChanged : null,
+        ),
+      ),
+    );
+  }
 }
