@@ -652,25 +652,26 @@ class _HomePageState extends State<HomePage> {
               child: Container(width: 90, height: 90,
                 decoration: BoxDecoration(color: Colors.white.withOpacity(0.08), shape: BoxShape.circle))),
 
-            // Logo integrado (right side) — multiply elimina el fondo blanco
+            // Logo integrado — radial fade + multiply elimina fondo blanco por todos los bordes
             if (logoAsset != null)
               Positioned(
-                right: -10, top: 0, bottom: 0,
+                right: -4, top: 0, bottom: 0,
                 child: Center(
                   child: ShaderMask(
                     blendMode: BlendMode.dstIn,
-                    shaderCallback: (bounds) => LinearGradient(
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                      colors: [Colors.transparent, Colors.white, Colors.white],
-                      stops: const [0.0, 0.35, 1.0],
+                    shaderCallback: (bounds) => RadialGradient(
+                      center: Alignment.center,
+                      radius: 0.62,
+                      colors: [Colors.white, Colors.white, Colors.transparent],
+                      stops: const [0.0, 0.55, 1.0],
                     ).createShader(bounds),
                     child: Image.asset(
                       logoAsset,
-                      width: 140,
-                      height: 140,
+                      width: 130,
+                      height: 130,
                       fit: BoxFit.contain,
-                      color: Colors.white.withOpacity(0.9),
+                      // multiply con el naranja medio del banner: blanco→naranja (invisible sobre el fondo)
+                      color: const Color(0xFFFF9A00),
                       colorBlendMode: BlendMode.multiply,
                     ),
                   ),
