@@ -6,6 +6,7 @@ class CartItem {
   final int price;
   final String emoji;
   final int quantity;
+  final String? imageUrl; // URL de imagen desde Supabase store_products
 
   const CartItem({
     required this.name,
@@ -13,6 +14,7 @@ class CartItem {
     required this.price,
     required this.emoji,
     this.quantity = 1,
+    this.imageUrl,
   });
 
   CartItem copyWith({int? quantity}) => CartItem(
@@ -21,6 +23,7 @@ class CartItem {
         price: price,
         emoji: emoji,
         quantity: quantity ?? this.quantity,
+        imageUrl: imageUrl,
       );
 }
 
