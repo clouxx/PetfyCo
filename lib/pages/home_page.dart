@@ -652,18 +652,26 @@ class _HomePageState extends State<HomePage> {
               child: Container(width: 90, height: 90,
                 decoration: BoxDecoration(color: Colors.white.withOpacity(0.08), shape: BoxShape.circle))),
 
-            // Logo difuminado (right side)
+            // Logo integrado (right side) — multiply elimina el fondo blanco
             if (logoAsset != null)
               Positioned(
                 right: -10, top: 0, bottom: 0,
                 child: Center(
-                  child: Opacity(
-                    opacity: 0.28,
+                  child: ShaderMask(
+                    blendMode: BlendMode.dstIn,
+                    shaderCallback: (bounds) => LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: [Colors.transparent, Colors.white, Colors.white],
+                      stops: const [0.0, 0.35, 1.0],
+                    ).createShader(bounds),
                     child: Image.asset(
                       logoAsset,
-                      width: 130,
-                      height: 130,
+                      width: 140,
+                      height: 140,
                       fit: BoxFit.contain,
+                      color: Colors.white.withOpacity(0.9),
+                      colorBlendMode: BlendMode.multiply,
                     ),
                   ),
                 ),
