@@ -26,23 +26,31 @@ import 'pages/conecta_page.dart';
 import 'pages/historial_medico_page.dart';
 import 'services/notification_service.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 // Lee las variables de entorno pasadas con --dart-define
 const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const _supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 
+bool get _isMobile =>
+    !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inicializa Supabase
-  await Firebase.initializeApp();
+  if (_isMobile) {
+    await Firebase.initializeApp();
+  }
 
   await Supabase.initialize(
     url: _supabaseUrl,
     anonKey: _supabaseAnonKey,
   );
 
-  await NotificationService.init();
+  if (_isMobile) {
+    await NotificationService.init();
+  }
 
   runApp(const ProviderScope(child: MyApp()));
 }
