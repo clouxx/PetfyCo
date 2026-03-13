@@ -277,7 +277,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       body: _loading 
         ? const Center(child: CircularProgressIndicator())
         : SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).padding.bottom + 100),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 200),
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 600),
