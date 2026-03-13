@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/app_theme.dart';
 import '../providers/cart_provider.dart';
 import 'cart_page.dart';
 
-/// E-commerce store page - PetfyCo Nutrición y Limpieza a Domicilio
+/// E-commerce store page — lee productos desde Supabase store_products
 class TiendaPage extends ConsumerStatefulWidget {
   const TiendaPage({super.key});
 
@@ -13,74 +14,68 @@ class TiendaPage extends ConsumerStatefulWidget {
 }
 
 class _TiendaPageState extends ConsumerState<TiendaPage> {
+  final _sb = Supabase.instance.client;
+
   String _selectedCategory = 'Todos';
+  List<Map<String, dynamic>> _categories = const [];
+  List<Map<String, dynamic>> _allProducts = const [];
+  bool _loading = true;
 
-  final List<String> _categories = ['Todos', 'Alimentos', 'Baño y Limpieza', 'Accesorios', 'Salud'];
+  // Emoji fallback por slug de categoría
+  static const _catEmoji = {
+    'nutricion': '🍖',
+    'higiene': '🛁',
+    'accesorios': '🏷️',
+    'juguetes': '🎾',
+    'salud': '💊',
+    'camas': '🛏',
+  };
 
-  final List<_Product> _products = [
-    _Product(
-      name: 'Royal Canin Adulto',
-      description: 'Alimento seco para perros adultos 2kg',
-      price: 65000,
-      category: 'Alimentos',
-      emoji: '🐾',
-      badgeText: 'Más vendido',
-    ),
-    _Product(
-      name: 'Hills Science Diet',
-      description: 'Alimento premium para gatos 1.5kg',
-      price: 52000,
-      category: 'Alimentos',
-      emoji: '🐱',
-    ),
-    _Product(
-      name: 'Shampoo Antipulgas',
-      description: 'Baño con protección antipulgas 500ml',
-      price: 28000,
-      category: 'Baño y Limpieza',
-      emoji: '🛁',
-    ),
-    _Product(
-      name: 'Kit de Aseo Completo',
-      description: 'Cepillo, shampoo y cortauñas',
-      price: 48000,
-      category: 'Baño y Limpieza',
-      emoji: '✂️',
-      badgeText: 'Oferta',
-    ),
-    _Product(
-      name: 'Collar GPS Smart',
-      description: 'Rastreador GPS para mascotas',
-      price: 120000,
-      category: 'Accesorios',
-      emoji: '📍',
-    ),
-    _Product(
-      name: 'Cama Ortopédica',
-      description: 'Cama con memoria de espuma M/L',
-      price: 89000,
-      category: 'Accesorios',
-      emoji: '🛏',
-    ),
-    _Product(
-      name: 'Vitaminas Multivitamínicas',
-      description: 'Suplemento diario para perros y gatos',
-      price: 35000,
-      category: 'Salud',
-      emoji: '💊',
-    ),
-    _Product(
-      name: 'Antipulgas Pipeta',
-      description: 'Protección 3 meses contra pulgas y garrapatas',
-      price: 42000,
-      category: 'Salud',
-      emoji: '🔬',
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
 
-  List<_Product> get _filtered => _selectedCategory == 'Todos'
-      ? _products
-      : _products.where((p) => p.category == _selectedCategory).toList();
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try {
+      // Cargar categorías activas
+      final cats = await _sb
+          .from('store_categories')
+          .select('id, name, slug')
+          .eq('active', true)
+          .order('name');
+
+      // Cargar productos activos con su categoría
+      final prods = await _sb
+          .from('store_products')
+          .select('id, name, description, price, compare_price, images, featured, stock, category_id, store_categories(name, slug)')
+          .eq('active', true)
+          .gt('stock', 0)
+          .order('featured', ascending: false)
+          .order('name');
+
+      if (mounted) {
+        setState(() {
+          _categories = List<Map<String, dynamic>>.from(cats);
+          _allProducts = List<Map<String, dynamic>>.from(prods);
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  List<Map<String, dynamic>> get _filtered {
+    if (_selectedCategory == 'Todos') return _allProducts;
+    return _allProducts.where((p) {
+      final cat = p['store_categories'];
+      if (cat == null) return false;
+      return (cat['name'] as String?) == _selectedCategory;
+    }).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -97,7 +92,8 @@ class _TiendaPageState extends ConsumerState<TiendaPage> {
           color: AppColors.navy,
           onPressed: () => Navigator.of(context).maybePop(),
         ),
-        title: const Text('Tienda PetfyCo', style: TextStyle(color: AppColors.navy, fontWeight: FontWeight.bold)),
+        title: const Text('Tienda PetfyCo',
+            style: TextStyle(color: AppColors.navy, fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
       body: SafeArea(
@@ -114,14 +110,16 @@ class _TiendaPageState extends ConsumerState<TiendaPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
+                      const Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text('🛍 PetfyCo Tienda', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                          Text('Nutrición y Limpieza a Domicilio', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                        children: [
+                          Text('🛍 PetfyCo Tienda',
+                              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                          Text('Nutrición y Limpieza a Domicilio',
+                              style: TextStyle(color: Colors.grey, fontSize: 13)),
                         ],
                       ),
-                      // ── Ícono carrito con badge real ──────────
+                      // ── Carrito con badge ──────────
                       GestureDetector(
                         onTap: () => Navigator.push(
                           context,
@@ -130,7 +128,8 @@ class _TiendaPageState extends ConsumerState<TiendaPage> {
                         child: Stack(
                           clipBehavior: Clip.none,
                           children: [
-                            const Icon(Icons.shopping_bag_outlined, color: AppColors.purple, size: 28),
+                            const Icon(Icons.shopping_bag_outlined,
+                                color: AppColors.purple, size: 28),
                             if (cartCount > 0)
                               Positioned(
                                 right: -4,
@@ -140,7 +139,10 @@ class _TiendaPageState extends ConsumerState<TiendaPage> {
                                   backgroundColor: AppColors.orange,
                                   child: Text(
                                     cartCount > 9 ? '9+' : '$cartCount',
-                                    style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold),
                                   ),
                                 ),
                               ),
@@ -151,7 +153,7 @@ class _TiendaPageState extends ConsumerState<TiendaPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // ─── Banner Promo (Logo real de la empresa) ─────────────
+                  // ─── Banner logo ─────────────────────────────────
                   ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: Image.asset(
@@ -163,34 +165,21 @@ class _TiendaPageState extends ConsumerState<TiendaPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // ─── Category Filters ─────────────────────────
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: _categories.map((cat) {
-                        final selected = _selectedCategory == cat;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: GestureDetector(
-                            onTap: () => setState(() => _selectedCategory = cat),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-                              decoration: BoxDecoration(
-                                color: selected ? AppColors.purple : Colors.grey.shade100,
-                                borderRadius: BorderRadius.circular(24),
-                              ),
-                              child: Text(cat, style: TextStyle(
-                                color: selected ? Colors.white : Colors.grey.shade700,
-                                fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-                                fontSize: 13,
-                              )),
-                            ),
-                          ),
-                        );
-                      }).toList(),
+                  // ─── Category Chips ───────────────────────────────
+                  if (_loading)
+                    const SizedBox(height: 36)
+                  else
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _catChip('Todos'),
+                          ..._categories
+                              .map((c) => _catChip(c['name'] as String))
+                              .toList(),
+                        ],
+                      ),
                     ),
-                  ),
                   const SizedBox(height: 16),
                 ],
               ),
@@ -198,128 +187,245 @@ class _TiendaPageState extends ConsumerState<TiendaPage> {
 
             // ─── Product Grid ─────────────────────────────────────
             Expanded(
-              child: GridView.builder(
-                padding: const EdgeInsets.all(16),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 16,
-                  crossAxisSpacing: 16,
-                  mainAxisExtent: 220,
-                ),
-                itemCount: _filtered.length,
-                itemBuilder: (_, i) => _ProductCard(
-                  product: _filtered[i],
-                  inCartQty: cartItems
-                      .where((e) => e.name == _filtered[i].name)
-                      .fold(0, (s, e) => s + e.quantity),
-                  onAdd: () => ref.read(cartProvider.notifier).add(
-                    CartItem(
-                      name: _filtered[i].name,
-                      description: _filtered[i].description,
-                      price: _filtered[i].price,
-                      emoji: _filtered[i].emoji,
-                    ),
-                  ),
-                ),
-              ),
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _filtered.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('🐾',
+                                  style: TextStyle(fontSize: 48)),
+                              const SizedBox(height: 12),
+                              Text(
+                                'No hay productos disponibles',
+                                style: TextStyle(
+                                    color: Colors.grey.shade600, fontSize: 15),
+                              ),
+                            ],
+                          ),
+                        )
+                      : RefreshIndicator(
+                          onRefresh: _load,
+                          child: GridView.builder(
+                            padding: const EdgeInsets.all(16),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              mainAxisSpacing: 16,
+                              crossAxisSpacing: 16,
+                              mainAxisExtent: 220,
+                            ),
+                            itemCount: _filtered.length,
+                            itemBuilder: (_, i) {
+                              final p = _filtered[i];
+                              final cartQty = cartItems
+                                  .where((e) => e.name == (p['name'] ?? ''))
+                                  .fold(0, (s, e) => s + e.quantity);
+                              return _ProductCard(
+                                product: p,
+                                catEmoji: _emojiForProduct(p),
+                                inCartQty: cartQty,
+                                onAdd: () => ref
+                                    .read(cartProvider.notifier)
+                                    .add(CartItem(
+                                      name: p['name'] ?? '',
+                                      description: p['description'] ?? '',
+                                      price:
+                                          ((p['price'] as num?) ?? 0).toInt(),
+                                      emoji: _emojiForProduct(p),
+                                      imageUrl: _firstImage(p),
+                                    )),
+                              );
+                            },
+                          ),
+                        ),
             ),
           ],
         ),
       ),
     );
   }
-}
 
-// ─────────── Product Model ───────────────────────────────────────────────────
+  Widget _catChip(String label) {
+    final selected = _selectedCategory == label;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedCategory = label),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.purple : Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? Colors.white : Colors.grey.shade700,
+              fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+              fontSize: 13,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
-class _Product {
-  const _Product({
-    required this.name,
-    required this.description,
-    required this.price,
-    required this.category,
-    required this.emoji,
-    this.badgeText,
-  });
-  final String name, description, category, emoji;
-  final int price;
-  final String? badgeText;
+  String _emojiForProduct(Map<String, dynamic> p) {
+    final cat = p['store_categories'];
+    if (cat != null) {
+      final slug = (cat['slug'] as String?) ?? '';
+      return _catEmoji[slug] ?? '🐾';
+    }
+    return '🐾';
+  }
+
+  String? _firstImage(Map<String, dynamic> p) {
+    final imgs = p['images'];
+    if (imgs is List && imgs.isNotEmpty) return imgs.first as String?;
+    return null;
+  }
 }
 
 // ─────────── Product Card ────────────────────────────────────────────────────
 
 class _ProductCard extends StatelessWidget {
-  const _ProductCard({required this.product, required this.inCartQty, required this.onAdd});
-  final _Product product;
+  const _ProductCard({
+    required this.product,
+    required this.catEmoji,
+    required this.inCartQty,
+    required this.onAdd,
+  });
+  final Map<String, dynamic> product;
+  final String catEmoji;
   final int inCartQty;
   final VoidCallback onAdd;
 
   @override
   Widget build(BuildContext context) {
-    final formattedPrice = '\$${product.price.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
+    final price = ((product['price'] as num?) ?? 0).toInt();
+    final comparePrice = ((product['compare_price'] as num?) ?? 0).toInt();
+    final featured = product['featured'] == true;
+    final imageUrl = _firstImage();
+    final formattedPrice =
+        '\$${price.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4))
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Product visual area
+          // ─── Imagen / emoji ───────────────────────────────────
           Expanded(
             child: Stack(
               children: [
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.purple.withOpacity(0.07),
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                  ),
-                  width: double.infinity,
-                  child: Center(child: Text(product.emoji, style: const TextStyle(fontSize: 52))),
+                ClipRRect(
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(20)),
+                  child: imageUrl != null
+                      ? Image.network(
+                          imageUrl,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _emojiPlaceholder(),
+                        )
+                      : _emojiPlaceholder(),
                 ),
-                if (product.badgeText != null)
+                if (featured)
                   Positioned(
-                    top: 10, left: 10,
+                    top: 10,
+                    left: 10,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(color: AppColors.orange, borderRadius: BorderRadius.circular(8)),
-                      child: Text(product.badgeText!, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                          color: AppColors.orange,
+                          borderRadius: BorderRadius.circular(8)),
+                      child: const Text('Destacado',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold)),
                     ),
                   ),
-                // Badge cantidad en carrito
                 if (inCartQty > 0)
                   Positioned(
-                    top: 10, right: 10,
+                    top: 10,
+                    right: 10,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                      decoration: BoxDecoration(color: AppColors.purple, borderRadius: BorderRadius.circular(8)),
-                      child: Text('$inCartQty en carrito', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 3),
+                      decoration: BoxDecoration(
+                          color: AppColors.purple,
+                          borderRadius: BorderRadius.circular(8)),
+                      child: Text('$inCartQty en carrito',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold)),
                     ),
                   ),
               ],
             ),
           ),
-          // Info
+          // ─── Info ────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(product.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text(product['name'] ?? '',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 14),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 2),
-                Text(product.description, style: TextStyle(color: Colors.grey.shade600, fontSize: 11), maxLines: 2, overflow: TextOverflow.ellipsis),
+                Text(product['description'] ?? '',
+                    style: TextStyle(
+                        color: Colors.grey.shade600, fontSize: 11),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(formattedPrice, style: const TextStyle(color: AppColors.purple, fontWeight: FontWeight.bold, fontSize: 14)),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(formattedPrice,
+                            style: const TextStyle(
+                                color: AppColors.purple,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14)),
+                        if (comparePrice > 0)
+                          Text(
+                            '\$${comparePrice.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}',
+                            style: TextStyle(
+                                color: Colors.grey.shade500,
+                                fontSize: 10,
+                                decoration: TextDecoration.lineThrough),
+                          ),
+                      ],
+                    ),
                     GestureDetector(
                       onTap: onAdd,
                       child: Container(
                         padding: const EdgeInsets.all(6),
-                        decoration: const BoxDecoration(color: AppColors.purple, shape: BoxShape.circle),
-                        child: const Icon(Icons.add, color: Colors.white, size: 16),
+                        decoration: const BoxDecoration(
+                            color: AppColors.purple, shape: BoxShape.circle),
+                        child:
+                            const Icon(Icons.add, color: Colors.white, size: 16),
                       ),
                     ),
                   ],
@@ -332,4 +438,21 @@ class _ProductCard extends StatelessWidget {
       ),
     );
   }
+
+  String? _firstImage() {
+    final imgs = product['images'];
+    if (imgs is List && imgs.isNotEmpty) return imgs.first as String?;
+    return null;
+  }
+
+  Widget _emojiPlaceholder() => Container(
+        decoration: BoxDecoration(
+          color: AppColors.purple.withOpacity(0.07),
+          borderRadius:
+              const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        width: double.infinity,
+        child: Center(
+            child: Text(catEmoji, style: const TextStyle(fontSize: 52))),
+      );
 }
