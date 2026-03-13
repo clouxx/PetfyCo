@@ -4,6 +4,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../theme/app_theme.dart';
 
+// Solo estos emails pueden registrar empresas
+const _adminEmails = ['fredy.alandete@gmail.com', 'f.alandete@uniandes.edu.co'];
+
 const _categorias = [
   {'label': 'Todos', 'emoji': '🐾'},
   {'label': 'Veterinaria', 'emoji': '🏥'},
@@ -26,6 +29,11 @@ class _ServiciosPageState extends State<ServiciosPage> {
   List<Map<String, dynamic>> _providers = [];
   bool _loading = true;
   String _catFilter = 'Todos';
+
+  bool get _isAdmin {
+    final email = _sb.auth.currentUser?.email ?? '';
+    return _adminEmails.contains(email);
+  }
 
   @override
   void initState() {
@@ -68,11 +76,12 @@ class _ServiciosPageState extends State<ServiciosPage> {
         foregroundColor: AppColors.navy,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add_business_outlined, color: AppColors.purple),
-            tooltip: 'Registrar mi empresa',
-            onPressed: () => _showRegisterSheet(),
-          ),
+          if (_isAdmin)
+            IconButton(
+              icon: const Icon(Icons.add_business_outlined, color: AppColors.purple),
+              tooltip: 'Registrar empresa',
+              onPressed: () => _showRegisterSheet(),
+            ),
         ],
       ),
       body: Column(
@@ -162,10 +171,11 @@ class _ServiciosPageState extends State<ServiciosPage> {
             style: TextStyle(color: Colors.grey.shade500),
           ),
           const SizedBox(height: 20),
+          if (_isAdmin)
           ElevatedButton.icon(
             onPressed: _showRegisterSheet,
             icon: const Icon(Icons.add_business),
-            label: const Text('Registrar mi empresa'),
+            label: const Text('Registrar empresa'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.purple,
               foregroundColor: Colors.white,
