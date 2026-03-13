@@ -89,8 +89,16 @@ class _ServiciosPageState extends State<ServiciosPage> {
           // Categorías
           Container(
             color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-            child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(12, 8, 0, 12),
+            child: ShaderMask(
+              shaderCallback: (bounds) => LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [Colors.white, Colors.white, Colors.transparent],
+                stops: const [0.0, 0.75, 1.0],
+              ).createShader(bounds),
+              blendMode: BlendMode.dstIn,
+              child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: _categorias.map((c) {
@@ -125,6 +133,7 @@ class _ServiciosPageState extends State<ServiciosPage> {
                   );
                 }).toList(),
               ),
+            ),
             ),
           ),
 
