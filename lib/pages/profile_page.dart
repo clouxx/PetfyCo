@@ -442,7 +442,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             ),
                             title: const Text('Agregar Datos De Facturación'),
                             trailing: const Icon(Icons.chevron_right),
-                            onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Próximamente: Datos de facturación'))),
+                            onTap: () => showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (_) => _BillingSheet(sb: _sb),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -869,6 +874,258 @@ class _AddressFormDialogState extends State<_AddressFormDialog> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ─────────── Sheet Datos de Facturación ──────────────────────────────────────
+
+class _BillingSheet extends StatefulWidget {
+  const _BillingSheet({required this.sb});
+  final SupabaseClient sb;
+
+  @override
+  State<_BillingSheet> createState() => _BillingSheetState();
+}
+
+class _BillingSheetState extends State<_BillingSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _nitCtrl = TextEditingController();
+  final _razonCtrl = TextEditingController();
+  final _telCtrl = TextEditingController();
+  final _dirCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  bool _loading = true;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBilling();
+  }
+
+  @override
+  void dispose() {
+    _nitCtrl.dispose();
+    _razonCtrl.dispose();
+    _telCtrl.dispose();
+    _dirCtrl.dispose();
+    _emailCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadBilling() async {
+    final me = widget.sb.auth.currentUser?.id;
+    if (me == null) { setState(() => _loading = false); return; }
+    try {
+      final data = await widget.sb
+          .from('billing_data')
+          .select()
+          .eq('user_id', me)
+          .maybeSingle();
+      if (data != null) {
+        _nitCtrl.text = data['nit_cedula'] ?? '';
+        _razonCtrl.text = data['razon_social'] ?? '';
+        _telCtrl.text = data['telefono'] ?? '';
+        _dirCtrl.text = data['direccion'] ?? '';
+        _emailCtrl.text = data['email'] ?? '';
+      }
+    } catch (_) {}
+    setState(() => _loading = false);
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    final me = widget.sb.auth.currentUser?.id;
+    if (me == null) return;
+    setState(() => _saving = true);
+    try {
+      await widget.sb.from('billing_data').upsert({
+        'user_id': me,
+        'nit_cedula': _nitCtrl.text.trim(),
+        'razon_social': _razonCtrl.text.trim(),
+        'telefono': _telCtrl.text.trim(),
+        'direccion': _dirCtrl.text.trim(),
+        'email': _emailCtrl.text.trim(),
+        'updated_at': DateTime.now().toIso8601String(),
+      }, onConflict: 'user_id');
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Datos de facturación guardados')),
+        );
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+    setState(() => _saving = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+        child: _loading
+            ? const SizedBox(height: 200, child: Center(child: CircularProgressIndicator()))
+            : Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Handle
+                    Center(
+                      child: Container(
+                        margin: const EdgeInsets.only(top: 10, bottom: 16),
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text('Agregar Datos de Facturación',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    _BillingField(
+                      label: 'NIT o Cédula',
+                      controller: _nitCtrl,
+                      hint: 'Ingresa NIT o Cédula',
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 14),
+                    _BillingField(
+                      label: 'Razón Social',
+                      controller: _razonCtrl,
+                      hint: 'Ingresa razón social',
+                    ),
+                    const SizedBox(height: 14),
+                    _BillingField(
+                      label: 'Teléfono',
+                      controller: _telCtrl,
+                      hint: 'Número de teléfono',
+                      keyboardType: TextInputType.phone,
+                      prefix: '🇨🇴 +57',
+                    ),
+                    const SizedBox(height: 14),
+                    _BillingField(
+                      label: 'Dirección',
+                      controller: _dirCtrl,
+                      hint: 'Ingresa tu dirección',
+                    ),
+                    const SizedBox(height: 14),
+                    _BillingField(
+                      label: 'Correo Electrónico',
+                      controller: _emailCtrl,
+                      hint: 'correo@ejemplo.com',
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Requerido';
+                        if (!v.contains('@')) return 'Correo inválido';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 28),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _saving ? null : _save,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.purple,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          elevation: 0,
+                        ),
+                        child: _saving
+                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            : const Text('Guardar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+      ),
+    );
+  }
+}
+
+class _BillingField extends StatelessWidget {
+  const _BillingField({
+    required this.label,
+    required this.controller,
+    required this.hint,
+    this.keyboardType,
+    this.prefix,
+    this.validator,
+  });
+  final String label;
+  final TextEditingController controller;
+  final String hint;
+  final TextInputType? keyboardType;
+  final String? prefix;
+  final String? Function(String?)? validator;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: const TextStyle(
+                fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.purple)),
+        const SizedBox(height: 6),
+        TextFormField(
+          controller: controller,
+          keyboardType: keyboardType,
+          validator: validator ?? (v) => (v == null || v.isEmpty) ? 'Requerido' : null,
+          decoration: InputDecoration(
+            hintText: hint,
+            prefixText: prefix != null ? '$prefix  ' : null,
+            filled: true,
+            fillColor: Colors.grey.shade50,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade200),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade200),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.purple),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
