@@ -577,7 +577,7 @@ Si tiene dudas o consultas sobre estos Términos, puede contactarnos en:
 
 Correo electrónico: support@petfyco.org
 
-Teléfono de contacto: +573003334030''',
+Teléfono de contacto: +573177931145''',
                                         ),
                                       ),
                                       actions: [
