@@ -524,22 +524,63 @@ class _HomePageState extends State<HomePage> {
 
               const SizedBox(height: 24),
 
-              // 3. Quick Action Cards (Services, Recipes, Connect, History)
+              // 3. Mascotas Perdidas
+              _buildPetSection(
+                context,
+                title: '🔴 Mascotas Perdidas',
+                subtitle: 'Ayuda a encontrarlas',
+                estado: 'perdido',
+                onVerTodas: () => context.go('/lost'),
+                emptyMsg: 'No hay mascotas perdidas reportadas',
+              ),
+              const SizedBox(height: 20),
+
+              // 4. En Adopción
+              _buildPetSection(
+                context,
+                title: '🐾 En Adopción',
+                subtitle: 'Dales un hogar',
+                estado: 'publicado',
+                onVerTodas: () => context.go('/adopt'),
+                emptyMsg: 'No hay mascotas en adopción por ahora',
+              ),
+              const SizedBox(height: 20),
+
+              // 5. Más herramientas
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: GridView.count(
-                  crossAxisCount: 2,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  mainAxisSpacing: 16,
-                  crossAxisSpacing: 16,
-                  childAspectRatio: 0.85,
-                  children: [
-                    _buildServiceCard(context, 'Servicios', 'Agenda todo tipo de servicios para tus peluditos.', Icons.cut),
-                    _buildServiceCard(context, 'Recetas', 'Agrega recetas y recibe recordatorios.', Icons.medical_services_outlined),
-                    _buildServiceCard(context, 'Conecta', 'Conecta con otros dueños de mascotas.', Icons.people_alt_outlined),
-                    _buildServiceCard(context, 'Historial médico', 'Crea, edita y revisa los registros médicos.', Icons.history_edu),
-                  ],
+                child: InkWell(
+                  onTap: () => _showToolsMenu(context),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.grey.shade200),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(color: AppColors.greyBg, shape: BoxShape.circle),
+                          child: const Icon(Icons.apps_rounded, color: AppColors.purple, size: 22),
+                        ),
+                        const SizedBox(width: 14),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Más herramientas', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                              Text('Servicios, Recetas, Conecta, Historial médico', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right, color: AppColors.purple),
+                      ],
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 100), // padding for bottom nav
@@ -608,16 +649,186 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+  // ── Pet section (perdidos / adopción) ──────────────────────────────────────
+  Widget _buildPetSection(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required String estado,
+    required VoidCallback onVerTodas,
+    required String emptyMsg,
+  }) {
+    final pets = _pets.where((p) => (p['estado'] ?? '') == estado).take(10).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                  Text(subtitle, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                ],
+              ),
+              TextButton(
+                onPressed: onVerTodas,
+                child: const Text('Ver todos →', style: TextStyle(color: AppColors.purple, fontWeight: FontWeight.bold, fontSize: 12)),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        if (pets.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(emptyMsg, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+          )
+        else
+          SizedBox(
+            height: 130,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: pets.length,
+              itemBuilder: (ctx, i) {
+                final pet = pets[i];
+                final nombre = (pet['nombre'] as String? ?? '').isNotEmpty ? pet['nombre'] as String : 'Sin nombre';
+                final municipio = pet['municipio'] as String? ?? '';
+                String? imgUrl;
+                final photos = pet['pet_photos'];
+                if (photos is List && photos.isNotEmpty) {
+                  final sorted = (photos as List).whereType<Map>().map((e) => Map<String, dynamic>.from(e as Map)).toList()
+                    ..sort((a, b) => (a['position'] as int? ?? 0).compareTo(b['position'] as int? ?? 0));
+                  imgUrl = sorted.first['url'] as String?;
+                }
+                return GestureDetector(
+                  onTap: () => context.push('/pet/${pet['id']}'),
+                  child: Container(
+                    width: 100,
+                    margin: const EdgeInsets.only(right: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8, offset: const Offset(0, 3))],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ClipRRect(
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                          child: SizedBox(
+                            height: 72, width: double.infinity,
+                            child: imgUrl != null
+                                ? Image.network(imgUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: AppColors.greyBg, child: const Icon(Icons.pets, color: AppColors.greyText)))
+                                : Container(color: AppColors.greyBg, child: const Icon(Icons.pets, color: AppColors.greyText, size: 32)),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),
+                          child: Text(nombre, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ),
+                        if (municipio.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: Text(municipio, style: const TextStyle(fontSize: 10, color: Colors.grey), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  // ── Tools bottom sheet ──────────────────────────────────────────────────────
+  void _showToolsMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) {
+        final tools = [
+          {'title': 'Servicios', 'subtitle': 'Agenda servicios para tus peluditos', 'icon': Icons.cut, 'route': '/servicios'},
+          {'title': 'Recetas', 'subtitle': 'Agrega recetas y recordatorios', 'icon': Icons.medical_services_outlined, 'route': '/recetas'},
+          {'title': 'Conecta', 'subtitle': 'Conecta con otros dueños', 'icon': Icons.people_alt_outlined, 'route': '/conecta'},
+          {'title': 'Historial médico', 'subtitle': 'Registros médicos de tus mascotas', 'icon': Icons.history_edu, 'route': '/historial'},
+        ];
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)))),
+              const SizedBox(height: 16),
+              const Text('Herramientas', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              ...tools.map((t) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: AppColors.greyBg, shape: BoxShape.circle),
+                  child: Icon(t['icon'] as IconData, color: AppColors.purple, size: 22),
+                ),
+                title: Text(t['title'] as String, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                subtitle: Text(t['subtitle'] as String, style: const TextStyle(fontSize: 12)),
+                trailing: const Icon(Icons.chevron_right, color: AppColors.purple),
+                onTap: () {
+                  Navigator.pop(context);
+                  context.push(t['route'] as String);
+                },
+              )),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildBrandSlide(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 6),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 4))],
+    return GestureDetector(
+      onTap: () async {
+        final uri = Uri.parse('https://petfyco-store.vercel.app');
+        if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 6),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 4))],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: [
+            Image.asset('assets/logo/petfyco_nutricion.png', fit: BoxFit.cover, width: double.infinity),
+            Positioned(
+              bottom: 8, right: 12,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8811F),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.open_in_new, color: Colors.white, size: 12),
+                    SizedBox(width: 4),
+                    Text('Visitar tienda', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-      clipBehavior: Clip.antiAlias,
-      child: Image.asset('assets/logo/petfyco_nutricion.png', fit: BoxFit.cover),
     );
   }
 
