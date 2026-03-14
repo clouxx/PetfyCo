@@ -806,8 +806,9 @@ class _HomePageState extends State<HomePage> {
         ),
         clipBehavior: Clip.antiAlias,
         child: Stack(
+          fit: StackFit.expand,
           children: [
-            Image.asset('assets/logo/petfyco_nutricion.png', fit: BoxFit.cover, width: double.infinity),
+            Image.asset('assets/logo/petfyco_nutricion.png', fit: BoxFit.contain),
             Positioned(
               bottom: 8, right: 12,
               child: Container(
