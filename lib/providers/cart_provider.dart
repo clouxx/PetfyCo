@@ -1,14 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class CartItem {
+  final String productId; // ID real del producto en store_products
   final String name;
   final String description;
   final int price;
   final String emoji;
   final int quantity;
-  final String? imageUrl; // URL de imagen desde Supabase store_products
+  final String? imageUrl;
 
   const CartItem({
+    required this.productId,
     required this.name,
     required this.description,
     required this.price,
@@ -18,6 +20,7 @@ class CartItem {
   });
 
   CartItem copyWith({int? quantity}) => CartItem(
+        productId: productId,
         name: name,
         description: description,
         price: price,
@@ -31,7 +34,7 @@ class CartNotifier extends StateNotifier<List<CartItem>> {
   CartNotifier() : super([]);
 
   void add(CartItem item) {
-    final idx = state.indexWhere((e) => e.name == item.name);
+    final idx = state.indexWhere((e) => e.productId == item.productId);
     if (idx >= 0) {
       state = [
         for (int i = 0; i < state.length; i++)
@@ -42,8 +45,8 @@ class CartNotifier extends StateNotifier<List<CartItem>> {
     }
   }
 
-  void decrement(String name) {
-    final idx = state.indexWhere((e) => e.name == name);
+  void decrement(String productId) {
+    final idx = state.indexWhere((e) => e.productId == productId);
     if (idx < 0) return;
     if (state[idx].quantity > 1) {
       state = [
@@ -51,12 +54,12 @@ class CartNotifier extends StateNotifier<List<CartItem>> {
           if (i == idx) state[i].copyWith(quantity: state[i].quantity - 1) else state[i],
       ];
     } else {
-      state = [for (final e in state) if (e.name != name) e];
+      state = [for (final e in state) if (e.productId != productId) e];
     }
   }
 
-  void remove(String name) {
-    state = [for (final e in state) if (e.name != name) e];
+  void remove(String productId) {
+    state = [for (final e in state) if (e.productId != productId) e];
   }
 
   void clear() => state = [];

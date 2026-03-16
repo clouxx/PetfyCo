@@ -220,7 +220,7 @@ class _TiendaPageState extends ConsumerState<TiendaPage> {
                             itemBuilder: (_, i) {
                               final p = _filtered[i];
                               final cartQty = cartItems
-                                  .where((e) => e.name == (p['name'] ?? ''))
+                                  .where((e) => e.productId == (p['id'] as String? ?? ''))
                                   .fold(0, (s, e) => s + e.quantity);
                               return _ProductCard(
                                 product: p,
@@ -229,6 +229,7 @@ class _TiendaPageState extends ConsumerState<TiendaPage> {
                                 onAdd: () => ref
                                     .read(cartProvider.notifier)
                                     .add(CartItem(
+                                      productId: p['id'] as String? ?? '',
                                       name: p['name'] ?? '',
                                       description: p['description'] ?? '',
                                       price:
