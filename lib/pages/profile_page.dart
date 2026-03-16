@@ -555,6 +555,18 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         _RolCard(onRolChanged: () => ref.read(rolProvider.notifier).refresh()),
                         const SizedBox(height: 16),
 
+                        // ── Mis Pedidos ──────────────────────────────
+                        OutlinedButton.icon(
+                          onPressed: () => context.push('/pedidos'),
+                          icon: const Icon(Icons.receipt_long_outlined, color: AppColors.purple),
+                          label: const Text('Mis Pedidos', style: TextStyle(color: AppColors.purple)),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: AppColors.purple),
+                            minimumSize: const Size(double.infinity, 48),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+
                         // ── Cerrar sesión ────────────────────────────
                         OutlinedButton.icon(
                           onPressed: () async {

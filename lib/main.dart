@@ -25,6 +25,7 @@ import 'pages/recetas_page.dart';
 import 'pages/conecta_page.dart';
 import 'pages/historial_medico_page.dart';
 import 'pages/servicios_page.dart';
+import 'pages/pedidos_page.dart';
 import 'services/notification_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'dart:io' show Platform;
@@ -133,6 +134,10 @@ class _MyAppState extends State<MyApp> {
         GoRoute(
           path: '/servicios',
           builder: (_, __) => const ServiciosPage(),
+        ),
+        GoRoute(
+          path: '/pedidos',
+          builder: (_, __) => const PedidosPage(),
         ),
 
         // Ruta principal con barra inferior (4 tabs reales)
