@@ -7,17 +7,28 @@ import '../theme/app_theme.dart';
 
 // ─── Coverage zones ───────────────────────────────────────────────────────────
 
+const _sabaneta = ['sabaneta'];
 const _medellin = ['medellín', 'medellin'];
-const _metro = ['bello', 'itagüí', 'itagui', 'envigado', 'sabaneta', 'la estrella', 'copacabana'];
-const _shippingByZone = {'medellin': 8000, 'metro': 10000, 'outside': 12000, 'unknown': 8000};
+const _metroClose = ['itagüí', 'itagui', 'envigado', 'la estrella'];
+const _metroFar = ['bello', 'copacabana'];
+const _shippingByZone = {
+  'sabaneta': 5000,
+  'medellin': 8000,
+  'metro_close': 8000,
+  'metro_far': 10000,
+  'outside': 12000,
+  'unknown': 8000,
+};
 const _freeShippingThreshold = 150000;
 
 String _coverageZone(String city, String depto) {
   if (city.isEmpty || depto.isEmpty) return 'unknown';
   if (depto.toLowerCase() != 'antioquia') return 'outside';
   final n = city.toLowerCase().trim();
+  if (_sabaneta.contains(n)) return 'sabaneta';
   if (_medellin.contains(n)) return 'medellin';
-  if (_metro.contains(n)) return 'metro';
+  if (_metroClose.contains(n)) return 'metro_close';
+  if (_metroFar.contains(n)) return 'metro_far';
   return 'outside';
 }
 
@@ -353,8 +364,8 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
         'total': total,
         'billing_name': _nameCtrl.text.trim(),
         'billing_id_type': 'CC',
-        'billing_id': _phoneCtrl.text.trim(),
-        'billing_email': 'app@petfyco.com',
+        'billing_id': null,
+        'billing_email': _sb.auth.currentSession?.user.email ?? '',
         'billing_phone': _phoneCtrl.text.trim(),
         'billing_address': _addressCtrl.text.trim(),
         'billing_city': _cityCtrl.text.trim(),
@@ -550,11 +561,29 @@ class _CoverageBadge extends StatelessWidget {
           Colors.green.shade300,
           Colors.green.shade700,
         );
-      case 'metro':
+      case 'sabaneta':
+        return _badge(
+          Icons.check_circle_outline,
+          '¡Zona base!',
+          'Sabaneta — mismo día o 1 día hábil',
+          Colors.green.shade50,
+          Colors.green.shade300,
+          Colors.green.shade700,
+        );
+      case 'metro_close':
         return _badge(
           Icons.check_circle_outline,
           '¡Zona de cobertura!',
-          'Área metropolitana — 1 a 2 días hábiles',
+          'Itagüí / Envigado / La Estrella — 1 día hábil',
+          Colors.green.shade50,
+          Colors.green.shade300,
+          Colors.green.shade700,
+        );
+      case 'metro_far':
+        return _badge(
+          Icons.check_circle_outline,
+          '¡Zona de cobertura!',
+          'Bello / Copacabana — 1 a 2 días hábiles',
           Colors.green.shade50,
           Colors.green.shade300,
           Colors.green.shade700,
