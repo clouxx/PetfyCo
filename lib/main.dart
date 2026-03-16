@@ -28,6 +28,7 @@ import 'pages/servicios_page.dart';
 import 'pages/pedidos_page.dart';
 import 'services/notification_service.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 
@@ -43,6 +44,7 @@ Future<void> main() async {
 
   if (_isMobile) {
     await Firebase.initializeApp();
+    await FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(true);
   }
 
   await Supabase.initialize(
