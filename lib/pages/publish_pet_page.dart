@@ -265,8 +265,9 @@ class _PublishPetPageState extends State<PublishPetPage> {
             : _descripcionCtrl.text.trim(),
         'depto': _deptName,
         'municipio': _cityName,
-        'lat': _lat,
-        'lng': _lng,
+        // B4 — truncar a 2 decimales (~1 km precisión) para evitar doxxing
+        'lat': _lat != null ? double.parse(_lat!.toStringAsFixed(2)) : null,
+        'lng': _lng != null ? double.parse(_lng!.toStringAsFixed(2)) : null,
       };
 
       String petId;

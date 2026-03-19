@@ -92,7 +92,10 @@ class _MyAppState extends State<MyApp> {
         GoRoute(
           path: '/reset-password',
           builder: (_, state) {
-            final email = state.uri.queryParameters['email'];
+            // B6 — validar formato email del deep link para prevenir inyección
+            final raw = state.uri.queryParameters['email'];
+            final emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+            final email = (raw != null && emailRegex.hasMatch(raw)) ? raw : null;
             return ResetPasswordPage(email: email);
           },
         ),
