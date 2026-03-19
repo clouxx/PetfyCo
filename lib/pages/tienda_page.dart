@@ -206,7 +206,7 @@ class _TiendaPageState extends ConsumerState<TiendaPage> {
                                   onPressed: _load,
                                   icon: const Icon(Icons.refresh),
                                   label: const Text('Reintentar'),
-                                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+                                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.purple, foregroundColor: Colors.white),
                                 ),
                               ],
                             ),
