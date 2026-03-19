@@ -10,6 +10,7 @@ import '../ui/map_picker.dart';
 import '../widgets/petfy_widgets.dart';
 import '../theme/app_theme.dart';
 import '../providers/role_provider.dart';
+import '../utils/image_validator.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -169,14 +170,24 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   Future<void> _pickAndUploadImage() async {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
     if (image == null) return;
-    
+
+    final bytes = await image.readAsBytes();
+    final validation = validateImageBytes(bytes);
+    if (!validation.valid) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(validation.error!), backgroundColor: Colors.red),
+        );
+      }
+      return;
+    }
+
     setState(() => _saving = true);
     try {
       final user = _sb.auth.currentUser;
       if (user == null) return;
 
       final path = '${user.id}/${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final bytes = await image.readAsBytes();
       
       // Asegúrate de tener un bucket llamado 'avatars' en Supabase Storage
       await _sb.storage.from('avatars').uploadBinary(

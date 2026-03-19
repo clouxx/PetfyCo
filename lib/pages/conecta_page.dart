@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/app_theme.dart';
+import '../utils/image_validator.dart';
 
 class ConectaPage extends StatefulWidget {
   const ConectaPage({super.key});
@@ -365,7 +366,20 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final xf = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-    if (xf != null) setState(() => _image = File(xf.path));
+    if (xf == null) return;
+
+    final bytes = await xf.readAsBytes();
+    final validation = validateImageBytes(bytes);
+    if (!validation.valid) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(validation.error!), backgroundColor: Colors.red),
+        );
+      }
+      return;
+    }
+
+    setState(() => _image = File(xf.path));
   }
 
   Future<void> _post() async {

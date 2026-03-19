@@ -9,6 +9,7 @@ import '../ui/map_picker.dart';
 import '../widgets/petfy_widgets.dart';
 import '../theme/app_theme.dart';
 import '../widgets/cross_sell_modal.dart';
+import '../utils/image_validator.dart';
 
 class PublishPetPage extends StatefulWidget {
   final String? presetEstado;
@@ -212,8 +213,29 @@ class _PublishPetPageState extends State<PublishPetPage> {
 
   Future<void> _pickImages() async {
     final files = await picker.pickMultiImage(imageQuality: 85);
-    if (files != null && files.isNotEmpty) {
-      setState(() => _pickedImages.addAll(files));
+    if (files == null || files.isEmpty) return;
+
+    final valid = <XFile>[];
+    final errors = <String>[];
+
+    for (final file in files) {
+      final bytes = await file.readAsBytes();
+      final result = validateImageBytes(bytes);
+      if (result.valid) {
+        valid.add(file);
+      } else {
+        errors.add('${file.name}: ${result.error}');
+      }
+    }
+
+    if (errors.isNotEmpty && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errors.join('\n')), backgroundColor: Colors.red),
+      );
+    }
+
+    if (valid.isNotEmpty) {
+      setState(() => _pickedImages.addAll(valid));
     }
   }
 
