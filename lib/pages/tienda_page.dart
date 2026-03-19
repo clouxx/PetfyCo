@@ -20,6 +20,7 @@ class _TiendaPageState extends ConsumerState<TiendaPage> {
   List<Map<String, dynamic>> _categories = const [];
   List<Map<String, dynamic>> _allProducts = const [];
   bool _loading = true;
+  String? _error;
 
   // Emoji fallback por slug de categoría
   static const _catEmoji = {
@@ -38,7 +39,7 @@ class _TiendaPageState extends ConsumerState<TiendaPage> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() { _loading = true; _error = null; });
     try {
       // Cargar categorías activas
       final cats = await _sb
@@ -64,7 +65,7 @@ class _TiendaPageState extends ConsumerState<TiendaPage> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() { _loading = false; _error = 'No se pudieron cargar los productos. Verifica tu conexión.'; });
     }
   }
 
@@ -189,6 +190,28 @@ class _TiendaPageState extends ConsumerState<TiendaPage> {
             Expanded(
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
+                  : _error != null
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text('😿', style: TextStyle(fontSize: 48)),
+                                const SizedBox(height: 12),
+                                Text(_error!, textAlign: TextAlign.center,
+                                    style: TextStyle(color: Colors.grey.shade600, fontSize: 15)),
+                                const SizedBox(height: 16),
+                                ElevatedButton.icon(
+                                  onPressed: _load,
+                                  icon: const Icon(Icons.refresh),
+                                  label: const Text('Reintentar'),
+                                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
                   : _filtered.isEmpty
                       ? Center(
                           child: Column(
