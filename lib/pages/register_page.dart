@@ -218,7 +218,8 @@ class _RegisterPageState extends State<RegisterPage> {
             'lng': _lng,
             'rol': _rol,
           });
-        } catch (_) {
+        } catch (e, st) {
+          debugPrint('[Register] upsert profiles con rol falló: $e\n$st');
           await sb.from('profiles').upsert({
             'id': uid,
             'display_name': displayName,

@@ -42,7 +42,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       );
 
       final mail = _email.text.trim();
-      context.pushReplacement('/reset-password?email=$mail');
+      // Email vía GoRouter extra — no en URL para evitar exposición en logs/analytics
+      context.pushReplacement('/reset-password', extra: mail);
     } on AuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

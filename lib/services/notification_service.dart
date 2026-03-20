@@ -84,7 +84,9 @@ class NotificationService {
       }
       token = await _fcm.getToken();
       if (token != null) await _saveToken(token);
-    } catch (_) {}
+    } catch (e, st) {
+      debugPrint('[NotificationService] Error obteniendo token FCM: $e\n$st');
+    }
   }
 
   static Future<void> _saveToken(String token) async {
@@ -95,7 +97,9 @@ class NotificationService {
           .from('profiles')
           .update({'fcm_token': token})
           .eq('id', uid);
-    } catch (_) {}
+    } catch (e, st) {
+      debugPrint('[NotificationService] Error guardando token FCM: $e\n$st');
+    }
   }
 
   /// Call when user logs out to clear the token

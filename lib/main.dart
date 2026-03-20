@@ -36,11 +36,18 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const _supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 
+// Falla en tiempo de inicio si faltan las vars — evita arranque silencioso roto
+void _assertEnvVars() {
+  assert(_supabaseUrl.isNotEmpty, 'SUPABASE_URL no definido. Pasa --dart-define=SUPABASE_URL=...');
+  assert(_supabaseAnonKey.isNotEmpty, 'SUPABASE_ANON_KEY no definido. Pasa --dart-define=SUPABASE_ANON_KEY=...');
+}
+
 bool get _isMobile =>
     !kIsWeb && (Platform.isAndroid || Platform.isIOS);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  _assertEnvVars();
 
   if (_isMobile) {
     await Firebase.initializeApp();
@@ -92,10 +99,8 @@ class _MyAppState extends State<MyApp> {
         GoRoute(
           path: '/reset-password',
           builder: (_, state) {
-            // B6 — validar formato email del deep link para prevenir inyección
-            final raw = state.uri.queryParameters['email'];
-            final emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
-            final email = (raw != null && emailRegex.hasMatch(raw)) ? raw : null;
+            // Email llega por GoRouter extra (no en URL) para evitar exposición en logs
+            final email = state.extra as String?;
             return ResetPasswordPage(email: email);
           },
         ),
