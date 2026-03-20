@@ -6,7 +6,8 @@ class AppColors {
   static const navy   = Color(0xFF2D2D2D);    // Texto principal oscuro
   static const blue   = Color(0xFF56C4F2);    // Acento azul radiante (Iconos género)
   static const orange = Color(0xFFFF9800);    // Etiquetas adopción / Alertas
-  static const pink   = Color(0xFFE91E63);    // Héroe de patitas
+  static const pink      = Color(0xFFE91E63);    // Héroe de patitas
+  static const rolPurple = Color(0xFF7C3AED);    // Selección de rol en registro
   static const red    = Color(0xFFF44336);    // Alertas perdidos
   static const white  = Colors.white;
   static const greyBg = Color(0xFFF3F6F9);    // Elementos inactivos / chips

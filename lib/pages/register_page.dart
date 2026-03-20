@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import '../widgets/petfy_widgets.dart';
 import '../ui/map_picker.dart';
+import '../theme/app_theme.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -315,8 +316,8 @@ class _RegisterPageState extends State<RegisterPage> {
                         if (v == null || v.trim().isEmpty) {
                           return 'Ingresa tu correo';
                         }
-                        if (!v.contains('@')) {
-                          return 'Email inválido';
+                        if (!RegExp(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$').hasMatch(v.trim())) {
+                          return 'Correo inválido';
                         }
                         return null;
                       },
@@ -375,8 +376,8 @@ class _RegisterPageState extends State<RegisterPage> {
                         if (v == null || v.trim().isEmpty) {
                           return 'Ingresa tu teléfono';
                         }
-                        if (v.length < 10) {
-                          return 'Número inválido';
+                        if (!RegExp(r'^\d{10}$').hasMatch(v.trim())) {
+                          return 'Debe tener 10 dígitos numéricos';
                         }
                         return null;
                       },
@@ -649,15 +650,15 @@ class _RolOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selected = value == groupValue;
-    final color = selected ? const Color(0xFF7C3AED) : Colors.grey.shade400;
+    final color = selected ? AppColors.rolPurple : Colors.grey.shade400;
     return InkWell(
       onTap: () => onChanged(value),
       borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFF7C3AED).withOpacity(0.06) : Colors.transparent,
-          border: Border.all(color: selected ? const Color(0xFF7C3AED) : Colors.grey.shade300),
+          color: selected ? AppColors.rolPurple.withOpacity(0.06) : Colors.transparent,
+          border: Border.all(color: selected ? AppColors.rolPurple : Colors.grey.shade300),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -666,7 +667,7 @@ class _RolOption extends StatelessWidget {
               value: value,
               groupValue: groupValue,
               onChanged: onChanged,
-              activeColor: const Color(0xFF7C3AED),
+              activeColor: AppColors.rolPurple,
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
             Icon(icon, color: color, size: 22),
@@ -675,7 +676,7 @@ class _RolOption extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: selected ? const Color(0xFF7C3AED) : Colors.black87)),
+                  Text(title, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: selected ? AppColors.rolPurple : Colors.black87)),
                   Text(subtitle, style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
                 ],
               ),

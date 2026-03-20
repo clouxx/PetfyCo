@@ -113,7 +113,9 @@ class NotificationService {
             .eq('id', uid);
       }
       await _fcm.deleteToken();
-    } catch (_) {}
+    } catch (e, st) {
+      debugPrint('[NotificationService] Error en clearToken: $e\n$st');
+    }
   }
 
   // ── Private ────────────────────────────────────────────────────────────────

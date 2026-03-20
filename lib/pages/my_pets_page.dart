@@ -182,7 +182,18 @@ class _MyPetsPageState extends State<MyPetsPage> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: imageUrl != null
-                    ? Image.network(imageUrl, width: 80, height: 80, fit: BoxFit.cover)
+                    ? Image.network(
+                        imageUrl,
+                        width: 80,
+                        height: 80,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 80,
+                          height: 80,
+                          color: Colors.grey.shade200,
+                          child: Icon(Icons.broken_image, color: Colors.grey.shade400, size: 36),
+                        ),
+                      )
                     : Container(
                         width: 80,
                         height: 80,
