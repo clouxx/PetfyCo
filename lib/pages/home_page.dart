@@ -67,7 +67,8 @@ class _HomePageState extends State<HomePage> {
             pet_photos(url, position)
           ''')
           .order('created_at', ascending: false)
-          .limit(300);
+          .limit(300)
+          .timeout(const Duration(seconds: 15));
 
       final List<Map<String, dynamic>> allPets = [];
       if (data is List) {

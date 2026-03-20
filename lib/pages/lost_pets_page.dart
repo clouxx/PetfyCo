@@ -140,7 +140,8 @@ class _LostPetsPageState extends State<LostPetsPage>
         edad_meses, talla, lat, lng, created_at,
         profiles:owner_id(display_name, phone),
         pet_photos(url, position)
-      ''').eq('estado', 'perdido').order('created_at', ascending: false).limit(50);
+      ''').eq('estado', 'perdido').order('created_at', ascending: false).limit(50)
+          .timeout(const Duration(seconds: 15));
 
       setState(() {
         _allPets = List<Map<String, dynamic>>.from(data);

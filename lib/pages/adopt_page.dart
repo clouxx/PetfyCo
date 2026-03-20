@@ -47,7 +47,7 @@ class _AdoptPageState extends State<AdoptPage> {
         pet_photos(url, position)
       ''').eq('estado', 'publicado').order('created_at', ascending: false).limit(100);
 
-      final data = await query;
+      final data = await query.timeout(const Duration(seconds: 15));
       List<Map<String, dynamic>> allPets = List<Map<String, dynamic>>.from(data);
 
       if (_speciesFilter != 'todos') {
