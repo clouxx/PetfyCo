@@ -36,3 +36,6 @@ Runner.xcworkspace/
 
 # Web
 /build/web/
+android/keystore-backup/
+linear/
+preguntas y respuestas/
