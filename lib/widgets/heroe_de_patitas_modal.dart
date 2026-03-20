@@ -23,7 +23,9 @@ class HeroeDePatitasModal extends StatefulWidget {
           .order('created_at', ascending: false)
           .limit(3);
       pets = List<Map<String, dynamic>>.from(data);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[HeroeModal] Error cargando mascotas recientes: $e');
+    }
 
     if (!context.mounted) return;
     await showModalBottomSheet(
@@ -83,10 +85,20 @@ class _HeroeDePatitasModalState extends State<HeroeDePatitasModal> {
     await _iap.buyNonConsumable(purchaseParam: param);
   }
 
+  // ⚠️  TODO (CRÍTICO — antes de producción):
+  //  La compra debe validarse SERVER-SIDE antes de llamar completePurchase().
+  //  Flujo recomendado:
+  //    1. Enviar purchase.verificationData.serverVerificationData a una
+  //       Supabase Edge Function o Cloud Function.
+  //    2. La función valida con Apple (verifyReceipt) / Google (purchases.subscriptions.get).
+  //    3. Solo si el servidor confirma, llamar completePurchase() y activar beneficios.
+  //  Sin esta validación, un dispositivo jailbroken/rooted puede simular la compra.
   void _onPurchaseUpdate(List<PurchaseDetails> purchases) {
     for (final purchase in purchases) {
       if (purchase.status == PurchaseStatus.purchased ||
           purchase.status == PurchaseStatus.restored) {
+        // TODO: Validar purchase.verificationData.serverVerificationData
+        // contra Apple/Google antes de completar. Ver comentario arriba.
         _iap.completePurchase(purchase);
         if (mounted) {
           Navigator.pop(context);

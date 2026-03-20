@@ -48,12 +48,15 @@ class _HomePageState extends State<HomePage> {
           .from('profiles')
           .select('display_name')
           .eq('id', user.id)
-          .maybeSingle();
+          .maybeSingle()
+          .timeout(const Duration(seconds: 10));
       final name = data?['display_name'] as String?;
       if (name != null && name.isNotEmpty && mounted) {
         setState(() => _displayName = name);
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[Home] _loadDisplayName error: $e');
+    }
   }
 
   Future<void> _loadPets() async {
@@ -292,9 +295,22 @@ class _HomePageState extends State<HomePage> {
     final me = _sb.auth.currentUser?.id;
     if (me == null) return;
     try {
-      final data = await _sb.from('pets').select('id, nombre, especie, pet_photos(url, position)').eq('owner_id', me).limit(10);
+      final data = await _sb
+          .from('pets')
+          .select('id, nombre, especie, pet_photos(url, position)')
+          .eq('owner_id', me)
+          .limit(10)
+          .timeout(const Duration(seconds: 10));
       if (mounted) setState(() => _myPets = List<Map<String, dynamic>>.from(data));
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[Home] _loadMyPets error: $e');
+    }
+  }
+
+  String _greeting(String name) {
+    final hour = DateTime.now().hour;
+    final saludo = hour < 12 ? 'Buenos días' : hour < 18 ? 'Buenas tardes' : 'Buenas noches';
+    return '$saludo, $name 👋';
   }
 
   @override
@@ -315,7 +331,7 @@ class _HomePageState extends State<HomePage> {
                 Text('Colombia', style: Theme.of(context).textTheme.bodySmall),
               ],
             ),
-            Text('Buenos días, $displayName 👋', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(_greeting(displayName), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           ],
         ),
         actions: [

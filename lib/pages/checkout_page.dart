@@ -351,8 +351,39 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
 
     try {
       final userId = _sb.auth.currentSession?.user.id;
+
+      // ── #1: Verificar stock ANTES de crear la orden ──────────────────────
+      for (final item in items) {
+        final prod = await _sb
+            .from('store_products')
+            .select('stock, nombre')
+            .eq('id', item.productId)
+            .single()
+            .timeout(const Duration(seconds: 10));
+        final available = (prod['stock'] as int?) ?? 0;
+        if (available < item.quantity) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Stock insuficiente para "${item.name}". '
+                  'Disponible: $available, solicitado: ${item.quantity}.',
+                ),
+                backgroundColor: AppColors.red,
+              ),
+            );
+          }
+          return;
+        }
+      }
+
+      // ── #2: orderNumber con timestamp + sufijo aleatorio (evita colisiones) ─
+      final suffix = (DateTime.now().microsecondsSinceEpoch % 0xFFFF)
+          .toRadixString(16)
+          .padLeft(4, '0')
+          .toUpperCase();
       final orderNumber =
-          'PFC-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+          'PFC-${DateTime.now().millisecondsSinceEpoch}$suffix';
 
       final orderRes = await _sb.from('store_orders').insert({
         'order_number': orderNumber,
@@ -394,18 +425,18 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
             .toList(),
       );
 
-      // Descontar stock
+      // ── #3: Descontar stock de forma atómica con RPC PostgreSQL ──────────
+      // La función `decrement_stock` usa UPDATE...WHERE stock >= qty
+      // para prevenir overselling incluso con requests concurrentes.
       for (final item in items) {
-        final prod = await _sb
-            .from('store_products')
-            .select('stock')
-            .eq('id', item.productId)
-            .single();
-        final current = (prod['stock'] as int?) ?? 0;
-        final newStock = (current - item.quantity).clamp(0, current);
-        await _sb
-            .from('store_products')
-            .update({'stock': newStock}).eq('id', item.productId);
+        final result = await _sb.rpc('decrement_stock', params: {
+          'p_product_id': item.productId,
+          'p_quantity': item.quantity,
+        });
+        // result es true si se decrementó, false si no había stock suficiente
+        if (result == false) {
+          debugPrint('[Checkout] decrement_stock falló para ${item.productId} — stock insuficiente en servidor');
+        }
       }
 
       notifier.clear();

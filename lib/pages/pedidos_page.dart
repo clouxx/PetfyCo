@@ -60,10 +60,12 @@ class _PedidosPageState extends State<PedidosPage> {
           .from('store_orders')
           .select('id, order_number, status, total, shipping, created_at, delivery_city, delivery_depto, payment_method')
           .eq('user_id', userId)
-          .order('created_at', ascending: false);
+          .order('created_at', ascending: false)
+          .timeout(const Duration(seconds: 15));
 
       if (mounted) setState(() { _orders = List<Map<String, dynamic>>.from(data); _loading = false; });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[Pedidos] _load error: $e');
       if (mounted) setState(() => _loading = false);
     }
   }
