@@ -215,7 +215,9 @@ class _HomePageState extends State<HomePage> {
 
       final rawPhone =
           (profile['whatsapp'] ?? profile['phone'] ?? '').toString().trim();
-      if (rawPhone.isEmpty) {
+      // Solo dígitos y + inicial — previene inyección en wa.me URL
+      final sanitizedPhone = rawPhone.replaceAll(RegExp(r'[^\d+]'), '');
+      if (sanitizedPhone.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('El dueño no tiene WhatsApp registrado.')),
         );
@@ -225,7 +227,7 @@ class _HomePageState extends State<HomePage> {
       final msg =
           '¡Hola! Vi a *${pet['nombre']}* en PetfyCo y me gustaría adoptar. ¿Podemos hablar?';
       final uri =
-          Uri.parse('https://wa.me/$rawPhone?text=${Uri.encodeComponent(msg)}');
+          Uri.parse('https://wa.me/$sanitizedPhone?text=${Uri.encodeComponent(msg)}');
 
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
