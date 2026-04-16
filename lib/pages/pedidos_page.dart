@@ -305,10 +305,16 @@ class _OrderDetailPageState extends State<_OrderDetailPage> {
 
   Future<void> _load() async {
     try {
+      final currentUserId = _sb.auth.currentUser?.id;
+      if (currentUserId == null) {
+        if (mounted) setState(() => _loading = false);
+        return;
+      }
       final order = await _sb
           .from('store_orders')
           .select()
           .eq('id', widget.orderId)
+          .eq('user_id', currentUserId)
           .single();
       final items = await _sb
           .from('store_order_items')
@@ -322,7 +328,8 @@ class _OrderDetailPageState extends State<_OrderDetailPage> {
           _loading = false;
         });
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[PedidosPage] Error cargando orden: $e');
       if (mounted) setState(() => _loading = false);
     }
   }
