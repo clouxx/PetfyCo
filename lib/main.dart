@@ -92,16 +92,23 @@ class _MyAppState extends State<MyApp> {
 
     _router = GoRouter(
       initialLocation: '/splash',
+      // Alias en español para deep-links y notificaciones externas.
+      // Debe estar aquí (redirect global) y no en GoRoute individual porque
+      // los destinos viven dentro de StatefulShellRoute y requieren su contexto.
+      redirect: (_, state) {
+        const aliases = {
+          '/perdidos': '/lost',
+          '/adoptar':  '/adopt',
+          '/store':    '/tienda',
+        };
+        return aliases[state.uri.path];
+      },
       routes: [
         // Rutas sin barra de navegación inferior
         GoRoute(
           path: '/splash',
           builder: (_, __) => const SplashPage(),
         ),
-        // Alias en español para deep-links y notificaciones
-        GoRoute(path: '/perdidos', redirect: (_, __) => '/lost'),
-        GoRoute(path: '/adoptar', redirect: (_, __) => '/adopt'),
-        GoRoute(path: '/store',   redirect: (_, __) => '/tienda'),
         GoRoute(
           path: '/login',
           builder: (_, __) => const LoginPage(),
