@@ -92,19 +92,14 @@ class _MyAppState extends State<MyApp> {
 
     _router = GoRouter(
       initialLocation: '/splash',
-      // onException: captura rutas sin match (go_router 14.x no llama redirect global
-      // si no hay ninguna ruta coincidente — lanza GoException antes).
-      // Aquí mapeamos alias en español → rutas reales.
-      onException: (_, GoRouterState state, GoRouter router) {
-        const aliases = {
-          '/perdidos': '/lost',
-          '/adoptar':  '/adopt',
-          '/store':    '/tienda',
-        };
-        final dest = aliases[state.uri.path];
-        router.go(dest ?? '/home');
-      },
       routes: [
+        // Alias en español para deep-links externos — deben estar ANTES que cualquier
+        // StatefulShellRoute porque go_router 14.x no llama el redirect global cuando
+        // no hay match; registrar como GoRoute garantiza que el path queda en el bundle.
+        GoRoute(path: '/perdidos', redirect: (_, __) => '/lost'),
+        GoRoute(path: '/adoptar',  redirect: (_, __) => '/adopt'),
+        GoRoute(path: '/store',    redirect: (_, __) => '/tienda'),
+
         // Rutas sin barra de navegación inferior
         GoRoute(
           path: '/splash',
