@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../config/app_config.dart';
 import '../theme/app_theme.dart';
-
-// Solo estos emails pueden registrar empresas
-const _adminEmails = ['fredy.alandete@gmail.com', 'f.alandete@uniandes.edu.co'];
 
 const _categorias = [
   {'label': 'Todos', 'emoji': '🐾'},
@@ -30,10 +28,7 @@ class _ServiciosPageState extends State<ServiciosPage> {
   bool _loading = true;
   String _catFilter = 'Todos';
 
-  bool get _isAdmin {
-    final email = _sb.auth.currentUser?.email ?? '';
-    return _adminEmails.contains(email);
-  }
+  bool get _isAdmin => AppConfig.isCurrentUserAdmin;
 
   @override
   void initState() {
