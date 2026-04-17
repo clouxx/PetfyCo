@@ -98,6 +98,10 @@ class _MyAppState extends State<MyApp> {
           path: '/splash',
           builder: (_, __) => const SplashPage(),
         ),
+        // Alias en español para deep-links y notificaciones
+        GoRoute(path: '/perdidos', redirect: (_, __) => '/lost'),
+        GoRoute(path: '/adoptar', redirect: (_, __) => '/adopt'),
+        GoRoute(path: '/store',   redirect: (_, __) => '/tienda'),
         GoRoute(
           path: '/login',
           builder: (_, __) => const LoginPage(),

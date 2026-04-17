@@ -440,7 +440,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         const SizedBox(height: 24),
 
                         // ── Datos de Facturación ─────────────────────
-                        Align(alignment: Alignment.centerLeft, child: Text('Datos de Facturación', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold))),
+                        const Divider(),
+                        const SizedBox(height: 8),
+                        Text('Datos de Facturación', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                         const SizedBox(height: 8),
                         Card(
                           elevation: 0,
@@ -561,7 +563,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         const SizedBox(height: 32),
 
                         // ── Mi rol ──────────────────────────────────
-                        Align(alignment: Alignment.centerLeft, child: Text('Mi rol en PetfyCo', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold))),
+                        const Divider(),
+                        const SizedBox(height: 8),
+                        Text('Mi rol en PetfyCo', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                         const SizedBox(height: 8),
                         _RolCard(onRolChanged: () => ref.read(rolProvider.notifier).refresh()),
                         const SizedBox(height: 16),
