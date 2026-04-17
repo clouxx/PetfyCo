@@ -92,16 +92,17 @@ class _MyAppState extends State<MyApp> {
 
     _router = GoRouter(
       initialLocation: '/splash',
-      // Alias en español para deep-links y notificaciones externas.
-      // Debe estar aquí (redirect global) y no en GoRoute individual porque
-      // los destinos viven dentro de StatefulShellRoute y requieren su contexto.
-      redirect: (_, state) {
+      // onException: captura rutas sin match (go_router 14.x no llama redirect global
+      // si no hay ninguna ruta coincidente — lanza GoException antes).
+      // Aquí mapeamos alias en español → rutas reales.
+      onException: (_, GoRouterState state, GoRouter router) {
         const aliases = {
           '/perdidos': '/lost',
           '/adoptar':  '/adopt',
           '/store':    '/tienda',
         };
-        return aliases[state.uri.path];
+        final dest = aliases[state.uri.path];
+        router.go(dest ?? '/home');
       },
       routes: [
         // Rutas sin barra de navegación inferior
