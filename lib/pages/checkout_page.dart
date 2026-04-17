@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../config/app_config.dart';
 import '../providers/cart_provider.dart';
 import '../theme/app_theme.dart';
 
@@ -457,7 +458,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
   void _showSuccess(String orderNumber) {
     final waText = Uri.encodeComponent(
         'Hola PetfyCo 🐾 Acabo de hacer el pedido $orderNumber desde la app. ¿Me confirman la entrega?');
-    final waUrl = Uri.parse('https://wa.me/573177931145?text=$waText');
+    final waUrl = Uri.parse('https://wa.me/${AppConfig.whatsappNumber}?text=$waText');
 
     showDialog(
       context: context,

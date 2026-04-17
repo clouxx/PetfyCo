@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import '../config/app_config.dart';
 import '../widgets/petfy_widgets.dart';
 import '../ui/map_picker.dart';
 import '../theme/app_theme.dart';
@@ -523,7 +524,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                       title: const Text(
                                         'Términos y Condiciones',
                                       ),
-                                      content: const SingleChildScrollView(
+                                      content: SingleChildScrollView(
                                         child: Text(
                                           '''Última actualización: 23/10/2025
 
@@ -579,7 +580,7 @@ Si tiene dudas o consultas sobre estos Términos, puede contactarnos en:
 
 Correo electrónico: support@petfyco.org
 
-Teléfono de contacto: +573177931145''',
+Teléfono de contacto: +${AppConfig.whatsappNumber}''',
                                         ),
                                       ),
                                       actions: [

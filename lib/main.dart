@@ -27,6 +27,7 @@ import 'pages/historial_medico_page.dart';
 import 'pages/servicios_page.dart';
 import 'pages/pedidos_page.dart';
 import 'services/notification_service.dart';
+import 'config/app_config.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'dart:async';
@@ -53,6 +54,7 @@ Future<void> main() async {
   if (_isMobile) {
     await Firebase.initializeApp();
     await FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(true);
+    await AppConfig.init();
   }
 
   await Supabase.initialize(
