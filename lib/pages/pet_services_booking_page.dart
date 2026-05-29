@@ -356,7 +356,7 @@ class _BookingSheetState extends State<_BookingSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final nombre = widget.service['nombre'] as String? ?? '';
+    final nombre = widget.service['name'] as String? ?? '';
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,

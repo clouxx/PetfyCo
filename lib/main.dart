@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -50,13 +51,18 @@ bool get _isMobile =>
     !kIsWeb && (Platform.isAndroid || Platform.isIOS);
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   _assertEnvVars();
 
   if (_isMobile) {
-    await Firebase.initializeApp();
-    await FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(true);
-    await AppConfig.init();
+    try {
+      await Firebase.initializeApp();
+      await FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(true);
+      await AppConfig.init();
+    } catch (e) {
+      debugPrint('[Firebase] Init failed (app continues without Firebase): $e');
+    }
   }
 
   await Supabase.initialize(
@@ -65,9 +71,15 @@ Future<void> main() async {
   );
 
   if (_isMobile) {
-    await NotificationService.init();
+    try {
+      await NotificationService.init();
+    } catch (e) {
+      debugPrint('[NotificationService] Init failed: $e');
+    }
   }
 
+  // Remover splash ANTES de runApp para no bloquear la UI en inicializaciones lentas
+  FlutterNativeSplash.remove();
   runApp(const ProviderScope(child: MyApp()));
 }
 

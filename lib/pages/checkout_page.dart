@@ -340,7 +340,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
 
   void _payWithWompi() {
     if (!_formKey.currentState!.validate()) return;
-    launchUrl(Uri.parse('https://petfyco.com/checkout'),
+    launchUrl(Uri.parse('https://www.petfyco.co/checkout'),
         mode: LaunchMode.externalApplication);
   }
 
@@ -381,7 +381,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
       for (final item in items) {
         final prod = await _sb
             .from('store_products')
-            .select('stock, nombre')
+            .select('stock')
             .eq('id', item.productId)
             .single()
             .timeout(const Duration(seconds: 10));
