@@ -593,7 +593,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             minimumSize: const Size(double.infinity, 48),
                           ),
                         ),
-                        const SizedBox(height: 10);
+                        const SizedBox(height: 10),
 
                         // ── Cerrar sesión ────────────────────────────
                         OutlinedButton.icon(
