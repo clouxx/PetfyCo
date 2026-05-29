@@ -62,6 +62,19 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
   String get _zone => _coverageZone(_cityCtrl.text, _depto);
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_sb.auth.currentSession == null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Debes iniciar sesión para continuar')),
+        );
+        context.pushReplacement('/login');
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _nameCtrl.dispose();
     _phoneCtrl.dispose();

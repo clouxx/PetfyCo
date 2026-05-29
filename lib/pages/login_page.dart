@@ -88,6 +88,9 @@ class _LoginPageState extends State<LoginPage> {
                         hint: 'Correo electrónico',
                         keyboardType: TextInputType.emailAddress,
                         prefix: const Icon(Icons.mail_outline),
+                        onChanged: (_) {
+                          if (_formKey.currentState != null) _formKey.currentState!.validate();
+                        },
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) return 'Ingresa tu correo';
                           if (!RegExp(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$').hasMatch(v.trim())) return 'Correo inválido';

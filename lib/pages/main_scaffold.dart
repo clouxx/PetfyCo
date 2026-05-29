@@ -129,13 +129,17 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
     return Scaffold(
       body: widget.navigationShell,
       extendBody: true,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _onTap(context, 2),
-        backgroundColor: AppColors.purple.withOpacity(0.15),
-        foregroundColor: AppColors.purple,
-        elevation: 0,
-        shape: const CircleBorder(),
-        child: const Icon(Icons.radar, size: 32),
+      floatingActionButton: Semantics(
+        label: 'Publicar mascota',
+        button: true,
+        child: FloatingActionButton(
+          onPressed: () => _onTap(context, 2),
+          backgroundColor: AppColors.purple.withOpacity(0.15),
+          foregroundColor: AppColors.purple,
+          elevation: 0,
+          shape: const CircleBorder(),
+          child: const Icon(Icons.radar, size: 32),
+        ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: NavigationBarTheme(
