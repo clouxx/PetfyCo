@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 // ─── Background handler (must be top-level) ─────────────────────────────────
@@ -21,6 +22,15 @@ class NotificationService {
 
   static final _local = FlutterLocalNotificationsPlugin();
   static final _fcm   = FirebaseMessaging.instance;
+  static GoRouter? _router;
+
+  static void setRouter(GoRouter router) {
+    _router = router;
+    // Handle initial message if app was opened from a terminated state via notification
+    _fcm.getInitialMessage().then((message) {
+      if (message != null) _handleTappedMessage(message);
+    });
+  }
 
   static const _androidChannel = AndroidNotificationChannel(
     'petfyco_alerts',
@@ -65,7 +75,10 @@ class NotificationService {
       // 4. Foreground messages → show local notification
       FirebaseMessaging.onMessage.listen(_onForeground);
 
-      // 5. Background handler
+      // 5. Background → tapped notification (app in background)
+      FirebaseMessaging.onMessageOpenedApp.listen(_handleTappedMessage);
+
+      // 6. Background handler (FCM background processing)
       FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
 
       // 6. iOS foreground presentation
@@ -145,9 +158,28 @@ class NotificationService {
         ),
       ),
     );
+
+    // Navigate to rating page for delivered orders
+    final status = message.data['status'] as String?;
+    final orderId = message.data['order_id'] as String?;
+    if (status == 'delivered' && orderId != null) {
+      Future.delayed(const Duration(milliseconds: 600), () {
+        _router?.push('/rating/$orderId');
+      });
+    }
+  }
+
+  static void _handleTappedMessage(RemoteMessage message) {
+    final status = message.data['status'] as String?;
+    final orderId = message.data['order_id'] as String?;
+    if (status == 'delivered' && orderId != null) {
+      _router?.push('/rating/$orderId');
+    } else {
+      _router?.push('/pedidos');
+    }
   }
 
   static void _onLocalTap(NotificationResponse response) {
-    // Future: navigate based on payload
+    _router?.push('/pedidos');
   }
 }

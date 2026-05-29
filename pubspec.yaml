@@ -48,6 +48,9 @@ dependencies:
   image_picker: ^1.0.7
   carousel_slider: ^5.1.2
 
+  # WebView (T&C, contenido web embebido)
+  webview_flutter: ^4.4.4
+
   # In-App Purchases
   in_app_purchase: ^3.2.0
 

@@ -582,6 +582,19 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         ),
                         const SizedBox(height: 10),
 
+                        // ── Servicios a domicilio ────────────────────
+                        OutlinedButton.icon(
+                          onPressed: () => context.push('/servicios-domicilio'),
+                          icon: const Icon(Icons.pets, color: AppColors.purple),
+                          label: const Text('Servicios a domicilio',
+                              style: TextStyle(color: AppColors.purple)),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: AppColors.purple),
+                            minimumSize: const Size(double.infinity, 48),
+                          ),
+                        ),
+                        const SizedBox(height: 10);
+
                         // ── Cerrar sesión ────────────────────────────
                         OutlinedButton.icon(
                           onPressed: () async {

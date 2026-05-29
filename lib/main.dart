@@ -26,6 +26,8 @@ import 'pages/conecta_page.dart';
 import 'pages/historial_medico_page.dart';
 import 'pages/servicios_page.dart';
 import 'pages/pedidos_page.dart';
+import 'pages/rating_page.dart';
+import 'pages/pet_services_booking_page.dart';
 import 'services/notification_service.dart';
 import 'config/app_config.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -166,6 +168,20 @@ class _MyAppState extends State<MyApp> {
           path: '/pedidos',
           builder: (_, __) => const PedidosPage(),
         ),
+        GoRoute(
+          path: '/rating/:orderId',
+          builder: (_, state) => RatingPage(
+            orderId: state.pathParameters['orderId']!,
+          ),
+        ),
+        GoRoute(
+          path: '/servicios-domicilio',
+          builder: (_, __) => const PetServicesPage(),
+        ),
+        GoRoute(
+          path: '/mis-reservas',
+          builder: (_, __) => const MisReservasPage(),
+        ),
 
         // Ruta principal con barra inferior (4 tabs reales)
         StatefulShellRoute.indexedStack(
@@ -213,6 +229,10 @@ class _MyAppState extends State<MyApp> {
         ),
       ],
     );
+
+    if (_isMobile) {
+      NotificationService.setRouter(_router);
+    }
 
     // Escuchar el evento de recuperación de contraseña (deep link de Supabase)
     _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((data) {

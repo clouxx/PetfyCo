@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/app_theme.dart';
 
@@ -32,6 +33,7 @@ class _PedidosPageState extends State<PedidosPage> {
   final _sb = Supabase.instance.client;
 
   List<Map<String, dynamic>> _orders = [];
+  Set<String> _ratedOrderIds = {};
   bool _loading = true;
   RealtimeChannel? _channel;
 
@@ -62,6 +64,17 @@ class _PedidosPageState extends State<PedidosPage> {
           .eq('user_id', userId)
           .order('created_at', ascending: false)
           .timeout(const Duration(seconds: 15));
+
+      // Load already-rated order IDs
+      try {
+        final ratings = await _sb
+            .from('store_order_ratings')
+            .select('order_id')
+            .eq('user_id', userId);
+        _ratedOrderIds = Set<String>.from(
+          (ratings as List).map((r) => r['order_id'] as String),
+        );
+      } catch (_) {}
 
       if (mounted) setState(() { _orders = List<Map<String, dynamic>>.from(data); _loading = false; });
     } catch (e) {
@@ -122,7 +135,16 @@ class _PedidosPageState extends State<PedidosPage> {
                     separatorBuilder: (_, __) => const SizedBox(height: 12),
                     itemBuilder: (_, i) => _OrderCard(
                       order: _orders[i],
+                      isRated: _ratedOrderIds.contains(_orders[i]['id'] as String?),
                       onTap: () => _showDetail(context, _orders[i]),
+                      onRate: () async {
+                        final rated = await context.push<bool>(
+                          '/rating/${_orders[i]['id']}',
+                        );
+                        if (rated == true) {
+                          setState(() => _ratedOrderIds.add(_orders[i]['id'] as String));
+                        }
+                      },
                     ),
                   ),
                 ),
@@ -140,9 +162,16 @@ class _PedidosPageState extends State<PedidosPage> {
 // ─── Order card ───────────────────────────────────────────────────────────────
 
 class _OrderCard extends StatelessWidget {
-  const _OrderCard({required this.order, required this.onTap});
+  const _OrderCard({
+    required this.order,
+    required this.onTap,
+    required this.isRated,
+    required this.onRate,
+  });
   final Map<String, dynamic> order;
   final VoidCallback onTap;
+  final bool isRated;
+  final VoidCallback onRate;
 
   String _fmt(int price) =>
       '\$${price.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
@@ -224,6 +253,52 @@ class _OrderCard extends StatelessWidget {
                               fontSize: 14)),
                     ],
                   ),
+                  if (status == 'delivered') ...[
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: isRated ? null : onRate,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: isRated
+                              ? Colors.grey.shade100
+                              : AppColors.purple.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isRated
+                                ? Colors.grey.shade300
+                                : AppColors.purple.withOpacity(0.4),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isRated
+                                  ? Icons.star_rounded
+                                  : Icons.star_outline_rounded,
+                              size: 14,
+                              color: isRated
+                                  ? Colors.amber
+                                  : AppColors.purple,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              isRated ? 'Calificado' : 'Calificar',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: isRated
+                                    ? Colors.grey.shade500
+                                    : AppColors.purple,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

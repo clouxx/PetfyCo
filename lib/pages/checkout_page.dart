@@ -128,9 +128,9 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                                         height: 44,
                                         fit: BoxFit.cover,
                                         errorBuilder: (_, __, ___) =>
-                                            _EmojiBox(item.emoji),
+                                            const _ProductPlaceholder(),
                                       )
-                                    : _EmojiBox(item.emoji),
+                                    : const _ProductPlaceholder(),
                               ),
                               const SizedBox(width: 10),
                               Expanded(
@@ -583,9 +583,8 @@ class _SummaryRow extends StatelessWidget {
       );
 }
 
-class _EmojiBox extends StatelessWidget {
-  const _EmojiBox(this.emoji);
-  final String emoji;
+class _ProductPlaceholder extends StatelessWidget {
+  const _ProductPlaceholder();
 
   @override
   Widget build(BuildContext context) => Container(
@@ -594,8 +593,16 @@ class _EmojiBox extends StatelessWidget {
         decoration: BoxDecoration(
             color: AppColors.purpleGlass,
             borderRadius: BorderRadius.circular(8)),
-        child:
-            Center(child: Text(emoji, style: const TextStyle(fontSize: 22))),
+        child: Image.asset(
+          'assets/images/placeholder_product.png',
+          width: 44,
+          height: 44,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => const Center(
+            child: Icon(Icons.image_not_supported,
+                color: AppColors.purple, size: 20),
+          ),
+        ),
       );
 }
 
