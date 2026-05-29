@@ -29,8 +29,8 @@ class _PetServicesPageState extends State<PetServicesPage> {
       final data = await _sb
           .from('pet_services')
           .select()
-          .eq('activo', true)
-          .order('nombre', ascending: true);
+          .eq('is_active', true)
+          .order('name', ascending: true);
       if (mounted) {
         setState(() {
           _services = List<Map<String, dynamic>>.from(data);
@@ -142,12 +142,12 @@ class _ServiceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final nombre = service['nombre'] as String? ?? '';
-    final descripcion = service['descripcion'] as String? ?? '';
-    final precio = service['precio'] as num?;
-    final duracion = service['duracion_minutos'] as int?;
-    final imagen = service['imagen_url'] as String?;
-    final categoria = service['categoria'] as String? ?? '';
+    final nombre = service['name'] as String? ?? '';
+    final descripcion = service['description'] as String? ?? '';
+    final precio = service['price'] as num?;
+    final duracion = service['duration_minutes'] as int?;
+    final imagen = service['image_url'] as String?;
+    final categoria = service['category'] as String? ?? '';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -321,10 +321,10 @@ class _BookingSheetState extends State<_BookingSheet> {
       await widget.sb.from('pet_service_bookings').insert({
         'service_id': widget.service['id'],
         'user_id': widget.userId,
-        'mascota_nombre': _mascotaCtrl.text.trim(),
-        'fecha_reserva': _fecha.toIso8601String().split('T').first,
-        'direccion': _direccionCtrl.text.trim(),
-        'notas': _notasCtrl.text.trim().isEmpty
+        'pet_name': _mascotaCtrl.text.trim(),
+        'scheduled_at': _fecha.toIso8601String(),
+        'address': _direccionCtrl.text.trim(),
+        'notes': _notasCtrl.text.trim().isEmpty
             ? null
             : _notasCtrl.text.trim(),
         'status': 'pending',
@@ -548,9 +548,9 @@ class _MisReservasPageState extends State<MisReservasPage> {
       }
       final data = await _sb
           .from('pet_service_bookings')
-          .select('*, pet_services(nombre, categoria)')
+          .select('*, pet_services(name, category)')
           .eq('user_id', uid)
-          .order('fecha_reserva', ascending: false);
+          .order('scheduled_at', ascending: false);
       if (mounted) {
         setState(() {
           _bookings = List<Map<String, dynamic>>.from(data);
@@ -613,11 +613,12 @@ class _MisReservasPageState extends State<MisReservasPage> {
                       final service =
                           b['pet_services'] as Map<String, dynamic>?;
                       final nombre =
-                          service?['nombre'] as String? ?? 'Servicio';
+                          service?['name'] as String? ?? 'Servicio';
                       final categoria =
-                          service?['categoria'] as String? ?? '';
-                      final mascota = b['mascota_nombre'] as String? ?? '';
-                      final fecha = b['fecha_reserva'] as String? ?? '';
+                          service?['category'] as String? ?? '';
+                      final mascota = b['pet_name'] as String? ?? '';
+                      final rawDate = b['scheduled_at'] as String? ?? '';
+                      final fecha = rawDate.length >= 10 ? rawDate.substring(0, 10) : rawDate;
                       final status = b['status'] as String? ?? 'pending';
                       final label = _statusLabel[status] ?? status;
                       final color =
