@@ -246,6 +246,16 @@ class _PublishPetPageState extends State<PublishPetPage> {
       return;
     }
 
+    if (_sb.auth.currentSession == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Debes iniciar sesión para continuar')),
+        );
+        context.pushReplacement('/login');
+      }
+      return;
+    }
+
     setState(() => _loading = true);
     try {
       final userId = _sb.auth.currentUser!.id;

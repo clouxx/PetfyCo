@@ -813,7 +813,7 @@ class _HomePageState extends State<HomePage> {
   Widget _buildBrandSlide(BuildContext context) {
     return GestureDetector(
       onTap: () async {
-        final uri = Uri.parse('https://petfyco-store.vercel.app');
+        final uri = Uri.parse('https://www.petfyco.co');
         if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
       },
       child: Container(
