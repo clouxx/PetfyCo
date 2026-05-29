@@ -346,6 +346,16 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     required int total,
     required String paymentMethod,
   }) async {
+    if (_sb.auth.currentSession == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Debes iniciar sesión para continuar')),
+        );
+        context.pushReplacement('/login');
+      }
+      return;
+    }
+
     setState(() => _submitting = true);
     final items = ref.read(cartProvider);
     final notifier = ref.read(cartProvider.notifier);
@@ -419,9 +429,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                   'product_id': item.productId,
                   'product_name': item.name,
                   'product_sku': null,
-                  'unit_price': item.price,
                   'quantity': item.quantity,
-                  'subtotal': item.price * item.quantity,
                 })
             .toList(),
       );
